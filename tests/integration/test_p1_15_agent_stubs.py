@@ -1,37 +1,35 @@
 """
-Integration tests for P1-15: Agent Stubs.
+tests/integration/test_p1_15_agent_stubs.py
+Integration tests for P1-15: Mission <-> Agent integration stubs.
+
+Verifies:
+  - SYSTEM-scoped token can update a job via the agent-status endpoint.
+  - Standard VIEWER-scoped token is rejected with 403 Forbidden.
 """
+
+from datetime import datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from jose import jwt
 
-
+from packages.auth.config import get_auth_settings
+from services.mission.dependencies import get_job_repo, get_mission_repo
 from services.mission.domain.models import JobStatus
 from services.mission.implementation import app
-from services.mission.dependencies import get_job_repo, get_mission_repo
-from services.mission.repositories.memory import InMemoryJobRepository, InMemoryMissionRepository
+from services.mission.repositories.memory import (
+    InMemoryJobRepository,
+    InMemoryMissionRepository,
+)
 
-@pytest.fixture(autouse=True)
-def override_dependencies():
-    _mission_repo = InMemoryMissionRepository()
-    _job_repo = InMemoryJobRepository()
-    app.dependency_overrides[get_mission_repo] = lambda: _mission_repo
-    app.dependency_overrides[get_job_repo] = lambda: _job_repo
-    yield
-    app.dependency_overrides.clear()
-
-client = TestClient(app)
+# ── Token helpers ─────────────────────────────────────────────────────────────
 
 
-from datetime import datetime, timedelta  # noqa: E402
-from jose import jwt  # noqa: E402
-from packages.auth.config import get_auth_settings  # noqa: E402
-
-
-def generate_test_token(sub: str, org_id: str, roles: list[str]) -> str:
+def _make_token(sub: str, org_id: str, roles: list) -> str:
+    """Mint a short-lived HS256 test token with explicit roles."""
     settings = get_auth_settings()
     now = datetime.utcnow()
-    payload = {
+    payload: dict = {
         "sub": sub,
         "org_id": org_id,
         "roles": roles,
@@ -41,67 +39,102 @@ def generate_test_token(sub: str, org_id: str, roles: list[str]) -> str:
         "iat": now,
         "exp": now + timedelta(minutes=5),
     }
-    return jwt.encode(payload, settings.secret_key, algorithm="HS256")
+    return str(jwt.encode(payload, settings.secret_key, algorithm="HS256"))
 
 
-@pytest.fixture
-def system_token():
-    return generate_test_token("agent-worker", "tenant_1", roles=["system"])
+# ── Fixtures ──────────────────────────────────────────────────────────────────
 
 
-@pytest.fixture
-def viewer_token():
-    return generate_test_token("user-1", "tenant_1", roles=["viewer"])
+@pytest.fixture(autouse=True)
+def fresh_repos():
+    """
+    Provide isolated, per-test in-memory repositories.
+    Override FastAPI dependency injectors so every test starts with clean state
+    and cross-test pollution is impossible.
+    """
+    mission_repo = InMemoryMissionRepository()
+    job_repo = InMemoryJobRepository()
+    app.dependency_overrides[get_mission_repo] = lambda: mission_repo
+    app.dependency_overrides[get_job_repo] = lambda: job_repo
+    yield
+    app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def operator_token():
-    return generate_test_token("operator-1", "tenant_1", roles=["operator", "analyst"])
+@pytest.fixture()
+def http() -> TestClient:
+    """Return a TestClient bound to the mission app."""
+    return TestClient(app)
+
+
+@pytest.fixture()
+def system_token() -> str:
+    return _make_token("svc:agent-worker", "tenant_1", roles=["system"])
+
+
+@pytest.fixture()
+def viewer_token() -> str:
+    return _make_token("user:viewer-1", "tenant_1", roles=["viewer"])
+
+
+@pytest.fixture()
+def operator_token() -> str:
+    # OPERATOR inherits ANALYST permissions in our RBAC model.
+    return _make_token("user:operator-1", "tenant_1", roles=["operator", "analyst"])
+
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.integration
-def test_p1_15_agent_can_update_job_status(system_token, operator_token):
-    # 1. First create a mission and run as OPERATOR to get a job_id
-    headers = {"Authorization": f"Bearer {operator_token}"}
+def test_p1_15_agent_can_update_job_status(http, system_token, operator_token):
+    """
+    Happy path: A SYSTEM-scoped agent can transition a pending job to RUNNING.
+    """
+    op_headers = {"Authorization": f"Bearer {operator_token}"}
 
-    resp_mission = client.post(
-        "/api/v1/missions", json={"name": "Agent Test Mission", "aoi_ids": []}, headers=headers
+    # 1. Create a mission
+    resp = http.post(
+        "/api/v1/missions",
+        json={"name": "Agent Integration Mission", "aoi_ids": []},
+        headers=op_headers,
     )
-    print("Mission Response:", resp_mission.json())
-    mission_id = resp_mission.json()["id"]
+    assert resp.status_code == 201, resp.json()
+    mission_id = resp.json()["id"]
 
-    resp_run = client.post(f"/api/v1/missions/{mission_id}/runs", headers=headers)
-    print("Run Response:", resp_run.json())
-    job_id = resp_run.json()["job_id"]
+    # 2. Submit a run to get a job_id
+    resp = http.post(f"/api/v1/missions/{mission_id}/runs", headers=op_headers)
+    assert resp.status_code == 202, resp.json()
+    job_id = resp.json()["job_id"]
 
-    # 2. Agent updates job status using SYSTEM role
+    # 3. Agent marks job as RUNNING with 50% progress
     agent_headers = {"Authorization": f"Bearer {system_token}"}
-    update_payload = {
-        "status": JobStatus.RUNNING.value,
-        "progress": 50.5,
-        "result_data": {"features": 12},
-    }
-
-    resp_update = client.patch(
-        f"/api/v1/jobs/{job_id}/agent-status", json=update_payload, headers=agent_headers
+    resp = http.patch(
+        f"/api/v1/jobs/{job_id}/agent-status",
+        json={
+            "status": JobStatus.RUNNING.value,
+            "progress": 50.0,
+            "result_data": {"bands_processed": 6},
+        },
+        headers=agent_headers,
     )
-
-    assert resp_update.status_code == 200
-    assert resp_update.json()["status"] == JobStatus.RUNNING.value
-    assert resp_update.json()["started_at"] is not None
+    assert resp.status_code == 200, resp.json()
+    body = resp.json()
+    assert body["status"] == JobStatus.RUNNING.value
+    assert body["started_at"] is not None
 
 
 @pytest.mark.integration
-def test_p1_15_viewer_cannot_update_job_status(viewer_token):
-    # Verify RBAC protection on agent endpoints
+def test_p1_15_viewer_cannot_update_job_status(http, viewer_token):
+    """
+    Security: VIEWER-scoped token must be rejected with 403 Forbidden.
+    OWASP A01 — Broken Access Control: non-system callers must never mutate agent state.
+    """
     headers = {"Authorization": f"Bearer {viewer_token}"}
-    update_payload = {
-        "status": JobStatus.COMPLETED.value,
-        "progress": 100.0,
-    }
-
-    resp_update = client.patch(
-        "/api/v1/jobs/some-job-id/agent-status", json=update_payload, headers=headers
+    resp = http.patch(
+        "/api/v1/jobs/nonexistent-job-id/agent-status",
+        json={"status": JobStatus.COMPLETED.value, "progress": 100.0},
+        headers=headers,
     )
-    print("Viewer 404 Error:", resp_update.json())
-    assert resp_update.status_code == 403
+    # Auth check happens before the job lookup — must be 403, not 404.
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["code"] == "INSUFFICIENT_PERMISSIONS"
