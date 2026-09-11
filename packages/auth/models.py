@@ -64,6 +64,7 @@ class AuthContext(BaseModel):
     email: Optional[str] = Field(None, description="User email from token claims")
     organisation_id: str = Field(..., description="Tenant identifier from 'org_id' claim")
     roles: List[Role] = Field(default_factory=list, description="Roles granted to the user")
+    scopes: List[str] = Field(default_factory=list, description="Scopes (primarily for S2S tokens)")
     trace_id: Optional[str] = Field(None, description="Inbound trace ID (for correlation)")
     raw_claims: dict = Field(default_factory=dict, description="Full decoded JWT payload")
 

@@ -11,8 +11,10 @@ python-jose[cryptography]
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-httpx
 opentelemetry-exporter-otlp
 python-json-logger
+httpx
 pytest
 pytest-asyncio
 

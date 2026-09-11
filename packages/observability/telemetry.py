@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter
@@ -42,3 +43,6 @@ def setup_telemetry(app: FastAPI, service_name: str) -> None:
     # This automatically adds middlewares that extract trace context from
     # incoming requests and create a new span for the request.
     FastAPIInstrumentor.instrument_app(app)
+
+    # Instrument httpx to automatically inject traceparent headers into outgoing requests
+    HTTPXClientInstrumentor().instrument()

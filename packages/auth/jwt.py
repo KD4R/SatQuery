@@ -16,8 +16,9 @@ OWASP mitigations implemented:
   - SSRF: JWKS URL must be HTTPS (configurable, off only in tests).
 """
 
+import datetime
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from jose import ExpiredSignatureError, JWTError, jwt
 
@@ -106,10 +107,19 @@ def decode_and_verify(token: str) -> Dict[str, Any]:
     settings = get_auth_settings()
 
     try:
-        if settings.algorithm == "HS256":
+        # Inspect the unverified header to determine the algorithm
+        unverified_header = jwt.get_unverified_header(token)
+        alg = unverified_header.get("alg")
+
+        # We always verify with the statically configured algorithm unless it's explicitly HS256
+        # (for internal S2S tokens) and we have a secret key configured.
+        if alg == "HS256" and settings.secret_key:
             payload = _decode_hs256(token, settings)
-        else:
+        elif alg == "RS256" or settings.algorithm == "RS256":
             payload = _decode_rs256(token, settings)
+        else:
+            payload = _decode_hs256(token, settings)
+
     except ExpiredSignatureError:
         # Do NOT log the token value.
         logger.warning("JWT verification failed: token expired")
@@ -125,3 +135,29 @@ def decode_and_verify(token: str) -> Dict[str, Any]:
             raise TokenMissingClaimError(f"Token is missing required claim: '{claim}'")
 
     return payload
+
+
+def generate_s2s_token(caller_service: str, org_id: str, scopes: List[str]) -> str:
+    """
+    Generate a short-lived internal S2S HS256 token.
+    Used by internal clients to authenticate with other internal services.
+    """
+    settings = get_auth_settings()
+    now = datetime.datetime.utcnow()
+
+    payload = {
+        "sub": f"service:{caller_service}",
+        "org_id": org_id,
+        "roles": ["system"],
+        "scopes": scopes,
+        "iss": settings.issuer,
+        "iat": now,
+        "exp": now + datetime.timedelta(minutes=5),  # very short lived
+    }
+
+    if settings.audience:
+        payload["aud"] = settings.audience
+
+    return jwt.encode(  # type: ignore[no-any-return]
+        payload, settings.secret_key, algorithm="HS256"
+    )
