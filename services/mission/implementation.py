@@ -8,13 +8,15 @@ Registers all Mission service routers:
   - /api/v1/jobs/{id}           (job status polling)
 """
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
-from fastapi import APIRouter
 
-from services.mission.routers.missions import router as missions_router
+from packages.observability import setup_logging, setup_telemetry
 from services.mission.routers.aois import router as aois_router
 from services.mission.routers.jobs import router as jobs_router
+from services.mission.routers.missions import router as missions_router
+
+setup_logging("mission")
 
 app = FastAPI(
     title="SatQuery Mission Service",
@@ -41,3 +43,4 @@ async def health_check():
 
 
 app.include_router(_health_router)
+setup_telemetry(app, "mission")

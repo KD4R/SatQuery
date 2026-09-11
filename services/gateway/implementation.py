@@ -8,14 +8,16 @@ Registers:
   - WebSocket mission status stream
 """
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from fastapi import APIRouter
 
+from packages.observability import setup_logging, setup_telemetry
 from services.gateway.config import get_gateway_settings
 from services.gateway.middleware.rate_limit import RateLimitMiddleware
 from services.gateway.routers.missions_ws import router as ws_router
+
+setup_logging("gateway")
 
 app = FastAPI(
     title="SatQuery Gateway",
@@ -60,3 +62,4 @@ async def health_check():
 
 
 app.include_router(_api_router)
+setup_telemetry(app, "gateway")
