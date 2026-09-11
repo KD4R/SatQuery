@@ -14,6 +14,11 @@ on:
 env:
   PYTHONPATH: "."
   PYTHON_VERSION: "3.10"
+  # Auth env vars — force HS256 for all test jobs (no real OIDC provider in CI)
+  AUTH_ALGORITHM: "HS256"
+  AUTH_SECRET_KEY: "test-secret-key-not-for-production-use-at-all"
+  AUTH_AUDIENCE: "satquery-api"
+  AUTH_ISSUER: "https://auth.satquery.test"
 
 jobs:
   # ── 1. Lint & Format ────────────────────────────────────────────────────────
