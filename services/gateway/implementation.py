@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from packages.observability import setup_logging, setup_telemetry
+from packages.shared.middleware import IdempotencyMiddleware
 from services.gateway.config import get_gateway_settings
 from services.gateway.middleware.rate_limit import RateLimitMiddleware
 from services.gateway.routers.missions_ws import router as ws_router
@@ -21,9 +22,11 @@ setup_logging("gateway")
 
 app = FastAPI(
     title="SatQuery Gateway",
-    description="API Gateway / BFF for SatQuery AI",
+    description="API Gateway and BFF for SatQuery AI",
     version="1.0.0",
 )
+
+app.add_middleware(IdempotencyMiddleware)
 
 # ── Middleware ─────────────────────────────────────────────────────────────────
 settings = get_gateway_settings()

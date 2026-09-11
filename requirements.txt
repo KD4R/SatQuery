@@ -15,6 +15,7 @@ opentelemetry-instrumentation-httpx
 opentelemetry-exporter-otlp
 python-json-logger
 httpx
+tenacity
 pytest
 pytest-asyncio
 
