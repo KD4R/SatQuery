@@ -158,19 +158,20 @@ jobs:
       - name: Export baseline OpenAPI schemas from main
         run: |
           git checkout main || echo "No main branch locally"
+          mkdir -p docs/baseline
           if [ -f scripts/export_openapi.py ]; then
             python scripts/export_openapi.py
-            mkdir -p docs/baseline
             cp docs/openapi/gateway.json docs/baseline/gateway.json
             cp docs/openapi/mission.json docs/baseline/mission.json
           else
-            echo "No export script on main branch yet. Skipping baseline."
+            echo "No export script on main branch yet. Skipping baseline and mocking empty spec."
+            echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/gateway.json
+            echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/mission.json
           fi
           git checkout -
 
       - name: Run oasdiff (Gateway)
         uses: oasdiff/oasdiff-action/breaking@v1
-        continue-on-error: true # Allow to fail on first run if baseline is missing
         with:
           base: docs/baseline/gateway.json
           revision: docs/openapi/gateway.json
