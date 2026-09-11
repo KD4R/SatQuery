@@ -1,6 +1,7 @@
 """
 Contract unit tests for canonical schemas (P1-02).
 """
+
 import pytest
 from pydantic import ValidationError
 

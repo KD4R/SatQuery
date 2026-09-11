@@ -1,6 +1,7 @@
 """
 Shared pytest fixtures for mission service tests.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from services.mission.implementation import app

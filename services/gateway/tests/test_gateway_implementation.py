@@ -1,6 +1,7 @@
 """
 Unit tests for the Gateway service skeleton (P1-01).
 """
+
 import pytest
 
 

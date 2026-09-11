@@ -14,3 +14,9 @@ opentelemetry-instrumentation-fastapi
 opentelemetry-exporter-otlp
 pytest
 pytest-asyncio
+
+# Dev / CI tooling
+black
+flake8
+mypy
+bandit

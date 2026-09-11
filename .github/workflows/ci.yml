@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # CI — SatQuery AI P1 Backend
 # Runs on every PR to `develop` or `main` and on direct pushes.
-# Stages: lint → unit → integration → contract → security
+# Stages: lint → unit → integration → contract → security → gate
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
 
@@ -16,7 +16,7 @@ env:
   PYTHON_VERSION: "3.10"
 
 jobs:
-  # ── 1. Lint & format ────────────────────────────────────────────────────────
+  # ── 1. Lint & Format ────────────────────────────────────────────────────────
   lint:
     name: Lint & Format
     runs-on: ubuntu-latest
@@ -29,11 +29,11 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install lint dependencies
-        run: pip install black flake8 mypy
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Black format check
-        run: black --check --diff .
+        run: black --check --diff services packages tests conftest.py
 
       - name: Flake8 lint
         run: flake8 services packages tests
@@ -61,7 +61,7 @@ jobs:
       - name: Run unit tests
         run: pytest -m unit --tb=short -v
 
-      - name: Upload coverage report
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -122,8 +122,8 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
-      - name: Install bandit
-        run: pip install bandit
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Run Bandit SAST
         run: bandit -r services packages -ll -ii

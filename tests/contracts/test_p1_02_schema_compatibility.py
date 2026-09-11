@@ -1,6 +1,7 @@
 """
 Contract compatibility tests for P1-02 canonical schema freeze.
 """
+
 import pytest
 
 from packages.contracts.errors import ErrorResponse, ErrorDetail

@@ -2,13 +2,16 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 
+
 def utc_now():
     return datetime.now(timezone.utc)
+
 
 class EventEnvelope(BaseModel):
     """
     Canonical EventEnvelope for inter-service async events.
     """
+
     event_id: str = Field(..., description="Unique event identifier")
     event_type: str = Field(..., description="Type of event (e.g., INFERENCE_COMPLETED)")
     timestamp: datetime = Field(default_factory=utc_now, description="Event occurrence time")

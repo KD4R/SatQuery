@@ -1,6 +1,7 @@
 """
 Integration tests for P1-01 service boundary verification.
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from services.gateway.implementation import app as gateway_app
