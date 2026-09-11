@@ -12,6 +12,7 @@ from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
 
 from packages.observability import setup_logging, setup_telemetry
+from packages.shared.middleware import IdempotencyMiddleware
 from services.mission.routers.aois import router as aois_router
 from services.mission.routers.jobs import router as jobs_router
 from services.mission.routers.missions import router as missions_router
@@ -23,6 +24,8 @@ app = FastAPI(
     description="Mission and AOI lifecycle management for SatQuery AI",
     version="1.0.0",
 )
+
+app.add_middleware(IdempotencyMiddleware)
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(missions_router)
