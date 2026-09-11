@@ -164,3 +164,12 @@ class JobStatusResponse(BaseModel):
     completed_at: Optional[datetime]
     error_message: Optional[str]
     trace_id: Optional[str]
+
+
+class AgentJobUpdate(BaseModel):
+    """Payload sent by ML Agents to update the progress/status of a Job."""
+
+    status: JobStatus
+    progress: float = Field(0.0, ge=0.0, le=100.0, description="Completion percentage")
+    error_message: Optional[str] = Field(None, max_length=2000)
+    result_data: Optional[Dict[str, Any]] = Field(None, description="Structured ML results")
