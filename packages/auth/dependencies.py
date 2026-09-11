@@ -57,6 +57,7 @@ def _build_auth_context(payload: dict, trace_id: Optional[str] = None) -> AuthCo
         email=payload.get("email"),
         organisation_id=payload["org_id"],
         roles=roles,
+        scopes=payload.get("scopes", []),
         trace_id=trace_id,
         raw_claims=payload,
     )
@@ -145,6 +146,33 @@ def require_role(minimum_role: Role):
                 detail={
                     "code": "INSUFFICIENT_PERMISSIONS",
                     "message": f"Role '{minimum_role.value}' or higher is required.",
+                    "retryable": False,
+                },
+            )
+        return ctx
+
+    return _check
+
+
+def require_scope(required_scope: str):
+    """
+    FastAPI dependency factory — enforces that the JWT contains a specific scope.
+    Used primarily to gate internal S2S endpoints.
+    """
+
+    async def _check(ctx: AuthContext = Depends(get_current_user)) -> AuthContext:
+        if required_scope not in ctx.scopes:
+            logger.warning(
+                "Scope denied: subject=%s required_scope=%s actual_scopes=%s",
+                ctx.subject,
+                required_scope,
+                ctx.scopes,
+            )
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "INSUFFICIENT_SCOPES",
+                    "message": f"Scope '{required_scope}' is required.",
                     "retryable": False,
                 },
             )
