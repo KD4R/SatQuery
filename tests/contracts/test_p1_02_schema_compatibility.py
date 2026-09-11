@@ -1,28 +1,56 @@
-from fastapi.testclient import TestClient
+"""
+Contract compatibility tests for P1-02 canonical schema freeze.
+"""
+import pytest
+
 from packages.contracts.errors import ErrorResponse, ErrorDetail
 from packages.contracts.events import EventEnvelope
 
-def test_p1_02_schema_compatibility():
-    """
-    Test to ensure the schema defined in code matches expected definitions.
-    """
-    error = ErrorResponse(
-        code="TEST_ERROR",
-        message="A test error occurred.",
-        details=[ErrorDetail(message="detail msg", code="detail_code")],
-        retryable=False,
-        trace_id="trace-abc"
-    )
-    
-    assert error.code == "TEST_ERROR"
-    
-    schema = ErrorResponse.model_json_schema()
-    assert "code" in schema["properties"]
-    assert "message" in schema["properties"]
-    assert "details" in schema["properties"]
-    assert "retryable" in schema["properties"]
-    assert "trace_id" in schema["properties"]
 
-    event_schema = EventEnvelope.model_json_schema()
-    assert "event_id" in event_schema["properties"]
-    assert "event_type" in event_schema["properties"]
+@pytest.mark.contract
+def test_p1_02_schema_compatibility():
+    """ErrorResponse JSON schema has all required fields."""
+    schema = ErrorResponse.model_json_schema()
+    required_fields = {"code", "message", "details", "retryable", "trace_id"}
+    assert required_fields.issubset(schema["properties"].keys())
+
+
+@pytest.mark.contract
+def test_p1_02_event_envelope_schema_compatibility():
+    """EventEnvelope JSON schema has all required fields."""
+    schema = EventEnvelope.model_json_schema()
+    required_fields = {"event_id", "event_type", "timestamp", "producer", "payload"}
+    assert required_fields.issubset(schema["properties"].keys())
+
+
+@pytest.mark.contract
+def test_p1_02_error_response_serialization():
+    """ErrorResponse serializes to canonical JSON shape."""
+    error = ErrorResponse(
+        code="VALIDATION_ERROR",
+        message="Input is invalid",
+        details=[ErrorDetail(message="field required", code="FIELD_REQUIRED")],
+        retryable=False,
+        trace_id="trace-abc",
+    )
+    data = error.model_dump()
+    assert data["code"] == "VALIDATION_ERROR"
+    assert data["details"][0]["code"] == "FIELD_REQUIRED"
+    assert data["retryable"] is False
+
+
+@pytest.mark.contract
+def test_p1_02_event_envelope_serialization():
+    """EventEnvelope serializes to canonical JSON shape."""
+    event = EventEnvelope(
+        event_id="evt-001",
+        event_type="MISSION_STARTED",
+        producer="mission-service",
+        mission_id="mission-xyz",
+        trace_id="trace-001",
+        payload={"status": "running"},
+    )
+    data = event.model_dump()
+    assert data["event_type"] == "MISSION_STARTED"
+    assert data["mission_id"] == "mission-xyz"
+    assert data["payload"]["status"] == "running"
