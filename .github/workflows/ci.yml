@@ -171,7 +171,7 @@ jobs:
           git checkout -
 
       - name: Run oasdiff (Gateway)
-        uses: oasdiff/oasdiff-action/breaking@v1
+        uses: oasdiff/oasdiff-action/breaking@main
         with:
           base: docs/baseline/gateway.json
           revision: docs/openapi/gateway.json

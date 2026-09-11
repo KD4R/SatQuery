@@ -11,11 +11,14 @@ from services.mission.implementation import app
 from services.mission.dependencies import get_job_repo, get_mission_repo
 from services.mission.repositories.memory import InMemoryJobRepository, InMemoryMissionRepository
 
-_mission_repo = InMemoryMissionRepository()
-_job_repo = InMemoryJobRepository()
-
-app.dependency_overrides[get_mission_repo] = lambda: _mission_repo
-app.dependency_overrides[get_job_repo] = lambda: _job_repo
+@pytest.fixture(autouse=True)
+def override_dependencies():
+    _mission_repo = InMemoryMissionRepository()
+    _job_repo = InMemoryJobRepository()
+    app.dependency_overrides[get_mission_repo] = lambda: _mission_repo
+    app.dependency_overrides[get_job_repo] = lambda: _job_repo
+    yield
+    app.dependency_overrides.clear()
 
 client = TestClient(app)
 
