@@ -1,0 +1,45 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CD — Merge feat/* → develop automatically after CI passes
+# On merge to main: tag the release.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tag-release:
+    name: Tag Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get next semver tag
+        id: tag
+        run: |
+          LATEST=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)
+          if [ -z "$LATEST" ]; then
+            NEXT="v0.1.0"
+          else
+            IFS='.' read -r MAJOR MINOR PATCH <<< "${LATEST#v}"
+            NEXT="v${MAJOR}.${MINOR}.$((PATCH+1))"
+          fi
+          echo "next_tag=$NEXT" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git tag
+        run: |
+          git config user.email "ci@satquery.ai"
+          git config user.name "SatQuery CI"
+          git tag ${{ steps.tag.outputs.next_tag }}
+          git push origin ${{ steps.tag.outputs.next_tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.next_tag }}
+          generate_release_notes: true

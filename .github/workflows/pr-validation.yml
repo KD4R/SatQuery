@@ -1,0 +1,34 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# PR Validation — Enforce conventional commits and branch naming on all PRs
+# ─────────────────────────────────────────────────────────────────────────────
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main, develop]
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate-pr:
+    name: Validate PR Title & Branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch naming convention
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if ! echo "$BRANCH" | grep -qE '^(feat|fix|chore|docs|refactor|test|hotfix)/'; then
+            echo "❌ Branch '$BRANCH' does not follow naming convention."
+            echo "   Expected: feat/, fix/, chore/, docs/, refactor/, test/, hotfix/"
+            exit 1
+          fi
+          echo "✅ Branch name '$BRANCH' is valid."
+
+      - name: Check PR title follows Conventional Commits
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          if ! echo "$TITLE" | grep -qE '^(feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)(\(.+\))?: .+'; then
+            echo "❌ PR title '$TITLE' does not follow Conventional Commits."
+            echo "   Expected format: type(scope): description"
+            exit 1
+          fi
+          echo "✅ PR title '$TITLE' is valid."

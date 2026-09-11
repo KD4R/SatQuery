@@ -1,0 +1,30 @@
+[tool.black]
+line-length = 100
+target-version = ['py310']
+exclude = '''
+/(
+    venv
+  | build
+  | dist
+)/
+'''
+
+[tool.pytest.ini_options]
+testpaths = ["services", "packages", "tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--strict-markers --tb=short -v"
+markers = [
+    "unit: Unit tests (fast, no I/O)",
+    "integration: Integration tests (may use test doubles)",
+    "contract: Contract schema compatibility tests",
+    "security: Security-related tests",
+    "performance: Performance benchmarks",
+]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true

@@ -1,0 +1,39 @@
+# SatQuery AI — Code Owners
+# Each person owns their assigned service boundary.
+# All PRs require review from the relevant owner + P1 (tech lead) for shared packages.
+
+# ── Global: P1 (Tech Lead) reviews everything ────────────────────────────────
+*                                   @P1-tech-lead
+
+# ── Shared Infrastructure (P1) ───────────────────────────────────────────────
+/packages/contracts/                @P1-tech-lead
+/packages/auth/                     @P1-tech-lead
+/packages/shared/                   @P1-tech-lead
+/services/gateway/                  @P1-tech-lead
+/services/mission/                  @P1-tech-lead
+/.github/                           @P1-tech-lead
+/docs/                              @P1-tech-lead
+/tests/contracts/                   @P1-tech-lead
+
+# ── Agent Service (P2) ───────────────────────────────────────────────────────
+/services/agent/                    @P2-agent
+/evals/                             @P2-agent
+
+# ── ML / Inference (P3) ──────────────────────────────────────────────────────
+/services/inference/                @P3-ml
+/ml/                                @P3-ml
+/infrastructure/models/             @P3-ml
+
+# ── EO Data / Geo (P4) ───────────────────────────────────────────────────────
+/services/eo-data/                  @P4-eo-data
+/services/geo/                      @P4-eo-data
+/data/                              @P4-eo-data
+
+# ── Frontend (P5) ────────────────────────────────────────────────────────────
+/apps/web/                          @P5-frontend
+/packages/contracts/generated/ts/   @P5-frontend
+
+# ── CI / Release (P6) ────────────────────────────────────────────────────────
+/infrastructure/docker/             @P6-devops
+/infrastructure/monitoring/         @P6-devops
+/infrastructure/release/            @P6-devops
