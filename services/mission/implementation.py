@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from packages.observability import setup_logging, setup_telemetry
 from packages.shared.middleware import IdempotencyMiddleware
+from services.mission.routers.agents import router as agents_router
 from services.mission.routers.aois import router as aois_router
 from services.mission.routers.jobs import router as jobs_router
 from services.mission.routers.missions import router as missions_router
@@ -31,6 +32,7 @@ app.add_middleware(IdempotencyMiddleware)
 app.include_router(missions_router)
 app.include_router(aois_router)
 app.include_router(jobs_router)
+app.include_router(agents_router)
 
 _health_router = APIRouter(prefix="/api/v1")
 
