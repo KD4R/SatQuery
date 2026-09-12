@@ -35,11 +35,29 @@ for _key, _val in _TEST_AUTH_DEFAULTS.items():
 # in tests we always want HS256.
 os.environ["AUTH_ALGORITHM"] = "HS256"
 
-# Reset the auth settings singleton so it picks up the env vars above.
-# (The singleton may have been initialised by a previous import before this ran.)
 try:
     from packages.auth import config as _auth_config
 
     _auth_config.reset_auth_settings()
 except ImportError:
     pass  # packages/auth not yet on path — safe to ignore at collection time
+
+
+def make_test_token(sub: str = "user:test", org_id: str = "tenant_test", roles=None) -> str:
+    from datetime import datetime, timedelta, timezone
+    from jose import jwt
+    from packages.auth.config import get_auth_settings
+
+    settings = get_auth_settings()
+    now = datetime.now(timezone.utc)
+    payload = {
+        "sub": sub,
+        "org_id": org_id,
+        "roles": roles if roles is not None else ["analyst"],
+        "scopes": [],
+        "iss": settings.issuer,
+        "aud": settings.audience,
+        "iat": now,
+        "exp": now + timedelta(minutes=15),
+    }
+    return str(jwt.encode(payload, settings.secret_key, algorithm="HS256"))

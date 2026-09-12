@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, Request
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from packages.contracts.agent import PlanRequest, PlanResponse, PlanStep
+from security.sanitizer import sanitize_prompt
+from security.validator import validate_aoi_geometry
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-plan"])
 
@@ -19,6 +21,10 @@ async def create_plan(
     _: AuthContext = Depends(require_role(Role.ANALYST)),
 ) -> PlanResponse:
     trace_id: Optional[str] = request.headers.get("X-Trace-Id")
+    sanitized_query = sanitize_prompt(payload.query)
+    if payload.aoi:
+        validate_aoi_geometry(payload.aoi)
+
     mission_id = payload.mission_id or f"msn_{ctx.organisation_id}_001"
 
     # Default deterministic initial plan for flood assessment
@@ -55,6 +61,7 @@ async def create_plan(
             "disaster_type": "flood",
             "target": "inundation_assessment",
             "raw_query": payload.query,
+            "sanitized_query": sanitized_query,
         },
         plan_steps=steps,
         selected_sensors=["S1_SAR", "S2_OPTICAL"],

@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from packages.contracts.errors import ErrorDetail, ErrorResponse
 from packages.observability import setup_logging, setup_telemetry
 from packages.shared.middleware import IdempotencyMiddleware
+from security.exceptions import GeometryValidationError, PromptInjectionError
 from services.agent.app.api.routers.confidence import router as confidence_router
 from services.agent.app.api.routers.execute import router as execute_router
 from services.agent.app.api.routers.plan import router as plan_router
@@ -56,6 +57,38 @@ async def validation_exception_handler(
         code="VALIDATION_ERROR",
         message="Request validation failed against schema",
         details=details,
+        retryable=False,
+        trace_id=trace_id,
+    )
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=err_body.model_dump()
+    )
+
+
+@app.exception_handler(PromptInjectionError)
+async def prompt_injection_exception_handler(
+    request: Request, exc: PromptInjectionError
+) -> JSONResponse:
+    trace_id: Optional[str] = request.headers.get("X-Trace-Id")
+    err_body = ErrorResponse(
+        code=exc.code,
+        message=exc.message,
+        details=[ErrorDetail(message=exc.message, code=exc.code)],
+        retryable=False,
+        trace_id=trace_id,
+    )
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=err_body.model_dump())
+
+
+@app.exception_handler(GeometryValidationError)
+async def geometry_validation_exception_handler(
+    request: Request, exc: GeometryValidationError
+) -> JSONResponse:
+    trace_id: Optional[str] = request.headers.get("X-Trace-Id")
+    err_body = ErrorResponse(
+        code=exc.code,
+        message=exc.message,
+        details=[ErrorDetail(message=exc.message, code=exc.code)],
         retryable=False,
         trace_id=trace_id,
     )
