@@ -49,11 +49,7 @@ class _HyphenServiceFinder(importlib.abc.MetaPathFinder):
                     )
                 else:
                     # Treat as namespace package if no __init__.py
-                    spec = importlib.machinery.ModuleSpec(
-                        fullname,
-                        None,
-                        is_package=True
-                    )
+                    spec = importlib.machinery.ModuleSpec(fullname, None, is_package=True)
                     spec.submodule_search_locations = [physical_dir]
                 return spec
             if fullname.startswith(alias_prefix + "."):
