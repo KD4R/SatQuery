@@ -35,11 +35,14 @@ for _key, _val in _TEST_AUTH_DEFAULTS.items():
 # in tests we always want HS256.
 os.environ["AUTH_ALGORITHM"] = "HS256"
 
-# Reset the auth settings singleton so it picks up the env vars above.
-# (The singleton may have been initialised by a previous import before this ran.)
 try:
     from packages.auth import config as _auth_config
 
     _auth_config.reset_auth_settings()
 except ImportError:
     pass  # packages/auth not yet on path — safe to ignore at collection time
+
+
+from services.agent.tests.helpers.test_tokens import make_test_token  # noqa: E402
+
+__all__ = ["make_test_token"]
