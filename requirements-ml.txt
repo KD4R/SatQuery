@@ -1,17 +1,29 @@
 # Machine-learning extras -- NOT installed by the main CI jobs.
 #
-# Kept separate from requirements.txt on purpose. torch is a ~90 MB wheel and
-# every CI job for every role installs requirements.txt; adding it there would
-# slow the whole team's builds to serve one subsystem's training step.
+# Kept separate from requirements.txt on purpose. torch is a large wheel and every
+# CI job for every role installs requirements.txt; adding it there would slow the
+# whole team's builds to serve one subsystem's training step.
 #
 # The split it enforces is also a design constraint worth keeping: everything in
-# ml/ that can fail *silently* -- the region split, normalisation, cropping,
-# label handling -- is written torch-free and runs in the ordinary unit job. Only
-# the model and its loss need this file, and those fail loudly when they fail.
+# ml/ that can fail *silently* -- the region split, normalisation, cropping, label
+# handling -- is written torch-free and runs in the ordinary unit job. Only the
+# model and its loss need this file, and those fail loudly when they fail.
 #
 #     pip install -r requirements-ml.txt
+#     PYTHONPATH="$PWD" python ml/scripts/train_unet.py --epochs 60
 #
-# On Linux/aarch64, torch 2.4.1 is the last release whose default PyPI wheel is
-# CPU-only; later versions pull CUDA runtime libraries that will not load on a
-# machine without a GPU. Pinned for that reason, not by preference.
-torch==2.4.1        # ml/models, ml/scripts/train_unet.py (P3)
+# Unpinned above a floor, deliberately. The wheel PyPI serves depends on the
+# platform, and pinning one exact version breaks somebody:
+#
+#   macOS / Apple Silicon   CPU+MPS wheels; recent versions only (2.4 is no longer
+#                           published for current Python versions there)
+#   Linux / x86_64          the default wheel bundles CUDA runtime libraries and is
+#                           very large. For a CPU-only box use:
+#                             pip install torch --index-url \
+#                               https://download.pytorch.org/whl/cpu
+#   Linux / aarch64         the same is true from 2.5 onward; 2.4.1 was the last
+#                           CPU-only default wheel there
+#
+# The model uses no version-specific API, so any 2.4+ build works. 2.4 is the floor
+# because GroupNorm, AdamW and CosineAnnealingLR all behave as assumed from there.
+torch>=2.4          # ml/models, ml/scripts/train_unet.py (P3)

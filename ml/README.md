@@ -60,6 +60,7 @@ in `ml/` imports from `services/`.
 
 ```bash
 # From the repository root -- ml/ is part of the monorepo, not a separate package.
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 pytest -m unit ml/          # offline, no GPU, under a second
@@ -67,6 +68,15 @@ black --check ml/
 flake8 ml/
 mypy ml/
 ```
+
+Training the U-Net additionally needs `pip install -r requirements-ml.txt`, and is
+run from a shell rather than from CI -- see `ml/scripts/train_unet.py`.
+
+A note on the virtual environment: create it yourself, on the machine you are
+working on. `.venv/` is gitignored, and a venv built on one operating system does
+not work on another -- the binaries in `numpy`, `rasterio`, `scipy` and `torch` are
+platform-specific, so a Linux venv sitting in the working tree looks usable on a
+Mac right up until the first import of anything compiled.
 
 Tests are selected by marker (`-m unit`), matching the repository's CI. An
 unmarked test is collected by nothing and runs nowhere, so every test module
