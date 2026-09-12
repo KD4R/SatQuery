@@ -14,21 +14,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check branch naming convention
+        env:
+          HEAD_REF: ${{ github.head_ref }}
         run: |
-          BRANCH="${{ github.head_ref }}"
-          if ! echo "$BRANCH" | grep -qE '^(feat|fix|chore|docs|refactor|test|hotfix)/'; then
-            echo "❌ Branch '$BRANCH' does not follow naming convention."
+          if ! echo "$HEAD_REF" | grep -qE '^(feat|fix|chore|docs|refactor|test|hotfix)/'; then
+            echo "❌ Branch '$HEAD_REF' does not follow naming convention."
             echo "   Expected: feat/, fix/, chore/, docs/, refactor/, test/, hotfix/"
             exit 1
           fi
-          echo "✅ Branch name '$BRANCH' is valid."
+          echo "✅ Branch name '$HEAD_REF' is valid."
 
       - name: Check PR title follows Conventional Commits
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE="${{ github.event.pull_request.title }}"
-          if ! echo "$TITLE" | grep -qE '^(feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)(\(.+\))?: .+'; then
-            echo "❌ PR title '$TITLE' does not follow Conventional Commits."
+          PR_TITLE_NORMALIZED="$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]')"
+          if ! echo "$PR_TITLE_NORMALIZED" | grep -qE '^((feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)(\(.+\))?: .+|(feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)/.+)$'; then
+            echo "❌ PR title '$PR_TITLE' does not follow Conventional Commits."
             echo "   Expected format: type(scope): description"
+            echo "   Also accepted: type/description"
             exit 1
           fi
-          echo "✅ PR title '$TITLE' is valid."
+          echo "✅ PR title '$PR_TITLE' is valid."

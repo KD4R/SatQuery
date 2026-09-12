@@ -1,0 +1,54 @@
+{
+  "profile_id": "flagship-assam-flood-2026",
+  "name": "Assam Brahmaputra Flood Inundation Assessment",
+  "disaster_type": "flood",
+  "query": "Assess flood inundation extent and impacted structures across the Brahmaputra basin in Assam",
+  "aoi": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [92.5, 26.1],
+        [93.5, 26.1],
+        [93.5, 26.8],
+        [92.5, 26.8],
+        [92.5, 26.1]
+      ]
+    ]
+  },
+  "temporal_window": {
+    "event_date": "2026-09-02T00:00:00Z",
+    "baseline_start": "2026-08-10T00:00:00Z",
+    "baseline_end": "2026-08-25T00:00:00Z",
+    "crisis_start": "2026-09-01T00:00:00Z",
+    "crisis_end": "2026-09-05T00:00:00Z"
+  },
+  "selected_sensors": ["S1_SAR", "S2_OPTICAL"],
+  "observations": [
+    {
+      "asset_id": "S1A_IW_GRDH_1SDV_20260902T003512_049876_ASSAM",
+      "sensor": "S1_SAR",
+      "polarization": "VV+VH",
+      "orbit": "descending",
+      "cloud_cover": 0.0,
+      "resolution_meters": 10.0
+    },
+    {
+      "asset_id": "S2A_MSIL2A_20260901T044701_N0500_R033_ASSAM",
+      "sensor": "S2_OPTICAL",
+      "cloud_cover": 14.5,
+      "resolution_meters": 10.0
+    }
+  ],
+  "inferences": {
+    "model_name": "water_unet_segmentation",
+    "model_version": "v2.1.0",
+    "inundation_area_sqkm": 142.5,
+    "affected_structures_count": 38,
+    "confidence_score": 0.92
+  },
+  "why_explanation": {
+    "sensor_choice": "Sentinel-1 SAR was chosen due to cloud-penetrating active microwave capability over the monsoon-affected AOI.",
+    "confidence_rationale": "Confidence is backed by high spatial resolution (10m) and verified water surface backscatter calibration.",
+    "methodology": "Log-ratio thresholding and deep learning semantic segmentation against baseline pre-event observations."
+  }
+}

@@ -1,0 +1,25 @@
+[importlinter]
+root_packages =
+    apps
+    services
+    packages
+    ml
+
+[importlinter:contract:layers]
+name = Layered architecture
+type = layers
+layers = apps
+         services
+         ml
+         packages
+
+[importlinter:contract:module-independence]
+name = Service modules do not import each other directly
+type = independence
+modules = services.planner
+          services.discovery
+          services.analysis
+          services.evidence
+          services.decision
+          services.monitoring
+          services.reporting
