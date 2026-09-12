@@ -1,0 +1,63 @@
+"use client";
+import {
+  CheckCircle2,
+  ChevronRight,
+  CircleHelp,
+  ExternalLink,
+  FileCheck2,
+  GitBranch,
+  ShieldCheck,
+} from "lucide-react";
+import type { Evidence } from "../lib/types";
+export default function EvidencePanel({
+  evidence,
+  onTrace,
+}: {
+  evidence: Evidence[];
+  onTrace: () => void;
+}) {
+  return (
+    <section className="card evidence-card">
+      <div className="card-head">
+        <div>
+          <div className="title-row">
+            <ShieldCheck size={14} />
+            <div className="card-title">WHY? EVIDENCE CHAIN</div>
+          </div>
+          <div className="card-sub">
+            Every assertion points back to provenance
+          </div>
+        </div>
+        <button className="trace-link" onClick={onTrace}>
+          <GitBranch size={13} /> Trace
+        </button>
+      </div>
+      <div className="evidence-list">
+        {evidence.map((e) => (
+          <div className="evidence-item" key={e.id}>
+            <div className="evidence-top">
+              <div className="evidence-name">{e.title}</div>
+              <span className={`evidence-tag ${e.status}`}>
+                {e.status === "verified" ? (
+                  <CheckCircle2 size={11} />
+                ) : (
+                  <CircleHelp size={11} />
+                )}{" "}
+                {e.status}
+              </span>
+            </div>
+            <div className="evidence-detail">{e.detail}</div>
+            <div className="provenance">
+              <FileCheck2 size={11} />
+              <span>{e.provenance || e.source}</span>
+              <ExternalLink size={10} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <button className="evidence-footer" onClick={onTrace}>
+        Open complete evidence chain <ChevronRight size={13} />
+      </button>
+    </section>
+  );
+}
