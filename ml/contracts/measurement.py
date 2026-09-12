@@ -123,10 +123,25 @@ class Measurement(Strict):
         return self
 
     @model_validator(mode="after")
-    def _reject_negative_physical_value(self) -> Measurement:
-        """A negative area or length is always a bug, never data."""
-        if self.unit in PHYSICAL_UNITS and self.value < 0:
-            raise ValueError(f"measurement {self.name!r} has negative physical value {self.value}")
+    def _reject_negative_value(self) -> Measurement:
+        """A negative area, length or count is always a bug, never data.
+
+        COUNT was originally outside this check, on the reasoning that the guard
+        was about physical extents. But a count of pixels, scenes or detections is
+        no more able to be negative than an area is, and because a validated
+        ``Measurement`` travels straight into an ``Analysis`` and out to the user,
+        an impossible value arrives carrying full provenance -- which makes it more
+        credible, not less.
+
+        FRACTION is excluded here only because it has a tighter check of its own
+        below, bounding it to [0, 1].
+        """
+        countable = set(PHYSICAL_UNITS) | {MeasurementUnit.COUNT}
+        if self.unit in countable and self.value < 0:
+            raise ValueError(
+                f"measurement {self.name!r} has negative value {self.value} "
+                f"for unit {self.unit.value}"
+            )
         return self
 
     @model_validator(mode="after")

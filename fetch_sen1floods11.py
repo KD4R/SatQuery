@@ -45,10 +45,24 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import os
+import re
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
+
+#: A chip stem is a region name and a numeric id, e.g. ``India_1050276``. Anchored
+#: and character-restricted so that a value read from the remote split index cannot
+#: contain a path separator, a drive letter or a ``..`` component.
+#:
+#: The index is fetched over the network, so its contents are untrusted input even
+#: though the host is reputable. Without this, a compromised or malformed index
+#: could steer ``write_bytes`` anywhere the user running the script can write --
+#: the destination directory is joined with the value, and ``Path("a") / "/etc/x"``
+#: silently discards the "a".
+_SAFE_STEM = re.compile(r"^[A-Za-z][A-Za-z0-9]*_[0-9]+$")
 
 BUCKET = "https://storage.googleapis.com/sen1floods11"
 
@@ -68,6 +82,55 @@ LAYERS: dict[str, tuple[str, bool]] = {
 }
 
 TIMEOUT = 120
+
+
+def _is_tiff_header(head: bytes) -> bool:
+    """A GeoTIFF starts with TIFF magic: ``II*\0`` little-endian or ``MM\0*`` big.
+
+    Checked because a proxy or an error page returns HTTP 200 with HTML in the
+    body, and rasterio's failure three steps later is far harder to diagnose than
+    a refusal here.
+    """
+    return head in (b"II\x2a\x00", b"MM\x00\x2a", b"II\x2b\x00", b"MM\x00\x2b")
+
+
+def _looks_like_a_tiff(path: Path) -> bool:
+    """Whether an existing file is worth trusting as a cached download.
+
+    Non-empty was the original test, and it accepts a file left behind by an
+    interrupted write: the TIFF header lands in the first block, so a truncated
+    file still passes a size check and still opens far enough to look real. The
+    run then reports every layer complete while the benchmark reads short.
+
+    Truncation is now prevented rather than detected -- see ``_write_atomically``
+    -- so this is the check for files written before that, or by something else.
+    """
+    try:
+        if path.stat().st_size < 1024:
+            return False
+        with path.open("rb") as handle:
+            return _is_tiff_header(handle.read(4))
+    except OSError:
+        return False
+
+
+def _write_atomically(path: Path, body: bytes) -> None:
+    """Write to a temporary file in the same directory, then rename into place.
+
+    ``rename`` within one filesystem is atomic, so the destination path only ever
+    holds a complete file. Interrupt the script mid-download and the partial bytes
+    are discarded with the temporary file rather than being cached as a valid chip.
+    """
+    handle, temporary = tempfile.mkstemp(dir=str(path.parent), suffix=".part")
+    try:
+        with os.fdopen(handle, "wb") as sink:
+            sink.write(body)
+            sink.flush()
+            os.fsync(sink.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
 
 
 def fetch(url: str) -> bytes:
@@ -94,6 +157,13 @@ def read_split(limit: int) -> list[str]:
             continue
         # Rows look like: Bolivia_103757_S1Hand.tif,Bolivia_103757_LabelHand.tif
         stem = row[0].strip().replace("_S1Hand.tif", "").replace(".tif", "")
+        if not _SAFE_STEM.match(stem):
+            sys.exit(
+                f"Refusing to use chip name {stem!r} from the remote split index: "
+                "it is not a plain <Region>_<id> token. This value becomes part of "
+                "a filesystem path, so anything unexpected is treated as hostile "
+                "rather than sanitised."
+            )
         stems.append(stem)
         if len(stems) >= limit:
             break
@@ -113,7 +183,7 @@ def download_chip(stem: str, dest: Path) -> tuple[int, list[str]]:
         out = dest / subdir / name
         out.parent.mkdir(parents=True, exist_ok=True)
 
-        if out.exists() and out.stat().st_size > 0:
+        if out.exists() and _looks_like_a_tiff(out):
             print(f"    {subdir:<16} cached")
             continue
 
@@ -127,16 +197,13 @@ def download_chip(stem: str, dest: Path) -> tuple[int, list[str]]:
                 missing_required.append(f"{stem}/{suffix}")
             continue
 
-        # A GeoTIFF starts with the TIFF magic: II*\0 (little-endian) or MM\0* (big).
-        # Checked because a proxy or an error page returns HTTP 200 with HTML in it,
-        # and rasterio's failure three steps later is far harder to diagnose.
-        if body[:4] not in (b"II\x2a\x00", b"MM\x00\x2a", b"II\x2b\x00", b"MM\x00\x2b"):
+        if not _is_tiff_header(body[:4]):
             print(f"    {subdir:<16} NOT A TIFF -- got {body[:40]!r}")
             if required:
                 missing_required.append(f"{stem}/{suffix}")
             continue
 
-        out.write_bytes(body)
+        _write_atomically(out, body)
         written += len(body)
         print(f"    {subdir:<16} {len(body) / 1024:>8.0f} KiB")
 

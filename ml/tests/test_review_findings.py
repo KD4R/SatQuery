@@ -23,7 +23,7 @@ from ml.contracts.confidence import Confidence, ConfidenceBasis
 from ml.contracts.measurement import Measurement, MeasurementUnit
 from ml.crs_policy import is_area_safe, is_projected
 from ml.evaluation.segmentation import confusion
-from ml.geo.area import pixel_area_m2
+from ml.geo.area import area_hectares, pixel_area_m2
 from ml.geo.crs import CRSError, assert_area_safe
 from ml.preflight.raster import ALLOWED_SCHEMES, validate_finite_fraction
 from ml.sar.units import amplitude_to_db
@@ -359,3 +359,140 @@ def test_interval_containing_the_value_is_accepted() -> None:
         caveats=(),
     )
     assert confidence.interval is not None
+
+
+# --------------------------------------------------------------------------- #
+# Round two: findings on PR #17, after the first fourteen were fixed           #
+# --------------------------------------------------------------------------- #
+
+
+def test_f1_is_zero_for_a_complete_miss() -> None:
+    """The case the first F1 fix still got wrong.
+
+    Water is present and the model predicts nothing: TP=0, FP=0, FN>0. Precision
+    is 0/0 and therefore undefined, so guarding on "precision or recall is
+    undefined" returned NaN -- hiding the model's *worst* chips from any
+    ``nanmean``, which is the same inflation the first fix was meant to remove,
+    reached by a different branch.
+
+    F1 = 2TP/(2TP+FP+FN) is 0 here, and IoU already said 0. Computing F1 from the
+    counts rather than from precision and recall removes the branch entirely, so
+    the two metrics can no longer disagree.
+    """
+    predicted = np.array([[0, 0, 0]], dtype=np.int16)
+    truth = np.array([[0, 1, 1]], dtype=np.int16)
+    metrics = confusion(predicted, truth, ignore_value=-1)
+
+    assert metrics.true_positive == 0
+    assert np.isnan(metrics.precision)  # genuinely undefined: nothing was claimed
+    assert metrics.recall == 0.0
+    assert metrics.f1 == 0.0
+    assert metrics.intersection_over_union == 0.0
+
+
+def test_f1_and_iou_agree_on_every_degenerate_case() -> None:
+    """Both are zero exactly when TP is zero and something was present or claimed.
+
+    Asserted as a property rather than case by case, because two review rounds
+    found F1 disagreeing with IoU in two different corners.
+    """
+    cases = [
+        (np.array([[0, 0]]), np.array([[1, 1]])),  # complete miss
+        (np.array([[1, 1]]), np.array([[0, 0]])),  # all false positives
+        (np.array([[1, 0]]), np.array([[0, 1]])),  # entirely wrong
+    ]
+    for predicted, truth in cases:
+        m = confusion(predicted.astype(np.int16), truth.astype(np.int16), ignore_value=-1)
+        assert m.f1 == 0.0
+        assert m.intersection_over_union == 0.0
+
+    empty = confusion(
+        np.array([[0, 0]], dtype=np.int16), np.array([[0, 0]], dtype=np.int16), ignore_value=-1
+    )
+    assert np.isnan(empty.f1)
+    assert np.isnan(empty.intersection_over_union) or empty.intersection_over_union == 0.0
+
+
+def test_f1_of_a_perfect_prediction_is_one() -> None:
+    m = confusion(
+        np.array([[1, 1, 0]], dtype=np.int16),
+        np.array([[1, 1, 0]], dtype=np.int16),
+        ignore_value=-1,
+    )
+    assert m.f1 == 1.0
+
+
+@pytest.mark.parametrize("stray", [-1, 2, 255])
+def test_area_refuses_a_mask_that_is_not_zero_or_one(stray: int, scene_pre) -> None:
+    """``count_nonzero`` counted every non-zero value as inundated.
+
+    Handing ``area_hectares`` a raw Sen1Floods11 label array adds its entire -1
+    no-data border to the flood; handing it a multiclass prediction adds every
+    cloud pixel. Both are plausible mistakes, neither raised, and the error
+    inflates the headline figure -- biasing in the alarming direction. The same
+    guard was already on ``confusion()`` and had not been mirrored here.
+    """
+    mask = np.zeros((4, 4), dtype=np.int16)
+    mask[0, 0] = 1
+    mask[1, 1] = stray
+
+    with pytest.raises(ValueError, match="neither 0 nor 1"):
+        area_hectares(
+            mask,
+            pixel_size_m=(10.0, 10.0),
+            crs="EPSG:32643",
+            derived_from=(scene_pre,),
+            code_version="0.0.0",
+        )
+
+
+def test_area_accepts_boolean_and_zero_one_masks(scene_pre) -> None:
+    """The guard must not refuse the two encodings the pipeline actually produces."""
+    boolean = np.zeros((10, 10), dtype=bool)
+    boolean[:5, :] = True
+    integral = boolean.astype(np.int16)
+
+    def measure(mask: np.ndarray) -> Decimal:
+        return area_hectares(
+            mask,
+            pixel_size_m=(10.0, 10.0),
+            crs="EPSG:32643",
+            derived_from=(scene_pre,),
+            code_version="0.0.0",
+        ).value
+
+    assert measure(boolean) == measure(integral)
+
+
+def test_negative_count_is_refused(scene_pre) -> None:
+    """COUNT sat outside the negativity check because the check was named for extents.
+
+    A count of pixels, scenes or detections is no more able to be negative than an
+    area is. Because a validated ``Measurement`` travels straight into an
+    ``Analysis`` and out to the user, an impossible value arrives carrying full
+    provenance -- which makes it read as more credible, not less.
+    """
+    with pytest.raises(ValidationError, match="negative value"):
+        Measurement(
+            name="water_pixels",
+            value=Decimal("-1"),
+            unit=MeasurementUnit.COUNT,
+            produced_by="test",
+            code_version="0.0.0",
+            crs="EPSG:32643",
+            derived_from=(scene_pre,),
+        )
+
+
+def test_zero_count_is_still_allowed(scene_pre) -> None:
+    """Zero detections is a real, reportable result and must not be caught."""
+    measurement = Measurement(
+        name="water_pixels",
+        value=Decimal("0"),
+        unit=MeasurementUnit.COUNT,
+        produced_by="test",
+        code_version="0.0.0",
+        crs="EPSG:32643",
+        derived_from=(scene_pre,),
+    )
+    assert measurement.value == Decimal("0")

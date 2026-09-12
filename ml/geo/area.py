@@ -123,6 +123,24 @@ def area_hectares(
     # future caller of pixel_area_m2 inherits it.
     per_pixel_m2 = pixel_area_m2(pixel_size_m, crs)
 
+    # Enforce the documented 0/1 encoding before counting.
+    #
+    # ``count_nonzero`` treats every non-zero value as covered, so a raw
+    # Sen1Floods11 label array inflates the figure by its entire -1 no-data border,
+    # and a multiclass prediction adds every cloud pixel to the flood. Both are
+    # plausible arrays to hand this function by mistake, neither raises, and the
+    # result is a larger hectare number -- an error that biases in the alarming
+    # direction. ``confusion()`` already refuses these; the same guard belongs on
+    # the function that produces the headline figure.
+    if mask.dtype != np.bool_:
+        unexpected = np.setdiff1d(np.unique(mask), np.array([0, 1]))
+        if unexpected.size > 0:
+            raise ValueError(
+                f"mask contains values {unexpected.tolist()} that are neither 0 nor 1. "
+                "Threshold the array explicitly before measuring it; counting every "
+                "non-zero value would score no-data and other classes as inundated."
+            )
+
     # np.count_nonzero rather than sum(): it is exact for both bool and integer
     # inputs and cannot accumulate floating-point error on large arrays.
     covered_pixels = int(np.count_nonzero(mask))

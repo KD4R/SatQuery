@@ -82,20 +82,28 @@ class SegmentationMetrics:
     @property
     def f1(self) -> float:
         """Harmonic mean of precision and recall."""
-        p, r = self.precision, self.recall
-        # Undefined only when precision or recall is itself undefined -- that is,
-        # when the positive class is absent from the prediction or from the truth,
-        # where there is genuinely nothing to score.
-        if not np.isfinite(p) or not np.isfinite(r):
+        # Computed from the counts rather than from precision and recall.
+        #
+        # The harmonic-mean form has to special-case every way its inputs can be
+        # undefined, and two successive review rounds found a case it still got
+        # wrong: a complete miss (water present, nothing predicted) leaves
+        # precision NaN and recall 0, and returning NaN there hides the model's
+        # worst chips from any ``nanmean``. The identity
+        #
+        #     F1 = 2TP / (2TP + FP + FN)
+        #
+        # has no such branches. It is 0 whenever there were positives to find or
+        # positives claimed and none of them were right, and it is undefined only
+        # when all three counts are zero -- no water in the truth and none
+        # predicted, where there is genuinely nothing to score.
+        #
+        # This also makes agreement with ``intersection_over_union`` structural
+        # rather than coincidental: both are now zero exactly when TP is zero and
+        # something was either present or claimed.
+        denominator = 2 * self.true_positive + self.false_positive + self.false_negative
+        if denominator == 0:
             return float("nan")
-        # Both finite and both zero means the prediction was entirely wrong, which
-        # is a defined result: F1 is 0. Returning NaN here would drop the worst
-        # samples out of any mean and inflate the reported score -- the opposite of
-        # what an evaluation suite is for. Matches ``intersection_over_union``,
-        # which already returns 0.0 for this case.
-        if (p + r) == 0:
-            return 0.0
-        return 2.0 * p * r / (p + r)
+        return 2.0 * self.true_positive / denominator
 
 
 def confusion(
