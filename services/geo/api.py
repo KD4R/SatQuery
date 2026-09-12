@@ -34,7 +34,7 @@ if TITILER_AVAILABLE:
 else:
 
     @router.get("/tiles/{z}/{x}/{y}")
-    def fallback_tiles():
+    def fallback_tiles(z: int, x: int, y: int):
         raise HTTPException(
             status_code=501, detail="titiler.core missing from environment. Tiles unavailable."
         )
