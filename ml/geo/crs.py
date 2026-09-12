@@ -21,7 +21,6 @@ import math
 
 from ml.crs_policy import explain_unsafe_for_area, is_area_safe, is_projected
 
-
 __all__ = [
     "CRSError",
     "assert_area_safe",
