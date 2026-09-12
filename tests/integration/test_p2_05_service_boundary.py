@@ -8,7 +8,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from conftest import make_test_token
+from packages.auth.testing import make_test_token
 from services.agent.app.api.implementation import app as agent_app
 from tools.base import BaseTool, ToolPermissionTier, ToolResult
 from tools.registry import get_tool_registry

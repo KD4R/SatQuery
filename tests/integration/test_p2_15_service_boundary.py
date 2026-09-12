@@ -6,7 +6,7 @@ Integration tests for P2-15 service boundary: regression evaluation against plan
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import make_test_token
+from packages.auth.testing import make_test_token
 from evals.agent.harness import EvalCase
 from services.agent.app.api.implementation import app as agent_app
 

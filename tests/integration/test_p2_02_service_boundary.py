@@ -6,7 +6,7 @@ Integration tests for P2-02 service boundary: input sanitization & intent valida
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import make_test_token
+from packages.auth.testing import make_test_token
 from services.agent.app.api.implementation import app as agent_app
 
 

@@ -6,7 +6,7 @@ Integration tests for P2-12 service boundary: multi-sensor disagreement integrat
 import pytest
 from fastapi.testclient import TestClient
 
-from conftest import make_test_token
+from packages.auth.testing import make_test_token
 from evidence.disagreement import analyze_sensor_disagreement
 from services.agent.app.api.implementation import app as agent_app
 

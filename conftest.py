@@ -43,21 +43,6 @@ except ImportError:
     pass  # packages/auth not yet on path — safe to ignore at collection time
 
 
-def make_test_token(sub: str = "user:test", org_id: str = "tenant_test", roles=None) -> str:
-    from datetime import datetime, timedelta, timezone
-    from jose import jwt
-    from packages.auth.config import get_auth_settings
+from packages.auth.testing import make_test_token  # noqa: E402
 
-    settings = get_auth_settings()
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": sub,
-        "org_id": org_id,
-        "roles": roles if roles is not None else ["analyst"],
-        "scopes": [],
-        "iss": settings.issuer,
-        "aud": settings.audience,
-        "iat": now,
-        "exp": now + timedelta(minutes=15),
-    }
-    return str(jwt.encode(payload, settings.secret_key, algorithm="HS256"))
+__all__ = ["make_test_token"]
