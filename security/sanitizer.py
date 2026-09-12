@@ -51,6 +51,12 @@ def sanitize_prompt(text: str) -> str:
 
     is_inj, reason = check_prompt_injection(text)
     if is_inj:
+        try:
+            from packages.observability import get_agent_metrics
+
+            get_agent_metrics().record_prompt_injection_block()
+        except Exception:
+            pass
         raise PromptInjectionError(f"Rejected untrusted prompt input: {reason}")
 
     # Strip control characters, keep standard printable and whitespace

@@ -68,6 +68,13 @@ def evaluate_confidence_gate(
 
     action = "PROCEED" if passed else "TRIGGER_ALTERNATIVE_SENSOR_ACQUISITION"
 
+    try:
+        from packages.observability import get_agent_metrics
+
+        get_agent_metrics().record_confidence_gate(passed=passed, action=action)
+    except Exception:
+        pass
+
     return ConfidenceResponse(
         confidence_score=final_score,
         passed_gate=passed,

@@ -64,6 +64,23 @@ class ToolExecutor:
         if budget:
             budget.total_duration_ms += duration_ms
 
+        # Record audit log and observability metrics
+        from packages.observability import get_agent_metrics
+        from security.audit import get_audit_logger
+
+        get_audit_logger().log_tool_call(
+            tool_name=tool_name,
+            args=args,
+            caller=auth_context.subject,
+            org_id=auth_context.organisation_id,
+            status="success" if result.success else "error",
+            execution_time_ms=result.execution_time_ms,
+            trace_id=auth_context.trace_id,
+        )
+        get_agent_metrics().record_tool_call(
+            tool_name=tool_name, status="success" if result.success else "error"
+        )
+
         return result
 
 
