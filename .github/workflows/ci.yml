@@ -14,6 +14,11 @@ on:
 env:
   PYTHONPATH: "."
   PYTHON_VERSION: "3.10"
+  # Auth env vars — force HS256 for all test jobs (no real OIDC provider in CI)
+  AUTH_ALGORITHM: "HS256"
+  AUTH_SECRET_KEY: "test-secret-key-not-for-production-use-at-all"
+  AUTH_AUDIENCE: "satquery-api"
+  AUTH_ISSUER: "https://auth.satquery.test"
 
 jobs:
   # ── 1. Lint & Format ────────────────────────────────────────────────────────
@@ -128,10 +133,81 @@ jobs:
       - name: Run Bandit SAST
         run: bandit -r services packages -ll -ii
 
-  # ── 6. All-green gate ───────────────────────────────────────────────────────
+  # ── 6. OpenAPI Export & Compatibility ───────────────────────────────────────
+  openapi-compat:
+    name: OpenAPI Compatibility (oasdiff)
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Export current OpenAPI schemas
+        run: python scripts/export_openapi.py
+
+      - name: Export baseline OpenAPI schemas from main
+        run: |
+          git checkout main || echo "No main branch locally"
+          mkdir -p docs/baseline
+          if [ -f scripts/export_openapi.py ]; then
+            python scripts/export_openapi.py
+            cp docs/openapi/gateway.json docs/baseline/gateway.json
+            cp docs/openapi/mission.json docs/baseline/mission.json
+          else
+            echo "No export script on main branch yet. Skipping baseline and mocking empty spec."
+            echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/gateway.json
+            echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/mission.json
+          fi
+          git checkout -
+
+      - name: Run oasdiff (Gateway)
+        uses: oasdiff/oasdiff-action/breaking@main
+        with:
+          base: docs/baseline/gateway.json
+          revision: docs/openapi/gateway.json
+          format: text
+          fail-on-diff: true
+
+  # ── 7. Frontend Client Generation ───────────────────────────────────────────
+  client-generation:
+    name: TypeScript Client Generation
+    runs-on: ubuntu-latest
+    needs: openapi-compat
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies and Export schemas
+        run: |
+          pip install -r requirements.txt
+          python scripts/export_openapi.py
+
+      - name: Generate TypeScript Client
+        run: npx @openapitools/openapi-generator-cli generate -i docs/openapi/gateway.json -g typescript-axios -o clients/ts-client --skip-validate-spec
+
+  # ── 8. All-green gate ───────────────────────────────────────────────────────
   ci-gate:
     name: CI Gate (All Green)
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, contract-tests, security]
+    needs: [unit-tests, integration-tests, contract-tests, security, client-generation]
     steps:
       - run: echo "All CI checks passed ✅"
