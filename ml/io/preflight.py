@@ -1,103 +1,36 @@
-"""Preflight validation: assert the input is what it claims to be, before processing.
+"""Assert an array is what it claims to be, before anything processes it.
 
 Issue P3-02. This is the gate that turns "we assumed the data was in dB" into a
 typed failure at the boundary rather than a wrong number at the end.
 
+Lives beside the reader in ``ml/io/`` because these are data-quality checks on
+arrays that ``read_raster`` has already produced. The href allowlist that used to
+share this module is an access-control decision and moved to
+``services/inference/validation.py`` at review (PR #17); the layering runs
+``services -> ml -> packages``, so the analysis library cannot reach up to it.
+
 Design note on the return type
 ------------------------------
 Failures here do not raise past the service boundary -- they become an
-:class:`~ml.contracts.outcome.Abstention` with reason
-``INPUT_FAILED_PREFLIGHT``. Internally a :class:`PreflightError` is raised so that
-the offending check is easy to locate, and the caller translates. That keeps the
-"absence of an answer is a value, not an exception" rule at the API surface while
-keeping tracebacks useful inside the package.
-
-Also owned here (P3's genuine share of the section 8 security table): the SSRF
-allowlist. An asset ``href`` arriving from an upstream service is an untrusted
-resource request. It is checked against a host allowlist *before* anything
-dereferences it. Note that the check in this module is on the declared href only;
-the fetch layer must re-check after any redirect, because a permitted host can
-redirect to a forbidden one.
+:class:`~ml.contracts.outcome.Abstention` with reason ``INPUT_FAILED_PREFLIGHT``.
+Internally a :class:`PreflightError` is raised so the offending check is easy to
+locate, and the caller translates. That keeps "absence of an answer is a value,
+not an exception" true at the API surface while keeping tracebacks useful inside
+the package.
 """
 
 from __future__ import annotations
 
 import math
-from urllib.parse import urlparse
 
 import numpy as np
 import numpy.typing as npt
 
 from ml.contracts.scene import RasterSpec
 
-#: Hosts P3 is permitted to dereference asset URLs from.
-#:
-#: Deliberately a closed list. Adding a provider is a reviewed change, which is the
-#: point -- an SSRF control that anyone can widen by accident is not a control.
-#: These correspond to the providers evaluated in the P3 plan:
-#:   - ASF HyP3 / NASA Earthdata (recommended primary for live SAR)
-#:   - Copernicus Data Space Ecosystem (secondary catalogue)
-#:   - Bhoonidhi / NRSC (India-native, owned by P4)
-DEFAULT_ALLOWED_HOSTS: frozenset[str] = frozenset(
-    {
-        "sentinel1.asf.alaska.edu",
-        "datapool.asf.alaska.edu",
-        "hyp3-api.asf.alaska.edu",
-        "cumulus.asf.alaska.edu",
-        "zipper.dataspace.copernicus.eu",
-        "download.dataspace.copernicus.eu",
-        "stac.dataspace.copernicus.eu",
-        "bhoonidhi-api.nrsc.gov.in",
-    }
-)
-
-#: Only these URL schemes may be dereferenced. ``file://`` is excluded on purpose:
-#: an attacker-supplied ``file:///etc/passwd`` is the textbook SSRF escalation.
-#:
-#: ``s3`` was listed here originally and has been removed, because it never worked:
-#: in an ``s3://bucket/key`` URL the bucket occupies the host position, so the host
-#: check compared a bucket name against a set of HTTPS hostnames and rejected every
-#: such URL. An advertised capability that always fails is worse than an absent one
-#: -- it invites a caller to build against it. Supporting S3 properly means a
-#: separate bucket allowlist and a different validation path; until a provider
-#: actually requires it, HTTPS endpoints cover every source in DEFAULT_ALLOWED_HOSTS.
-ALLOWED_SCHEMES: frozenset[str] = frozenset({"https"})
-
 
 class PreflightError(ValueError):
     """An input failed validation and must not be processed."""
-
-
-def validate_href(href: str, *, allowed_hosts: frozenset[str] | None = None) -> None:
-    """Reject an asset URL that P3 is not permitted to fetch.
-
-    Parameters
-    ----------
-    href
-        The URL as supplied by the upstream service.
-    allowed_hosts
-        Override for the default allowlist. Tests use this; production should not.
-
-    Raises
-    ------
-    PreflightError
-        If the scheme is not permitted, the host is missing, or the host is not on
-        the allowlist.
-    """
-    hosts = DEFAULT_ALLOWED_HOSTS if allowed_hosts is None else allowed_hosts
-
-    parsed = urlparse(href)
-    if parsed.scheme not in ALLOWED_SCHEMES:
-        raise PreflightError(
-            f"scheme {parsed.scheme!r} is not permitted (allowed: " f"{sorted(ALLOWED_SCHEMES)})"
-        )
-    if not parsed.hostname:
-        raise PreflightError(f"asset href has no host: {href!r}")
-    if parsed.hostname.lower() not in hosts:
-        raise PreflightError(
-            f"host {parsed.hostname!r} is not on the provider allowlist. "
-            "Adding a provider is a reviewed change to DEFAULT_ALLOWED_HOSTS."
-        )
 
 
 def validate_against_spec(

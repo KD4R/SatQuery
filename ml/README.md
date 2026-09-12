@@ -30,28 +30,29 @@ deterministic baseline *labelled as such*.
 
 ```
 ml/
-├── crs_policy.py         Which CRS may be used for what. Depends on nothing.
-├── contracts/            Frozen pydantic models. The spine — everything speaks these.
-│   ├── base.py           Strict base: extra=forbid, frozen, revalidated
-│   ├── scene.py          SceneRef, RasterSpec, ScenePair (orbit-matching rule)
-│   ├── measurement.py    Measurement + the area-safe CRS guard
-│   ├── confidence.py     Confidence with a declared basis, or None
-│   └── outcome.py        Analysis | Abstention, AbstentionReason
-├── geo/
-│   ├── crs.py            UTM zone arithmetic, assert_projected/assert_area_safe
-│   └── area.py           area_hectares — the ONLY user-visible area
-├── sar/
-│   ├── units.py          Scale conversion; the double-dB trap closed
-│   └── change.py         Log-ratio, Otsu threshold, water mask
-├── evaluation/
-│   └── segmentation.py   IoU/F1/precision/recall with no-data exclusion
-├── preflight/
-│   └── raster.py         Input validation + provider SSRF allowlist
-└── tests/                Unit tests, marked `unit`, offline, no GPU
+├── conftest.py           shared synthetic fixtures, visible to every subpackage
+├── crs_policy.py         which CRS may be used for what. Depends on nothing.
+├── contracts/            frozen pydantic models (the spine)
+│   └── tests/
+├── geo/                  UTM arithmetic; area_hectares, the only public area
+│   └── tests/
+├── sar/                  scale conversion, log-ratio, Otsu thresholding
+│   └── tests/
+├── io/                   read_raster (the one validated entry point), preflight
+│   └── tests/
+├── pipeline/             Analysis | Abstention paths; the Otsu baseline
+│   └── tests/
+├── evaluation/           IoU/F1/precision/recall with no-data exclusion
+│   └── tests/
+└── scripts/              evaluate_baseline.py -- the reproducible accuracy number
 
-Flat packages resolved by the root conftest.py, per ADR-0001. There is no src/
-layout and no second package root.
+services/inference/       the SSRF allowlist: an access-control decision, so it
+                          sits at the service boundary rather than in the library
 ```
+
+Tests are co-located with the code they cover, matching `packages/auth/tests/`
+and `services/gateway/tests/`. Layering runs `services -> ml -> packages`; nothing
+in `ml/` imports from `services/`.
 
 ---
 

@@ -137,7 +137,7 @@ def read_raster(
     ----------
     path
         Local filesystem path. Remote hrefs go through
-        :func:`ml.preflight.raster.validate_href` first; this function does not
+        :func:`services.inference.validation.validate_href` first; this function does not
         fetch, so that the SSRF allowlist cannot be bypassed by handing it a URL.
     declared_band_order
         What the caller believes the bands are, in file order. Cross-checked

@@ -1,4 +1,4 @@
-"""Tests for the raster reader and the deterministic baseline.
+"""Tests for the deterministic baseline pipeline.
 
 Every GeoTIFF here is written by the test with rasterio, from a synthetic array,
 into ``tmp_path``. That is deliberate on two counts.
@@ -28,12 +28,12 @@ import rasterio
 from rasterio.transform import from_origin
 
 from ml.contracts.scene import BackscatterScale, Polarization, Provider, SceneRef
-from ml.io.raster import Raster, RasterReadError, read_raster, reproject_to_area_safe_crs
+from ml.io.raster import Raster, read_raster
 from ml.pipeline.baseline import (
     detect_water_single_date,
     water_mask_single_date,
 )
-from ml.preflight.raster import PreflightError
+from ml.io.preflight import PreflightError
 from ml.sar.change import ThresholdError
 
 pytestmark = pytest.mark.unit
@@ -102,181 +102,6 @@ def a_scene_ref() -> SceneRef:
         pass_direction=None,
         href="https://datapool.asf.alaska.edu/RTC/TEST_0001.tif",
     )
-
-
-# --------------------------------------------------------------------------- #
-# read_raster                                                                  #
-# --------------------------------------------------------------------------- #
-
-
-def test_reads_a_real_geotiff(tmp_path: Path) -> None:
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene())
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VV, Polarization.VH),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    assert raster.spec.crs == "EPSG:32643"
-    assert raster.spec.width == 64 and raster.spec.height == 64
-    assert raster.spec.pixel_size_m == (10.0, 10.0)
-    assert raster.data.shape == (2, 64, 64)
-
-
-def test_band_descriptions_contradicting_the_declaration_are_refused(tmp_path: Path) -> None:
-    """The check that would have caught the foundation commit's band-order error.
-
-    The file says VV then VH. Declaring the reverse is refused rather than
-    reconciled, because reading them mismatched normalises each channel with the
-    other channel's statistics and nothing crashes.
-    """
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene(), descriptions=("VV", "VH"))
-    with pytest.raises(RasterReadError, match="described as VV but the caller declared VH"):
-        read_raster(
-            path,
-            declared_band_order=(Polarization.VH, Polarization.VV),
-            declared_scale=BackscatterScale.DECIBEL,
-        )
-
-
-def test_a_file_without_band_descriptions_falls_back_to_the_declaration(tmp_path: Path) -> None:
-    """Plenty of valid products carry no band names; that is not an error."""
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene(), descriptions=None)
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VH, Polarization.VV),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    assert raster.spec.band_order == (Polarization.VH, Polarization.VV)
-
-
-def test_band_count_mismatch_is_refused(tmp_path: Path) -> None:
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene(), descriptions=("VV", "VH"))
-    with pytest.raises(RasterReadError, match="2 band"):
-        read_raster(
-            path,
-            declared_band_order=(Polarization.VV,),
-            declared_scale=BackscatterScale.DECIBEL,
-        )
-
-
-def test_a_raster_without_a_crs_is_refused(tmp_path: Path) -> None:
-    """Assuming EPSG:4326 here would be exactly the guess this package refuses."""
-    path = tmp_path / "no_crs.tif"
-    data = bimodal_scene()
-    with rasterio.open(
-        path,
-        "w",
-        driver="GTiff",
-        height=64,
-        width=64,
-        count=2,
-        dtype="float32",
-        transform=from_origin(0, 0, 10, 10),
-    ) as sink:
-        sink.write(data.astype(np.float32))
-    with pytest.raises(RasterReadError, match="no CRS"):
-        read_raster(
-            path,
-            declared_band_order=(Polarization.VV, Polarization.VH),
-            declared_scale=BackscatterScale.DECIBEL,
-        )
-
-
-def test_a_finite_nodata_sentinel_is_normalised_to_nan(tmp_path: Path) -> None:
-    """So that ``isfinite`` is a complete validity test everywhere downstream.
-
-    Review round one found ``validate_finite_fraction`` reporting a raster of
-    -9999 as 100% valid, precisely because a finite sentinel travelled past the
-    reader untouched.
-    """
-    data = bimodal_scene()
-    data[:, :10, :] = -9999.0
-    path = write_tif(tmp_path / "scene.tif", data, nodata=-9999.0)
-
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VV, Polarization.VH),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    assert np.isnan(raster.band(Polarization.VV)[:10, :]).all()
-    assert raster.spec.nodata is None  # the spec must not still advertise the sentinel
-
-
-def test_band_lookup_is_by_name_not_index(tmp_path: Path) -> None:
-    """Positional indexing is how the band-order defect propagates."""
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene())
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VV, Polarization.VH),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    # VV is co-polarised and sits above VH; if the lookup were positional and the
-    # order were swapped, this ordering would silently invert.
-    assert raster.band(Polarization.VV).mean() > raster.band(Polarization.VH).mean()
-
-    with pytest.raises(RasterReadError, match="no HH band"):
-        raster.band(Polarization.HH)
-
-
-def test_the_array_cannot_be_mutated_behind_a_validated_spec(tmp_path: Path) -> None:
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene())
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VV, Polarization.VH),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    with pytest.raises(ValueError):
-        raster.data[0, 0, 0] = 0.0
-
-
-def test_a_missing_file_is_refused(tmp_path: Path) -> None:
-    with pytest.raises(RasterReadError, match="no such raster"):
-        read_raster(
-            tmp_path / "absent.tif",
-            declared_band_order=(Polarization.VV,),
-            declared_scale=BackscatterScale.DECIBEL,
-        )
-
-
-# --------------------------------------------------------------------------- #
-# reprojection                                                                 #
-# --------------------------------------------------------------------------- #
-
-
-def test_a_geographic_raster_is_reprojected_to_its_own_utm_zone(tmp_path: Path) -> None:
-    """The zone is chosen per-AOI, not hardcoded.
-
-    An AOI on the Brahmaputra belongs in 46N. A single constant of 43N -- the
-    approach in packages/geo/crs.py, raised as issue #15 -- is three zones off
-    there, and produces a wrong hectare figure rather than an error.
-    """
-    path = write_tif(
-        tmp_path / "geographic.tif",
-        bimodal_scene(),
-        crs="EPSG:4326",
-        pixel_size=8.983152841195215e-05,
-        origin=(92.5, 26.5),  # Brahmaputra valley, Assam
-    )
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VV, Polarization.VH),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    assert raster.spec.crs == "EPSG:4326"
-
-    projected = reproject_to_area_safe_crs(raster)
-    assert projected.spec.crs == "EPSG:32646"
-    assert 8.0 < projected.spec.pixel_size_m[0] < 12.0  # ~10 m, now in metres
-
-
-def test_a_raster_already_in_utm_is_returned_unchanged(tmp_path: Path) -> None:
-    path = write_tif(tmp_path / "scene.tif", bimodal_scene(), crs="EPSG:32643")
-    raster = read_raster(
-        path,
-        declared_band_order=(Polarization.VV, Polarization.VH),
-        declared_scale=BackscatterScale.DECIBEL,
-    )
-    assert reproject_to_area_safe_crs(raster) is raster
 
 
 # --------------------------------------------------------------------------- #

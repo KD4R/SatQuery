@@ -47,7 +47,7 @@ from ml.contracts.scene import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE, confusion
 from ml.io.raster import read_raster
 from ml.pipeline.baseline import water_mask_single_date
-from ml.preflight.raster import PreflightError
+from ml.io.preflight import PreflightError
 from ml.sar.change import ThresholdError
 
 DEFAULT_ROOT = Path("data/sen1floods11")

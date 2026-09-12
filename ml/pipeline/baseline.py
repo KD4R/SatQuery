@@ -48,7 +48,7 @@ from ml.contracts.scene import Polarization, SceneRef
 from ml.crs_policy import is_area_safe
 from ml.geo.area import area_hectares
 from ml.io.raster import Raster
-from ml.preflight.raster import PreflightError, validate_finite_fraction
+from ml.io.preflight import PreflightError, validate_finite_fraction
 from ml.sar.change import ThresholdError, otsu_threshold
 from ml.sar.units import ensure_decibel
 
