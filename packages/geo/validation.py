@@ -38,6 +38,15 @@ def validate_asset_href(href: str) -> str:
         if parsed.hostname not in ALLOWED_DOMAINS:
             logger.warning(f"SSRF blocked: Attempt to access unauthorized domain {parsed.hostname}")
             raise ValueError(f"Security error: Domain {parsed.hostname} is not allowlisted.")
+    elif parsed.scheme == "s3":
+        from packages.providers.config import config
+
+        allowed_buckets = {"sentinel-cogs", config.s3_bucket}
+        if parsed.hostname not in allowed_buckets:
+            logger.warning(
+                f"SSRF blocked: Attempt to access unauthorized S3 bucket {parsed.hostname}"
+            )
+            raise ValueError(f"Security error: S3 bucket {parsed.hostname} is not allowlisted.")
 
     return href
 
