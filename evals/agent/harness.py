@@ -34,14 +34,15 @@ class AgentEvaluationHarness:
     """
 
     def evaluate_case(self, case: EvalCase) -> Dict[str, Any]:
-        result = {"case_id": case.id, "passed": True, "notes": []}
+        notes: List[str] = []
+        result: Dict[str, Any] = {"case_id": case.id, "passed": True, "notes": notes}
 
         # Injection test
         if case.is_injection:
             is_inj, _ = check_prompt_injection(case.prompt)
             if not is_inj:
                 result["passed"] = False
-                result["notes"].append("Failed to detect prompt injection")
+                notes.append("Failed to detect prompt injection")
             return result
 
         # Normal query test
@@ -51,7 +52,7 @@ class AgentEvaluationHarness:
 
             if case.expected_hazard and intent["disaster_type"] != case.expected_hazard:
                 result["passed"] = False
-                result["notes"].append(
+                notes.append(
                     f"Expected hazard {case.expected_hazard}, got {intent['disaster_type']}"
                 )
 
@@ -59,16 +60,16 @@ class AgentEvaluationHarness:
                 decision = arbitrate_sensors(hazard_type=intent["disaster_type"], cloud_cover=40.0)
                 if decision.primary_sensor != case.expected_sensor:
                     result["passed"] = False
-                    result["notes"].append(
+                    notes.append(
                         f"Expected sensor {case.expected_sensor}, got {decision.primary_sensor}"
                     )
 
         except PromptInjectionError:
             result["passed"] = False
-            result["notes"].append("False positive injection detection on legitimate query")
+            notes.append("False positive injection detection on legitimate query")
         except Exception as exc:
             result["passed"] = False
-            result["notes"].append(f"Unexpected error: {exc}")
+            notes.append(f"Unexpected error: {exc}")
 
         return result
 

@@ -32,7 +32,7 @@ class AuditLogger:
         self._entries: List[ToolAuditEntry] = []
 
     def _redact_args(self, args: Dict[str, Any]) -> Dict[str, Any]:
-        redacted = {}
+        redacted: Dict[str, Any] = {}
         for k, v in args.items():
             if _SENSITIVE_KEYS.search(k):
                 redacted[k] = "[REDACTED]"

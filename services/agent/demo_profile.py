@@ -20,7 +20,8 @@ def load_pinned_demo_profile(path: Optional[str] = None) -> Dict[str, Any]:
         raise FileNotFoundError(f"Pinned demo fixture not found at {fixture_path}")
 
     with open(fixture_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        data: Dict[str, Any] = json.load(f)
+        return data
 
 
 def run_pinned_demo_mission(org_id: str = "org-isro") -> MissionState:
