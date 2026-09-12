@@ -1,0 +1,17 @@
+# Machine-learning extras -- NOT installed by the main CI jobs.
+#
+# Kept separate from requirements.txt on purpose. torch is a ~90 MB wheel and
+# every CI job for every role installs requirements.txt; adding it there would
+# slow the whole team's builds to serve one subsystem's training step.
+#
+# The split it enforces is also a design constraint worth keeping: everything in
+# ml/ that can fail *silently* -- the region split, normalisation, cropping,
+# label handling -- is written torch-free and runs in the ordinary unit job. Only
+# the model and its loss need this file, and those fail loudly when they fail.
+#
+#     pip install -r requirements-ml.txt
+#
+# On Linux/aarch64, torch 2.4.1 is the last release whose default PyPI wheel is
+# CPU-only; later versions pull CUDA runtime libraries that will not load on a
+# machine without a GPU. Pinned for that reason, not by preference.
+torch==2.4.1        # ml/models, ml/scripts/train_unet.py (P3)
