@@ -22,6 +22,7 @@ redirect to a forbidden one.
 
 from __future__ import annotations
 
+import math
 from urllib.parse import urlparse
 
 import numpy as np
@@ -52,7 +53,15 @@ DEFAULT_ALLOWED_HOSTS: frozenset[str] = frozenset(
 
 #: Only these URL schemes may be dereferenced. ``file://`` is excluded on purpose:
 #: an attacker-supplied ``file:///etc/passwd`` is the textbook SSRF escalation.
-ALLOWED_SCHEMES: frozenset[str] = frozenset({"https", "s3"})
+#:
+#: ``s3`` was listed here originally and has been removed, because it never worked:
+#: in an ``s3://bucket/key`` URL the bucket occupies the host position, so the host
+#: check compared a bucket name against a set of HTTPS hostnames and rejected every
+#: such URL. An advertised capability that always fails is worse than an absent one
+#: -- it invites a caller to build against it. Supporting S3 properly means a
+#: separate bucket allowlist and a different validation path; until a provider
+#: actually requires it, HTTPS endpoints cover every source in DEFAULT_ALLOWED_HOSTS.
+ALLOWED_SCHEMES: frozenset[str] = frozenset({"https"})
 
 
 class PreflightError(ValueError):
@@ -155,6 +164,7 @@ def validate_finite_fraction(
     array: npt.NDArray[np.floating],
     *,
     minimum: float = 0.5,
+    nodata: float | None = None,
 ) -> float:
     """Reject a raster that is mostly no-data, and report the valid fraction.
 
@@ -162,18 +172,35 @@ def validate_finite_fraction(
     that figure will be confidently wrong because it describes a sliver of the AOI
     as though it described the whole thing.
 
+    Parameters
+    ----------
+    nodata
+        The declared no-data sentinel from :attr:`RasterSpec.nodata`, when it is a
+        finite value rather than ``NaN``.
+
+        Pass it. Checking only ``np.isfinite`` was the original behaviour and it
+        fails open on exactly the rasters this function exists to catch: a chip
+        filled entirely with ``-9999`` is 100% finite, reports a valid fraction of
+        1.0, sails through this gate and then contributes 262,144 fabricated
+        backscatter samples to an Otsu histogram. Providers that use a finite
+        sentinel rather than ``NaN`` are common enough -- GeoTIFF has no NaN
+        convention for integer bands -- that this cannot be treated as an edge case.
+
     Returns
     -------
     float
-        The fraction of finite samples, so the caller can record it as a caveat
+        The fraction of valid samples, so the caller can record it as a caveat
         even when it passes.
     """
     if array.size == 0:
         raise PreflightError("raster is empty")
-    fraction = float(np.count_nonzero(np.isfinite(array)) / array.size)
+    valid = np.isfinite(array)
+    if nodata is not None and math.isfinite(nodata):
+        valid &= array != nodata
+    fraction = float(np.count_nonzero(valid) / array.size)
     if fraction < minimum:
         raise PreflightError(
-            f"only {fraction:.1%} of samples are finite (minimum {minimum:.0%}); "
+            f"only {fraction:.1%} of samples are valid (minimum {minimum:.0%}); "
             "an area measured from this would describe a fraction of the AOI as "
             "though it described all of it"
         )

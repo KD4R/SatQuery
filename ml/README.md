@@ -29,23 +29,28 @@ deterministic baseline *labelled as such*.
 ## Layout
 
 ```
-src/ml/
-├── contracts/     Frozen pydantic models. The spine — everything else speaks these.
+ml/
+├── crs_policy.py         Which CRS may be used for what. Depends on nothing.
+├── contracts/            Frozen pydantic models. The spine — everything speaks these.
 │   ├── base.py           Strict base: extra=forbid, frozen, revalidated
 │   ├── scene.py          SceneRef, RasterSpec, ScenePair (orbit-matching rule)
-│   ├── measurement.py    Measurement + the projected-CRS guard
+│   ├── measurement.py    Measurement + the area-safe CRS guard
 │   ├── confidence.py     Confidence with a declared basis, or None
 │   └── outcome.py        Analysis | Abstention, AbstentionReason
 ├── geo/
-│   ├── crs.py            UTM zone arithmetic, projected-CRS guard
+│   ├── crs.py            UTM zone arithmetic, assert_projected/assert_area_safe
 │   └── area.py           area_hectares — the ONLY user-visible area
 ├── sar/
 │   ├── units.py          Scale conversion; the double-dB trap closed
 │   └── change.py         Log-ratio, Otsu threshold, water mask
-├── metrics/
+├── evaluation/
 │   └── segmentation.py   IoU/F1/precision/recall with no-data exclusion
-└── preflight/
-    └── raster.py         Input validation + provider SSRF allowlist
+├── preflight/
+│   └── raster.py         Input validation + provider SSRF allowlist
+└── tests/                Unit tests, marked `unit`, offline, no GPU
+
+Flat packages resolved by the root conftest.py, per ADR-0001. There is no src/
+layout and no second package root.
 ```
 
 ---
@@ -53,15 +58,18 @@ src/ml/
 ## Getting started
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
+# From the repository root -- ml/ is part of the monorepo, not a separate package.
+pip install -r requirements.txt
 
-pytest -q          # 92 tests, no network, no GPU, under a second
-ruff check .
-ruff format --check .
-mypy
+pytest -m unit ml/          # offline, no GPU, under a second
+black --check ml/
+flake8 ml/
+mypy ml/
 ```
+
+Tests are selected by marker (`-m unit`), matching the repository's CI. An
+unmarked test is collected by nothing and runs nowhere, so every test module
+sets `pytestmark = pytest.mark.unit`.
 
 Runtime dependencies are **NumPy and pydantic only**. That is deliberate: the whole
 suite runs offline with no geospatial stack installed, which keeps CI fast and lets
@@ -99,7 +107,7 @@ the learned model adapter (P3-04), postprocessing (P3-07), the async worker (P3-
 calibration (P3-11), and the evaluation report generator (P3-15).
 
 **Open decisions that block later work** are recorded in
-[`docs/adr/ADR-ML-001-foundation.md`](docs/adr/ADR-ML-001-foundation.md), including the
+[`docs/adr/ADR-0007-ml-inference-foundation.md`](../docs/adr/ADR-0007-ml-inference-foundation.md), including the
 API path conflict, whether cross-modal fusion stays P0, and whether the deterministic
 fixture fallback authorised in the P3 spec still stands. None of them block this
 commit; all of them block something.

@@ -20,7 +20,9 @@ import numpy.typing as npt
 
 from ml.contracts.measurement import Measurement, MeasurementUnit
 from ml.contracts.scene import SceneRef
-from ml.geo.crs import assert_projected
+import math
+
+from ml.geo.crs import assert_area_safe
 
 #: Square metres in one hectare.
 SQUARE_METRES_PER_HECTARE = 10_000.0
@@ -50,12 +52,17 @@ def pixel_area_m2(pixel_size_m: tuple[float, float], crs: str) -> float:
     ValueError
         If either pixel dimension is non-positive.
     """
-    assert_projected(crs, operation="compute pixel area")
+    assert_area_safe(crs, operation="compute pixel area")
 
-    x, y = pixel_size_m
+    x, y = (float(pixel_size_m[0]), float(pixel_size_m[1]))
+    # Finiteness is checked separately from positivity because ``inf > 0`` is True:
+    # without this, an infinite pixel size yields an infinite area, which then
+    # formats into a Decimal and enters an Analysis as a real measurement.
+    if not (math.isfinite(x) and math.isfinite(y)):
+        raise ValueError(f"pixel_size_m must be finite, got {pixel_size_m!r}")
     if x <= 0 or y <= 0:
         raise ValueError(f"pixel_size_m must be positive magnitudes, got {pixel_size_m!r}")
-    return float(x) * float(y)
+    return x * y
 
 
 def area_hectares(
@@ -128,5 +135,5 @@ def area_hectares(
         produced_by=PRODUCER,
         code_version=code_version,
         crs=crs,
-        derived_from=list(derived_from),
+        derived_from=tuple(derived_from),
     )

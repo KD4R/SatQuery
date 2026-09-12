@@ -103,9 +103,11 @@ def otsu_threshold(
     Raises
     ------
     ThresholdError
-        If there are too few valid samples, or if the distribution is unimodal --
-        i.e. the scene is entirely water or entirely land, or no change occurred.
-        The caller is expected to translate this into a
+        If there are too few valid samples, or if every sample is identical.
+
+        **Not** raised for a unimodal distribution. An earlier version of this
+        docstring promised that and could not deliver it; see the note below. The
+        caller is expected to translate a raised error into a
         :attr:`~ml.contracts.outcome.AbstentionReason.NO_SEPARABLE_THRESHOLD`
         abstention rather than fabricating a mask.
     """
@@ -150,11 +152,42 @@ def otsu_threshold(
 
     if not np.any(np.isfinite(between)):
         raise ThresholdError(
-            "between-class variance is undefined everywhere: the distribution is "
-            "unimodal, so no threshold separates two classes"
+            "between-class variance is undefined everywhere: no threshold splits "
+            "this distribution into two non-empty classes"
         )
 
     best = int(np.nanargmax(between))
+
+    total_variance = float(np.sum(counts * (centres - global_mean) ** 2) / total)
+    if total_variance <= 0.0:
+        raise ThresholdError("distribution has zero variance: every sample is identical")
+
+    # WHY THERE IS NO SEPARABILITY GATE HERE
+    # --------------------------------------
+    # Otsu always answers. Any non-constant distribution -- speckle over dry
+    # ground, a gentle brightness gradient -- has finite between-class variance
+    # somewhere, reaches nanargmax and yields a split. Whether that split means
+    # anything is a different question, and this function does not answer it.
+    #
+    # A gate was attempted here using Otsu's own goodness-of-fit,
+    # eta = sigma_B^2 / sigma_T^2, on the theory that unimodal input would score
+    # low. Measured, it does not:
+    #
+    #     pure Gaussian noise                   eta = 0.637
+    #     Rayleigh speckle, dB domain           eta = 0.622
+    #     weakly-separated bimodal              eta = 0.637
+    #     Sen1Floods11 chips containing water   eta = 0.533 .. 0.721  (n=6)
+    #     Sen1Floods11 chips with no water      eta = 0.512 .. 0.675  (n=6)
+    #
+    # The two real populations overlap almost completely, and noise scores higher
+    # than four of the six genuinely flooded chips. Any floor low enough to admit
+    # real floods admits noise as well. Shipping the knob anyway would be worse
+    # than shipping nothing: a caller would set it and believe they were protected.
+    #
+    # Separability is therefore judged downstream, by agreement between methods
+    # that fail differently -- which is what ConfidenceBasis.MODEL_AGREEMENT is
+    # for -- not by the shape of one histogram. Recorded as D9 in
+    # docs/adr/ADR-0007-ml-inference-foundation.md.
     return float(centres[best])
 
 

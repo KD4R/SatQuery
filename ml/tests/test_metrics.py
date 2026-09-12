@@ -89,7 +89,7 @@ def test_wrong_ignore_value_raises_instead_of_corrupting_the_metrics() -> None:
 
 
 def test_iou_precision_recall_f1_on_a_known_case() -> None:
-    """TP=2, FP=1, FN=1 -> IoU 0.5, precision 2/3, recall 2/3, F1 2/3."""
+    """TP=1, FP=1, FN=1 -> IoU 1/3, precision 0.5, recall 0.5, F1 0.5."""
     truth = np.array([1, 1, 0, 0], dtype=np.int16)
     predicted = np.array([True, False, True, False])
 

@@ -83,8 +83,18 @@ class SegmentationMetrics:
     def f1(self) -> float:
         """Harmonic mean of precision and recall."""
         p, r = self.precision, self.recall
-        if not np.isfinite(p) or not np.isfinite(r) or (p + r) == 0:
+        # Undefined only when precision or recall is itself undefined -- that is,
+        # when the positive class is absent from the prediction or from the truth,
+        # where there is genuinely nothing to score.
+        if not np.isfinite(p) or not np.isfinite(r):
             return float("nan")
+        # Both finite and both zero means the prediction was entirely wrong, which
+        # is a defined result: F1 is 0. Returning NaN here would drop the worst
+        # samples out of any mean and inflate the reported score -- the opposite of
+        # what an evaluation suite is for. Matches ``intersection_over_union``,
+        # which already returns 0.0 for this case.
+        if (p + r) == 0:
+            return 0.0
         return 2.0 * p * r / (p + r)
 
 
@@ -143,7 +153,24 @@ def confusion(
             "both would silently corrupt every metric below."
         )
 
-    pred_valid = np.asarray(predicted)[valid].astype(bool)
+    # The identical guard on the prediction side. The first version of this
+    # function checked only ``truth``, on the reasoning that predictions come from
+    # our own code and are therefore trustworthy -- which is wrong twice over: a
+    # model emitting class IDs (0/1/2 for land/water/cloud) and an argmax over the
+    # wrong axis both produce integer arrays that cast to ``True`` for every
+    # non-zero entry, scoring class 2 as water and inflating recall. A boolean
+    # array is passed through as-is; anything integral must be strictly 0/1.
+    pred_remaining = np.asarray(predicted)[valid]
+    if pred_remaining.dtype != np.bool_:
+        unexpected_pred = np.setdiff1d(np.unique(pred_remaining), np.array([0, 1]))
+        if unexpected_pred.size > 0:
+            raise ValueError(
+                f"predicted contains values {unexpected_pred.tolist()} that are "
+                "neither 0 nor 1. Casting those to bool would score every non-zero "
+                "value as the positive class. Threshold or one-hot the model output "
+                "explicitly before scoring it."
+            )
+    pred_valid = pred_remaining.astype(bool)
     truth_valid = truth_remaining == 1
 
     return SegmentationMetrics(

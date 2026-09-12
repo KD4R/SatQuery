@@ -24,20 +24,14 @@ from enum import Enum
 from pydantic import Field, model_validator
 
 from ml.contracts.base import Strict
+from ml.crs_policy import GEOGRAPHIC_CRS, explain_unsafe_for_area, is_area_safe
 from ml.contracts.scene import SceneRef
 
-#: CRS identifiers that are geographic (degrees), not projected (metres).
-#: Measuring an area in any of these produces a number in square degrees, whose
-#: relationship to hectares varies with latitude. See ``_reject_geographic_crs``.
-GEOGRAPHIC_CRS = frozenset(
-    {
-        "EPSG:4326",  # WGS 84 lat/lon -- the usual offender
-        "EPSG:4979",  # WGS 84 3D
-        "EPSG:4269",  # NAD83
-        "OGC:CRS84",  # WGS 84 lon/lat axis order
-        "CRS84",
-    }
-)
+#: ``GEOGRAPHIC_CRS`` is re-exported from :mod:`ml.crs_policy`, which owns the CRS
+#: policy for the whole package, so that existing importers keep working. The guard
+#: below no longer tests against it -- see the note in that module on why a
+#: blacklist is the wrong shape for a safety check.
+__all__ = ["GEOGRAPHIC_CRS", "Measurement", "MeasurementUnit", "PHYSICAL_UNITS"]
 
 
 class MeasurementUnit(str, Enum):
@@ -104,7 +98,7 @@ class Measurement(Strict):
     produced_by: str = Field(min_length=1)
     code_version: str = Field(min_length=1)
     crs: str = Field(min_length=1)
-    derived_from: list[SceneRef] = Field(min_length=1)
+    derived_from: tuple[SceneRef, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _reject_geographic_crs(self) -> Measurement:
@@ -119,12 +113,12 @@ class Measurement(Strict):
         Reprojection to a local UTM zone must happen *before* measurement. See
         :func:`ml.geo.crs.utm_epsg_for`.
         """
-        if self.unit in PHYSICAL_UNITS and self.crs.upper() in GEOGRAPHIC_CRS:
+        if self.unit in PHYSICAL_UNITS and not is_area_safe(self.crs):
             raise ValueError(
                 f"measurement {self.name!r} is in {self.unit.value} but was taken in "
-                f"{self.crs}, which is geographic. Reproject to a projected CRS "
-                "(a local UTM zone) before measuring; degrees are not metres and the "
-                "error varies with latitude."
+                f"{self.crs}, which is not safe to measure in: "
+                f"{explain_unsafe_for_area(self.crs)}. Reproject to the local UTM "
+                "zone before measuring (see ml.geo.crs.utm_epsg_for)."
             )
         return self
 

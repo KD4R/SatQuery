@@ -70,8 +70,18 @@ def amplitude_to_db(amplitude: npt.NDArray[np.floating]) -> npt.NDArray[np.float
     Amplitude is the square root of power, so ``dB = 20 * log10(amplitude)``.
     Implemented by squaring and delegating, which keeps the invalid-sample handling
     in exactly one place.
+
+    Negative samples are mapped to ``NaN`` *before* squaring. Squaring first would
+    launder them: amplitude is by definition a non-negative magnitude, so a value
+    of ``-1`` is a corrupt or mis-scaled sample, yet ``(-1) ** 2`` is ``1`` and
+    converts cleanly to ``0 dB``. An invalid pixel silently becoming a plausible
+    backscatter reading is exactly the failure this module exists to prevent, and
+    it matches how ``power_to_db`` already treats non-positive power.
     """
-    return power_to_db(np.square(amplitude.astype(np.float64)))
+    a = amplitude.astype(np.float64)
+    with np.errstate(invalid="ignore"):
+        valid = np.where(a >= 0.0, a, np.nan)
+    return power_to_db(np.square(valid))
 
 
 def ensure_decibel(

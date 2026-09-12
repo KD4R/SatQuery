@@ -1,10 +1,10 @@
-# ADR-ML-001 — P3 foundation: contracts, dependencies and the decisions behind them
+# ADR-0007 — P3 ML foundation: contracts, dependencies and the decisions behind them
 
 - **Status:** Accepted for the foundation commit; four items remain open and are listed at the end.
 - **Date:** 2026-09-11
 - **Owner:** P3 (Srushti)
 - **Reviewer:** P1 (Siddharth)
-- **Supersedes:** nothing. First ADR in this repository.
+- **Supersedes:** nothing. First ADR covering the ML subsystem.
 
 ---
 
@@ -181,6 +181,100 @@ is the only path guaranteed to work early; it is the honest degraded mode for P3
 and the agreement between it and the learned model is the confidence basis P3-11
 otherwise has no source for. A learned model with no baseline beside it is an
 unfalsifiable claim.
+
+---
+
+### D9 — "Projected" is not sufficient for area; the guard is a positive allowlist
+
+**Decision.** Two predicates, not one. `is_projected` asks whether a CRS measures in
+linear units. `is_area_safe` asks whether multiplying two of those units yields a
+defensible area, and is currently satisfied only by the WGS 84 UTM zones. Both live
+in `ml/crs_policy.py`, which depends on nothing, so `contracts` and `geo` can share
+the policy without depending on each other.
+
+**Reason.** Review of the foundation commit found EPSG:3857 passing the area guard.
+Web Mercator *is* projected — and conformal, with a scale factor of 1/cos(latitude)
+in both axes, so an area from its pixel dimensions is inflated by 1/cos²(latitude):
+about 3% at Kerala, 15% at 30 N, 100% at 60 N. Nothing raises, and the error grows
+with distance from the equator, so it is largest where a reviewer has least intuition
+for the right answer.
+
+The same review found the `Measurement` CRS check was a *blacklist* of five
+geographic identifiers. `EPSG:4258`, `EPSG:4283` and the literal string `"not-a-crs"`
+all constructed valid physical measurements. A blacklist fails open, which is the
+wrong direction for a safety guard: the set of unsafe CRSs is unbounded and the set
+of safe ones is small and known.
+
+**Consequence.** Adding a projection to `is_area_safe` is a deliberate reviewed act.
+Equal-area families and the Indian national grids belong there once one is actually
+used and its parameters are pinned — adding them speculatively would ship an
+allowlist entry nobody has checked.
+
+---
+
+### D10 — Otsu does not detect whether there is anything to threshold
+
+**Decision.** `otsu_threshold` raises only on too few valid samples or zero variance.
+It does **not** claim to abstain on unimodal input, and carries no separability
+parameter.
+
+**Reason.** The foundation commit's docstring promised abstention on unimodal
+distributions and did not deliver it: any non-constant distribution has finite
+between-class variance somewhere, reaches `nanargmax`, and returns a split.
+
+A gate was then attempted using Otsu's own goodness-of-fit, η = σ²_B / σ²_T, on the
+theory that unimodal input would score low. Measured against the Sen1Floods11
+hand-labelled chips and synthetic controls, it does not:
+
+| Input | η |
+|---|---|
+| Pure Gaussian noise | 0.637 |
+| Rayleigh speckle, dB domain | 0.622 |
+| Weakly-separated bimodal | 0.637 |
+| Well-separated bimodal | 0.973 |
+| Sen1Floods11 chips **containing** water (n=6) | 0.533 – 0.721 |
+| Sen1Floods11 chips with **no** water (n=6) | 0.512 – 0.675 |
+
+The two real populations overlap almost entirely, and pure noise scores higher than
+four of the six genuinely flooded chips. Any floor low enough to admit real floods
+admits noise as well. Shipping the parameter regardless would have been worse than
+shipping nothing, because a caller would set it and believe they were protected.
+
+**Consequence, and it is a large one.** Single-date Otsu on raw VV backscatter is not
+a flood detector, and this measurement is the evidence. Separability has to be judged
+by agreement between methods that fail differently — which is what
+`ConfidenceBasis.MODEL_AGREEMENT` exists for — or by the bi-temporal log-ratio, where
+the quantity being thresholded is *change* rather than absolute backscatter. The
+second is blocked on OPEN-4, since Sen1Floods11 ships no pre-event imagery.
+
+Consistent with this, the dataset authors' own `S1OtsuLabelHand` baseline predicts
+30,568 water pixels on `Ghana_1033830` where the hand labels mark 96,811.
+
+---
+
+### D11 — Review of the foundation commit found fourteen defects; all are fixed here
+
+**Recorded because the pattern matters more than the individual bugs.** Six of the
+fourteen were silent-wrong-number defects — the exact class this subsystem's README
+claims to guard against, in the commit that made the claim. They were found by
+automated review, not by the author, and not one produced an exception, a warning or
+a visibly odd value.
+
+Beyond D9 and D10 above: `pixel_area_m2` accepted infinite pixel dimensions
+(`inf > 0` is true); `amplitude_to_db` squared before validating, so `-1` became a
+clean `0 dB`; `confusion()` validated truth labels but not predictions, so a class ID
+of `2` scored as water; `validate_finite_fraction` ignored finite no-data sentinels,
+so a raster of `-9999` reported 100% valid; `f1` returned NaN where IoU returned 0.0,
+deleting the worst samples from any average; `frozen=True` did not prevent in-place
+mutation of `list` fields, so validated provenance stayed editable — the same
+argument this role had just raised against another role's contract; `Confidence`
+permitted a value outside its own interval and a `MODEL_AGREEMENT` value that
+contradicted its IoU; and `s3` was an advertised URL scheme that could never validate.
+
+**The conclusion drawn.** Guards that are asserted in prose are not guards. Each of
+these now has a regression test in `ml/tests/test_review_findings.py` stating what
+went wrong and why it was invisible, because the shared property of all fourteen is
+that they passed review by a reader who had just written the trap list.
 
 ---
 

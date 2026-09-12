@@ -92,7 +92,7 @@ class Abstention(Strict):
     nearest_usable: datetime | None
     #: Scenes that were examined before declining. May be empty when nothing was
     #: found at all, which is itself informative.
-    scenes_seen: list[SceneRef]
+    scenes_seen: tuple[SceneRef, ...]
     trace_id: str = Field(min_length=1)
 
 
@@ -114,18 +114,18 @@ class Analysis(Strict):
     """
 
     outcome: Literal["analysed"] = "analysed"
-    measurements: list[Measurement] = Field(min_length=1)
+    measurements: tuple[Measurement, ...] = Field(min_length=1)
     #: Object-storage key for the vectorised extent (GeoJSON).
     geometry_ref: str | None
     #: Object-storage keys for produced rasters (masks, composites).
-    raster_refs: list[str]
+    raster_refs: tuple[str, ...]
     confidence: Confidence | None
-    scenes: list[SceneRef] = Field(min_length=1)
+    scenes: tuple[SceneRef, ...] = Field(min_length=1)
     #: Name of the method that actually produced this, when a fallback was used.
     #: ``None`` means the primary path ran.
     degraded_from: str | None
     #: Plausibility flags carried up from postprocessing.
-    caveats: list[str]
+    caveats: tuple[str, ...]
     trace_id: str = Field(min_length=1)
 
 

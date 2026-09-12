@@ -43,6 +43,8 @@ defect as a fabricated hectare figure.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from decimal import Decimal
 from enum import Enum
 
@@ -91,7 +93,7 @@ class Confidence(Strict):
     interval: tuple[Decimal, Decimal] | None
     calibration_ref: str | None
     agreement_iou: Decimal | None
-    caveats: list[str]
+    caveats: tuple[str, ...]
 
     @model_validator(mode="after")
     def _value_requires_a_basis(self) -> Confidence:
@@ -147,8 +149,47 @@ class Confidence(Strict):
                 )
         return self
 
+    @model_validator(mode="after")
+    def _fields_must_not_contradict_each_other(self) -> Confidence:
+        """Bound each field, then check they are telling the same story.
+
+        Bounding fields independently is not enough. Every field below was already
+        individually legal in an object that, read as a whole, contradicts itself:
+
+        * ``basis=MODEL_AGREEMENT, value=0.9, agreement_iou=0.5`` -- the basis says
+          the confidence *is* the agreement between two independent methods, and
+          then reports a different number. A reader has no way to know which one
+          the pipeline acted on.
+        * ``value=0.9, interval=(0.1, 0.4)`` -- an interval that excludes its own
+          point estimate. Rendered in a report this is not merely wrong, it is
+          incoherent, and it survives review because both halves look reasonable
+          on their own.
+
+        Consistency between fields is part of the contract, so it is checked at
+        construction like everything else.
+        """
+        if (
+            self.basis is ConfidenceBasis.MODEL_AGREEMENT
+            and self.value is not None
+            and self.agreement_iou is not None
+            and self.value != self.agreement_iou
+        ):
+            raise ValueError(
+                f"basis is MODEL_AGREEMENT so value is the agreement, but value "
+                f"({self.value}) and agreement_iou ({self.agreement_iou}) differ. "
+                "Report the IoU as the value, or choose a different basis."
+            )
+
+        if self.value is not None and self.interval is not None:
+            low, high = self.interval
+            if not (low <= self.value <= high):
+                raise ValueError(
+                    f"value {self.value} lies outside its own interval " f"[{low}, {high}]"
+                )
+        return self
+
     @classmethod
-    def not_calibrated(cls, *, caveats: list[str] | None = None) -> Confidence:
+    def not_calibrated(cls, *, caveats: Sequence[str] | None = None) -> Confidence:
         """Convenience constructor for the honest-null case.
 
         Used wherever a model runs outside the configuration it was calibrated for.
@@ -159,5 +200,5 @@ class Confidence(Strict):
             interval=None,
             calibration_ref=None,
             agreement_iou=None,
-            caveats=caveats or [],
+            caveats=tuple(caveats or ()),
         )

@@ -161,7 +161,7 @@ def test_mostly_nodata_raster_is_refused() -> None:
     """An area measured from a sliver would describe the whole AOI wrongly."""
     array = np.full((10, 10), np.nan, dtype=np.float32)
     array[0, :] = 1.0  # 10% finite
-    with pytest.raises(PreflightError, match="finite"):
+    with pytest.raises(PreflightError, match="valid"):
         validate_finite_fraction(array, minimum=0.5)
 
 

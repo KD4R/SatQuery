@@ -19,7 +19,17 @@ from __future__ import annotations
 
 import math
 
-from ml.contracts.measurement import GEOGRAPHIC_CRS
+from ml.crs_policy import explain_unsafe_for_area, is_area_safe, is_projected
+
+
+__all__ = [
+    "CRSError",
+    "assert_area_safe",
+    "assert_projected",
+    "is_area_safe",
+    "is_projected",
+    "utm_epsg_for",
+]
 
 
 class CRSError(ValueError):
@@ -77,33 +87,6 @@ def utm_epsg_for(lon: float, lat: float) -> str:
     return f"EPSG:{base + zone}"
 
 
-def is_projected(crs: str) -> bool:
-    """Best-effort check that ``crs`` measures in linear units rather than degrees.
-
-    Conservative: returns ``True`` only for CRS identifiers we positively recognise
-    as projected. Anything unrecognised returns ``False`` so that callers refuse
-    rather than guess.
-    """
-    normalised = crs.strip().upper()
-    if normalised in GEOGRAPHIC_CRS:
-        return False
-    if not normalised.startswith("EPSG:"):
-        # Could be a WKT string or a PROJ pipeline. We cannot parse those without
-        # pyproj, so we decline to vouch for it.
-        return False
-    try:
-        code = int(normalised.split(":", 1)[1])
-    except (IndexError, ValueError):
-        return False
-    # UTM north (32601-32660) and UTM south (32701-32760).
-    if 32601 <= code <= 32660 or 32701 <= code <= 32760:
-        return True
-    # Web Mercator. Recognised as projected, but note it is *not* equal-area, so it
-    # is a poor choice for measuring extent -- that judgement belongs to the caller,
-    # which knows whether it is measuring or merely displaying.
-    return code == 3857
-
-
 def assert_projected(crs: str, *, operation: str) -> None:
     """Raise unless ``crs`` is safe to take a physical measurement in.
 
@@ -124,5 +107,20 @@ def assert_projected(crs: str, *, operation: str) -> None:
         raise CRSError(
             f"cannot {operation} in {crs}: a projected CRS is required. "
             "Degrees are not metres and the conversion factor varies with latitude. "
+            "Reproject to the local UTM zone first (see utm_epsg_for)."
+        )
+
+
+def assert_area_safe(crs: str, *, operation: str) -> None:
+    """Raise unless an area may be computed by multiplying ``crs``'s linear units.
+
+    Stricter than :func:`assert_projected`, and the one to use before any area
+    arithmetic. A projected CRS is not automatically an area-safe one: Web Mercator
+    passes ``assert_projected`` and would silently inflate every hectare figure by
+    1/cos^2(latitude). See :mod:`ml.crs_policy`.
+    """
+    if not is_area_safe(crs):
+        raise CRSError(
+            f"cannot {operation} in {crs}: {explain_unsafe_for_area(crs)}. "
             "Reproject to the local UTM zone first (see utm_epsg_for)."
         )

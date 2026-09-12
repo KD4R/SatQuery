@@ -143,7 +143,7 @@ def test_area_hectares_attaches_full_provenance(scene_pre: SceneRef) -> None:
     assert measurement.produced_by == PRODUCER
     assert measurement.code_version == "0.1.0"
     assert measurement.crs == "EPSG:32643"
-    assert measurement.derived_from == [scene_pre]
+    assert measurement.derived_from == (scene_pre,)
 
 
 def test_area_hectares_refuses_geographic_crs(scene_pre: SceneRef) -> None:

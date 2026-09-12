@@ -44,7 +44,7 @@ def test_measurement_rejects_hectares_in_geographic_crs(scene_pre: SceneRef) -> 
             produced_by="ml.geo.area.area_hectares",
             code_version="0.1.0",
             crs="EPSG:4326",  # <- degrees, not metres
-            derived_from=[scene_pre],
+            derived_from=(scene_pre,),
         )
 
 
@@ -59,7 +59,7 @@ def test_measurement_allows_dimensionless_units_in_geographic_crs(
         produced_by="ml.geo.area.area_hectares",
         code_version="0.1.0",
         crs="EPSG:4326",
-        derived_from=[scene_pre],
+        derived_from=(scene_pre,),
     )
     assert measurement.value == Decimal("12")
 
@@ -74,7 +74,7 @@ def test_measurement_requires_provenance() -> None:
             produced_by="ml.geo.area.area_hectares",
             code_version="0.1.0",
             crs="EPSG:32643",
-            derived_from=[],  # <- min_length=1
+            derived_from=(),  # <- min_length=1
         )
 
 
@@ -87,7 +87,7 @@ def test_measurement_is_frozen(scene_pre: SceneRef) -> None:
         produced_by="ml.geo.area.area_hectares",
         code_version="0.1.0",
         crs="EPSG:32643",
-        derived_from=[scene_pre],
+        derived_from=(scene_pre,),
     )
     with pytest.raises(ValidationError):
         measurement.value = Decimal("99999.0")  # type: ignore[misc]
@@ -103,7 +103,7 @@ def test_measurement_rejects_unknown_field(scene_pre: SceneRef) -> None:
             produced_by="p",
             code_version="0.1.0",
             crs="EPSG:32643",
-            derived_from=[scene_pre],
+            derived_from=(scene_pre,),
             confidence=0.94,  # type: ignore[call-arg]  # <- not a field here
         )
 
@@ -118,7 +118,7 @@ def test_measurement_rejects_out_of_range_fraction(scene_pre: SceneRef) -> None:
             produced_by="p",
             code_version="0.1.0",
             crs="EPSG:32643",
-            derived_from=[scene_pre],
+            derived_from=(scene_pre,),
         )
 
 
@@ -136,7 +136,7 @@ def test_confidence_not_calibrated_must_not_carry_a_value() -> None:
             interval=None,
             calibration_ref=None,
             agreement_iou=None,
-            caveats=[],
+            caveats=(),
         )
 
 
@@ -149,7 +149,7 @@ def test_confidence_calibrated_must_cite_its_report() -> None:
             interval=None,
             calibration_ref=None,
             agreement_iou=None,
-            caveats=[],
+            caveats=(),
         )
 
 
@@ -162,16 +162,16 @@ def test_confidence_agreement_basis_must_carry_the_agreement() -> None:
             interval=None,
             calibration_ref=None,
             agreement_iou=None,
-            caveats=[],
+            caveats=(),
         )
 
 
 def test_confidence_not_calibrated_helper_is_valid() -> None:
     """The honest-null path must be easy to construct, or people will fake a number."""
-    confidence = Confidence.not_calibrated(caveats=["outside calibrated configuration"])
+    confidence = Confidence.not_calibrated(caveats=("outside calibrated configuration",))
     assert confidence.value is None
     assert confidence.basis is ConfidenceBasis.NOT_CALIBRATED
-    assert confidence.caveats == ["outside calibrated configuration"]
+    assert confidence.caveats == ("outside calibrated configuration",)
 
 
 # --------------------------------------------------------------------------- #
@@ -257,13 +257,13 @@ def test_analysis_requires_at_least_one_measurement_and_scene(
     """An 'analysis' that measured nothing is not an analysis."""
     with pytest.raises(ValidationError):
         Analysis(
-            measurements=[],
+            measurements=(),
             geometry_ref=None,
-            raster_refs=[],
+            raster_refs=(),
             confidence=None,
-            scenes=[scene_pre],
+            scenes=(scene_pre,),
             degraded_from=None,
-            caveats=[],
+            caveats=(),
             trace_id="t-1",
         )
 
@@ -274,7 +274,7 @@ def test_abstention_is_a_value_not_an_exception(scene_pre: SceneRef) -> None:
         reason=AbstentionReason.NO_SCENES_IN_WINDOW,
         explanation=("No Sentinel-1 acquisition over this AOI between 12 and 26 August."),
         nearest_usable=datetime(2024, 9, 3, tzinfo=timezone.utc),
-        scenes_seen=[scene_pre],
+        scenes_seen=(scene_pre,),
         trace_id="t-2",
     )
     assert abstention.outcome == "abstained"
