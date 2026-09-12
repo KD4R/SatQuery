@@ -5,9 +5,9 @@ Unit tests for P2-02: Input sanitizer and intent validator.
 
 import pytest
 
-from security.exceptions import GeometryValidationError, PromptInjectionError
-from security.sanitizer import check_prompt_injection, sanitize_prompt
-from security.validator import validate_aoi_geometry, validate_intent
+from services.agent.security.exceptions import GeometryValidationError, PromptInjectionError
+from services.agent.security.sanitizer import check_prompt_injection, sanitize_prompt
+from services.agent.security.validator import validate_aoi_geometry, validate_intent
 
 
 @pytest.mark.unit

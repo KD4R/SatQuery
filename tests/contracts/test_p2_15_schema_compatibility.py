@@ -4,7 +4,7 @@ Contract compatibility tests for P2-15: EvalCase and EvalReport.
 """
 
 import pytest
-from evals.agent.harness import EvalCase, EvalReport
+from services.agent.evals.agent.harness import EvalCase, EvalReport
 
 
 @pytest.mark.contract

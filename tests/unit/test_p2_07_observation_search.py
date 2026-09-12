@@ -5,8 +5,8 @@ Unit tests for P2-07: Observation search and asset selection tools.
 
 import pytest
 from pydantic import ValidationError
-from tools.asset_selector import AssetSelectorTool
-from tools.stac_search import STACSearchTool
+from services.agent.tools.asset_selector import AssetSelectorTool
+from services.agent.tools.stac_search import STACSearchTool
 
 
 @pytest.mark.unit

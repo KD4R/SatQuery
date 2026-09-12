@@ -6,7 +6,7 @@ Integration tests for P2-10 service boundary: evidence graph integrated into run
 import pytest
 from fastapi.testclient import TestClient
 
-from packages.auth.testing import make_test_token
+from services.agent.tests.helpers.test_tokens import make_test_token
 from services.agent.app.api.implementation import app as agent_app
 
 

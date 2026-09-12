@@ -3,7 +3,7 @@ security/tool_budget.py — Tool invocation budget tracking and limits.
 """
 
 from pydantic import BaseModel, Field
-from security.exceptions import BudgetExceededError
+from services.agent.security.exceptions import BudgetExceededError
 
 
 class ToolBudget(BaseModel):

@@ -4,7 +4,7 @@ Contract compatibility tests for P2-13: AcquisitionLoopResult.
 """
 
 import pytest
-from graph.acquisition_loop import AcquisitionLoopResult
+from services.agent.graph.acquisition_loop import AcquisitionLoopResult
 
 
 @pytest.mark.contract

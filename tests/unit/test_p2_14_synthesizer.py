@@ -4,9 +4,9 @@ Unit tests for P2-14: Evidence-only output synthesizer and WHY explanation.
 """
 
 import pytest
-from evidence.graph_builder import EvidenceGraphBuilder
-from evidence.models import EvidenceGraph
-from nodes.synthesizer import synthesize_evidence_output
+from services.agent.evidence.graph_builder import EvidenceGraphBuilder
+from services.agent.evidence.models import EvidenceGraph
+from services.agent.nodes.synthesizer import synthesize_evidence_output
 
 
 @pytest.mark.unit

@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from packages.contracts.errors import ErrorDetail, ErrorResponse
 from packages.observability import setup_logging, setup_telemetry
 from packages.shared.middleware import IdempotencyMiddleware
-from security.exceptions import (
+from services.agent.security.exceptions import (
     BudgetExceededError,
     GeometryValidationError,
     PromptInjectionError,

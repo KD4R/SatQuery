@@ -4,7 +4,7 @@ Unit tests for P2-11: Confidence and uncertainty gate.
 """
 
 import pytest
-from nodes.confidence_gate import evaluate_confidence_gate
+from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 
 
 @pytest.mark.unit

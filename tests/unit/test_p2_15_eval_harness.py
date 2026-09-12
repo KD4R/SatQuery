@@ -4,7 +4,7 @@ Unit tests for P2-15: Prompt/evaluation harness and agent regression.
 """
 
 import pytest
-from evals.agent.harness import AgentEvaluationHarness, EvalCase
+from services.agent.evals.agent.harness import AgentEvaluationHarness, EvalCase
 
 
 @pytest.mark.unit

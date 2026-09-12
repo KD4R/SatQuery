@@ -4,7 +4,7 @@ security/sanitizer.py — Prompt injection detection and input sanitization.
 
 import re
 from typing import Tuple
-from security.exceptions import PromptInjectionError
+from services.agent.security.exceptions import PromptInjectionError
 
 # Known prompt injection signatures
 _INJECTION_PATTERNS = [

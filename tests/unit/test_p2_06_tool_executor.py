@@ -8,11 +8,11 @@ import pytest
 from pydantic import BaseModel
 
 from packages.auth.models import AuthContext, Role
-from security.exceptions import BudgetExceededError, ToolPermissionDeniedError
-from security.tool_budget import ToolBudget
-from tools.base import BaseTool, ToolPermissionTier, ToolResult
-from tools.executor import ToolExecutor
-from tools.registry import ToolRegistry
+from services.agent.security.exceptions import BudgetExceededError, ToolPermissionDeniedError
+from services.agent.security.tool_budget import ToolBudget
+from services.agent.tools.base import BaseTool, ToolPermissionTier, ToolResult
+from services.agent.tools.executor import ToolExecutor
+from services.agent.tools.registry import ToolRegistry
 
 
 class _TestArgs(BaseModel):

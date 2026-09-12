@@ -4,7 +4,7 @@ Contract compatibility tests for P2-14: SynthesizedOutput.
 """
 
 import pytest
-from nodes.synthesizer import SynthesizedOutput
+from services.agent.nodes.synthesizer import SynthesizedOutput
 
 
 @pytest.mark.contract

@@ -4,7 +4,7 @@ Contract compatibility tests for P2-08: TemporalPlan and TemporalWindow.
 """
 
 import pytest
-from nodes.temporal_planner import TemporalPlan, TemporalWindow
+from services.agent.nodes.temporal_planner import TemporalPlan, TemporalWindow
 
 
 @pytest.mark.contract

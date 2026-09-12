@@ -5,7 +5,7 @@ Unit tests for P2-16: Agent observability and tool-call audit.
 
 import pytest
 from packages.observability.agent_metrics import AgentMetrics
-from security.audit import AuditLogger
+from services.agent.security.audit import AuditLogger
 
 
 @pytest.mark.unit

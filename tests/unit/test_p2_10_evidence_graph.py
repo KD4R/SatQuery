@@ -4,8 +4,8 @@ Unit tests for P2-10: Evidence object / graph builder.
 """
 
 import pytest
-from evidence.graph_builder import EvidenceGraphBuilder
-from evidence.models import EvidenceNodeType
+from services.agent.evidence.graph_builder import EvidenceGraphBuilder
+from services.agent.evidence.models import EvidenceNodeType
 
 
 @pytest.mark.unit

@@ -4,7 +4,7 @@ Unit tests for P2-12: Sensor disagreement analysis.
 """
 
 import pytest
-from evidence.disagreement import analyze_sensor_disagreement
+from services.agent.evidence.disagreement import analyze_sensor_disagreement
 
 
 @pytest.mark.unit

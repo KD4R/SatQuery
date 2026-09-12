@@ -4,7 +4,7 @@ Contract compatibility tests for P2-06: ToolBudget schema.
 """
 
 import pytest
-from security.tool_budget import ToolBudget
+from services.agent.security.tool_budget import ToolBudget
 
 
 @pytest.mark.contract

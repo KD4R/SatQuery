@@ -4,7 +4,7 @@ services/agent/app/api/routers/sensor_decision.py — Adaptive sensor decision r
 
 from typing import Optional
 from fastapi import APIRouter, Depends, Request
-from nodes.sensor_arbitrator import arbitrate_sensors
+from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from packages.contracts.agent import SensorDecisionRequest, SensorDecisionResponse

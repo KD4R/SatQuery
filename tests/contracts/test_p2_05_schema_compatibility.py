@@ -4,7 +4,7 @@ Contract compatibility tests for P2-05: ToolResult and schema contracts.
 """
 
 import pytest
-from tools.base import ToolResult
+from services.agent.tools.base import ToolResult
 
 
 @pytest.mark.contract

@@ -4,7 +4,7 @@ Unit tests for P2-08: Temporal planning and previous/current selection.
 """
 
 import pytest
-from nodes.temporal_planner import compute_temporal_plan
+from services.agent.nodes.temporal_planner import compute_temporal_plan
 
 
 @pytest.mark.unit

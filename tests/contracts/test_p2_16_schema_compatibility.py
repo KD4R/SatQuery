@@ -4,7 +4,7 @@ Contract compatibility tests for P2-16: ToolAuditEntry schema.
 """
 
 import pytest
-from security.audit import ToolAuditEntry
+from services.agent.security.audit import ToolAuditEntry
 
 
 @pytest.mark.contract

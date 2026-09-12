@@ -4,8 +4,8 @@ Unit tests for P2-03: Intent extraction and mission planning.
 """
 
 import pytest
-from nodes.intent_extractor import extract_intent_and_plan
-from security.exceptions import PromptInjectionError
+from services.agent.nodes.intent_extractor import extract_intent_and_plan
+from services.agent.security.exceptions import PromptInjectionError
 
 
 @pytest.mark.unit

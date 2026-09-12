@@ -4,7 +4,7 @@ Contract compatibility tests for P2-12: DisagreementReport schema.
 """
 
 import pytest
-from evidence.disagreement import DisagreementReport
+from services.agent.evidence.disagreement import DisagreementReport
 
 
 @pytest.mark.contract

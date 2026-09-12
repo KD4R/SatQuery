@@ -4,8 +4,8 @@ nodes/intent_extractor.py — NLP/heuristic intent extraction and mission planni
 
 from typing import Any, Dict, List, Optional, Tuple
 from packages.contracts.agent import PlanStep
-from security.sanitizer import sanitize_prompt
-from security.validator import validate_aoi_geometry, validate_intent
+from services.agent.security.sanitizer import sanitize_prompt
+from services.agent.security.validator import validate_aoi_geometry, validate_intent
 
 _HAZARD_KEYWORDS = {
     "flood": ["flood", "inundation", "waterlogging", "submerged", "overflow", "river"],

@@ -4,7 +4,7 @@ evidence/graph_builder.py — Deterministic builder for the Evidence Graph DAG.
 
 from typing import Any, Dict, List, Optional
 import uuid
-from evidence.models import (
+from services.agent.evidence.models import (
     EvidenceEdge,
     EvidenceGraph,
     EvidenceNode,

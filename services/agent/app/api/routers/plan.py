@@ -4,7 +4,7 @@ services/agent/app/api/routers/plan.py — Mission planning router (P2-03).
 
 from typing import Optional
 from fastapi import APIRouter, Depends, Request
-from nodes.intent_extractor import extract_intent_and_plan
+from services.agent.nodes.intent_extractor import extract_intent_and_plan
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from packages.contracts.agent import PlanRequest, PlanResponse

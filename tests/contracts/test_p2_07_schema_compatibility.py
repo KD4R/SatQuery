@@ -4,8 +4,8 @@ Contract compatibility tests for P2-07: STACSearchArgs and AssetSelectorArgs.
 """
 
 import pytest
-from tools.asset_selector import AssetSelectorArgs
-from tools.stac_search import STACSearchArgs
+from services.agent.tools.asset_selector import AssetSelectorArgs
+from services.agent.tools.stac_search import STACSearchArgs
 
 
 @pytest.mark.contract

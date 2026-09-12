@@ -43,6 +43,6 @@ except ImportError:
     pass  # packages/auth not yet on path — safe to ignore at collection time
 
 
-from packages.auth.testing import make_test_token  # noqa: E402
+from services.agent.tests.helpers.test_tokens import make_test_token  # noqa: E402
 
 __all__ = ["make_test_token"]

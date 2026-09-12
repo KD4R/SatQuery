@@ -5,10 +5,10 @@ tools/executor.py — Permission-aware tool execution with RBAC and budget contr
 import time
 from typing import Any, Dict, Optional
 from packages.auth.models import AuthContext, Role
-from security.exceptions import ToolPermissionDeniedError
-from security.tool_budget import ToolBudget
-from tools.base import ToolPermissionTier, ToolResult
-from tools.registry import ToolRegistry, get_tool_registry
+from services.agent.security.exceptions import ToolPermissionDeniedError
+from services.agent.security.tool_budget import ToolBudget
+from services.agent.tools.base import ToolPermissionTier, ToolResult
+from services.agent.tools.registry import ToolRegistry, get_tool_registry
 
 _ROLE_PERMITTED_TIERS = {
     Role.ADMIN: {ToolPermissionTier.READ, ToolPermissionTier.EXECUTE, ToolPermissionTier.ADMIN},
@@ -66,7 +66,7 @@ class ToolExecutor:
 
         # Record audit log and observability metrics
         from packages.observability import get_agent_metrics
-        from security.audit import get_audit_logger
+        from services.agent.security.audit import get_audit_logger
 
         get_audit_logger().log_tool_call(
             tool_name=tool_name,

@@ -5,7 +5,7 @@ Contract compatibility tests for P2-02 security & error schema responses.
 
 import pytest
 from packages.contracts.errors import ErrorDetail, ErrorResponse
-from security.exceptions import GeometryValidationError, PromptInjectionError
+from services.agent.security.exceptions import GeometryValidationError, PromptInjectionError
 
 
 @pytest.mark.contract

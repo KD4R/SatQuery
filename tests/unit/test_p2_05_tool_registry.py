@@ -7,8 +7,8 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, Field
 
-from tools.base import BaseTool, ToolPermissionTier, ToolResult
-from tools.registry import ToolRegistry
+from services.agent.tools.base import BaseTool, ToolPermissionTier, ToolResult
+from services.agent.tools.registry import ToolRegistry
 
 
 class DummySearchArgs(BaseModel):

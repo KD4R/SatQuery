@@ -4,8 +4,8 @@ tools/stac_search.py — Bhoonidhi / STAC catalogue observation search tool.
 
 from typing import Any, Dict, List
 from pydantic import BaseModel, Field
-from tools.base import BaseTool, ToolPermissionTier, ToolResult
-from tools.registry import get_tool_registry
+from services.agent.tools.base import BaseTool, ToolPermissionTier, ToolResult
+from services.agent.tools.registry import get_tool_registry
 
 
 class STACSearchArgs(BaseModel):

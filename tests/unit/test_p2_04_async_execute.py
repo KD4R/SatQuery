@@ -4,8 +4,8 @@ Unit tests for P2-04: Async agent execute endpoint and run orchestration.
 """
 
 import pytest
-from graph.orchestrator import AgentOrchestrator
-from security.exceptions import PromptInjectionError
+from services.agent.graph.orchestrator import AgentOrchestrator
+from services.agent.security.exceptions import PromptInjectionError
 
 
 @pytest.mark.unit

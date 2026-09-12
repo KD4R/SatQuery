@@ -1,6 +1,6 @@
 """Contract tests for P2-18 schema compatibility."""
 
-from graph.state import MissionState
+from services.agent.graph.state import MissionState
 from packages.contracts.agent import ConfidenceResponse
 from services.agent.demo_profile import run_pinned_demo_profile
 

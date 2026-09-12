@@ -6,9 +6,9 @@ Integration tests for P2-16 service boundary: metrics & audit tracking.
 import pytest
 from fastapi.testclient import TestClient
 
-from packages.auth.testing import make_test_token
+from services.agent.tests.helpers.test_tokens import make_test_token
 from packages.observability.agent_metrics import get_agent_metrics
-from security.audit import get_audit_logger
+from services.agent.security.audit import get_audit_logger
 from services.agent.app.api.implementation import app as agent_app
 
 

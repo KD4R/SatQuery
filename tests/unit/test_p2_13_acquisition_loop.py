@@ -4,7 +4,7 @@ Unit tests for P2-13: Autonomous evidence acquisition loop.
 """
 
 import pytest
-from graph.acquisition_loop import AutonomousAcquisitionLoop
+from services.agent.graph.acquisition_loop import AutonomousAcquisitionLoop
 from packages.contracts.agent import MissionState
 
 

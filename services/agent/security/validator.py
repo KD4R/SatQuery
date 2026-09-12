@@ -3,7 +3,7 @@ security/validator.py — GeoJSON and Intent validation for agent inputs.
 """
 
 from typing import Any, Dict, List
-from security.exceptions import GeometryValidationError
+from services.agent.security.exceptions import GeometryValidationError
 
 _SUPPORTED_DISASTERS = {
     "flood",

@@ -4,7 +4,7 @@ Unit tests for P2-17: Agent failure/recovery policies.
 """
 
 import pytest
-from nodes.resilience import execute_with_recovery
+from services.agent.nodes.resilience import execute_with_recovery
 
 
 @pytest.mark.unit

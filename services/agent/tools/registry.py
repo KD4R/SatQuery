@@ -4,7 +4,7 @@ tools/registry.py — Semantic versioned tool registry for SatQuery AI.
 
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, ValidationError
-from tools.base import BaseTool
+from services.agent.tools.base import BaseTool
 
 
 class ToolRegistry:

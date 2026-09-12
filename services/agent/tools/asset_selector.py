@@ -4,8 +4,8 @@ tools/asset_selector.py — Filtering and ranking of satellite observation asset
 
 from typing import Any, Dict, List
 from pydantic import BaseModel, Field
-from tools.base import BaseTool, ToolPermissionTier, ToolResult
-from tools.registry import get_tool_registry
+from services.agent.tools.base import BaseTool, ToolPermissionTier, ToolResult
+from services.agent.tools.registry import get_tool_registry
 
 
 class AssetSelectorArgs(BaseModel):

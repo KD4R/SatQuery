@@ -4,7 +4,7 @@ services/agent/app/api/routers/confidence.py — Confidence & uncertainty gate r
 
 from typing import Optional
 from fastapi import APIRouter, Depends, Request
-from nodes.confidence_gate import evaluate_confidence_gate
+from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from packages.contracts.agent import ConfidenceRequest, ConfidenceResponse

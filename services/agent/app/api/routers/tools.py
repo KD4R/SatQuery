@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends
 from packages.auth.dependencies import get_current_user
 from packages.auth.models import AuthContext
-from tools.registry import get_tool_registry
+from services.agent.tools.registry import get_tool_registry
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-tools"])
 

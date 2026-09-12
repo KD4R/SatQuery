@@ -4,7 +4,7 @@ graph/acquisition_loop.py — Autonomous closed-loop evidence acquisition for un
 
 from typing import Any, Dict, List, Tuple
 from pydantic import BaseModel, Field
-from nodes.confidence_gate import evaluate_confidence_gate
+from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from packages.contracts.agent import MissionState
 
 

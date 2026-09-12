@@ -4,10 +4,10 @@ evals/agent/harness.py — Prompt evaluation harness and agent regression suite.
 
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
-from nodes.intent_extractor import extract_intent_and_plan
-from nodes.sensor_arbitrator import arbitrate_sensors
-from security.exceptions import PromptInjectionError
-from security.sanitizer import check_prompt_injection, sanitize_prompt
+from services.agent.nodes.intent_extractor import extract_intent_and_plan
+from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
+from services.agent.security.exceptions import PromptInjectionError
+from services.agent.security.sanitizer import check_prompt_injection, sanitize_prompt
 
 
 class EvalCase(BaseModel):

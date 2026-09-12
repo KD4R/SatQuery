@@ -5,12 +5,12 @@ services/agent/app/api/routers/execute.py — Async agent execute router (P2-04)
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from graph.orchestrator import get_orchestrator
+from services.agent.graph.orchestrator import get_orchestrator
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from packages.contracts.agent import ExecuteRequest, ExecuteResponse, MissionState
-from security.sanitizer import sanitize_prompt
-from security.validator import validate_aoi_geometry
+from services.agent.security.sanitizer import sanitize_prompt
+from services.agent.security.validator import validate_aoi_geometry
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-execute"])
 

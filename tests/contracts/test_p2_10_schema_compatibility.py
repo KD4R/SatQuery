@@ -4,7 +4,7 @@ Contract compatibility tests for P2-10: Evidence Graph schemas.
 """
 
 import pytest
-from evidence.models import EvidenceEdge, EvidenceGraph, EvidenceNode
+from services.agent.evidence.models import EvidenceEdge, EvidenceGraph, EvidenceNode
 
 
 @pytest.mark.contract

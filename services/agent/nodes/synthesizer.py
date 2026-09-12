@@ -4,7 +4,7 @@ nodes/synthesizer.py — Grounded evidence output synthesizer and WHY explanatio
 
 from typing import Any, Dict, List
 from pydantic import BaseModel, Field
-from evidence.models import EvidenceGraph, EvidenceNodeType
+from services.agent.evidence.models import EvidenceGraph, EvidenceNodeType
 
 
 class SynthesizedOutput(BaseModel):

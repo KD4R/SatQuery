@@ -2,9 +2,9 @@
 evidence package — Evidence Graph, uncertainty gates, and disagreement analysis for SatQuery AI.
 """
 
-from evidence.disagreement import DisagreementReport, analyze_sensor_disagreement
-from evidence.graph_builder import EvidenceGraphBuilder
-from evidence.models import (
+from services.agent.evidence.disagreement import DisagreementReport, analyze_sensor_disagreement
+from services.agent.evidence.graph_builder import EvidenceGraphBuilder
+from services.agent.evidence.models import (
     EvidenceEdge,
     EvidenceGraph,
     EvidenceNode,

@@ -4,7 +4,7 @@ Unit tests for P2-09: Adaptive sensor arbitration.
 """
 
 import pytest
-from nodes.sensor_arbitrator import arbitrate_sensors
+from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 
 
 @pytest.mark.unit

@@ -4,11 +4,11 @@ graph/orchestrator.py — LangGraph state machine & run orchestrator for SatQuer
 
 from typing import Dict, List, Optional
 import uuid
-from evidence.graph_builder import EvidenceGraphBuilder
-from nodes.intent_extractor import extract_intent_and_plan
+from services.agent.evidence.graph_builder import EvidenceGraphBuilder
+from services.agent.nodes.intent_extractor import extract_intent_and_plan
 from packages.contracts.agent import MissionState
-from security.sanitizer import sanitize_prompt
-from security.validator import validate_aoi_geometry
+from services.agent.security.sanitizer import sanitize_prompt
+from services.agent.security.validator import validate_aoi_geometry
 
 
 class AgentOrchestrator:

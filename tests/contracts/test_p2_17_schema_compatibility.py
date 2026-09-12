@@ -4,7 +4,7 @@ Contract compatibility tests for P2-17: RecoveryResult schema.
 """
 
 import pytest
-from nodes.resilience import RecoveryResult
+from services.agent.nodes.resilience import RecoveryResult
 
 
 @pytest.mark.contract
