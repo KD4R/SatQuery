@@ -1,11 +1,16 @@
 [importlinter]
-root_package = satquery
+root_packages =
+    apps
+    services
+    packages
+    ml
 
 [importlinter:contract:layers]
 name = Layered architecture
 type = layers
 layers = apps
          services
+         ml
          packages
 
 [importlinter:contract:module-independence]

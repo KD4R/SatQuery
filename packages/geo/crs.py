@@ -1,23 +1,43 @@
 import logging
+import math
 import rasterio
-from rasterio.warp import calculate_default_transform, reproject, Resampling
+from rasterio.warp import calculate_default_transform, reproject, Resampling, transform_bounds
 
 logger = logging.getLogger(__name__)
 
-# Standardize on EPSG:32643 (UTM Zone 43N) for precise physical measurements in India.
-# Using EPSG:4326 for area computation is explicitly banned by the PRD.
-DEFAULT_PROJECTED_CRS = "EPSG:32643"
+def utm_epsg_for(lon: float, lat: float) -> str:
+    """Calculate the correct UTM EPSG code for a given longitude and latitude."""
+    if lat > 84 or lat < -80:
+        raise ValueError("UTM is undefined beyond polar bounds (+84/-80).")
+    zone = math.floor((lon + 180) / 6) + 1
+    if lat >= 0:
+        return f"EPSG:{32600 + zone}"
+    else:
+        return f"EPSG:{32700 + zone}"
 
-def normalize_crs(source_path: str, target_path: str, target_crs: str = DEFAULT_PROJECTED_CRS) -> str:
+def is_projected(crs: rasterio.crs.CRS) -> bool:
+    return crs.is_projected
+
+def assert_projected(crs: rasterio.crs.CRS) -> None:
+    if not is_projected(crs):
+        raise ValueError("CRS must be projected, not geographic.")
+
+def normalize_crs(source_path: str, target_path: str, target_crs: str = None) -> str:
     """
     Implements P4-11: CRS normalization and reprojection.
-    Ensures that the raster is in a projected coordinate system to allow accurate area measurement.
+    Dynamically computes the correct UTM zone if `target_crs` is not provided.
     """
     with rasterio.open(source_path) as src:
+        if target_crs is None:
+            left, bottom, right, top = src.bounds
+            bounds_4326 = transform_bounds(src.crs, "EPSG:4326", left, bottom, right, top)
+            lon = (bounds_4326[0] + bounds_4326[2]) / 2
+            lat = (bounds_4326[1] + bounds_4326[3]) / 2
+            target_crs = utm_epsg_for(lon, lat)
+
         src_crs = src.crs.to_string()
         if src_crs == target_crs:
             logger.info(f"Raster already in target CRS {target_crs}. Skipping reprojection.")
-            # In production, we might symlink or copy here depending on the pipeline
             return source_path
             
         logger.info(f"Reprojecting from {src_crs} to {target_crs}")

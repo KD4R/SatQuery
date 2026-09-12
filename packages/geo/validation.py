@@ -6,25 +6,35 @@ from shapely.geometry import shape
 
 logger = logging.getLogger(__name__)
 
-# Strict security boundaries against SSRF
-ALLOWED_PROTOCOLS = {"http", "https", "s3"}
+# Strict security boundaries against SSRF (Issue P4-19)
+ALLOWED_PROTOCOLS = {"https", "s3"}
+
 ALLOWED_DOMAINS = {
+    # ISRO / Bhoonidhi -- exact host, not a suffix rule
+    "bhoonidhi-api.nrsc.gov.in",
+    # Microsoft Planetary Computer
     "planetarycomputer.microsoft.com",
-    "sentinel-cogs.s3.us-west-2.amazonaws.com"
+    "sentinel-cogs.s3.us-west-2.amazonaws.com",
+    # ASF / NASA
+    "datapool.asf.alaska.edu",
+    "hyp3-api.asf.alaska.edu",
+    # Copernicus Data Space Ecosystem
+    "zipper.dataspace.copernicus.eu",
+    "stac.dataspace.copernicus.eu",
 }
 
 def validate_asset_href(href: str) -> str:
     """
     Implements P4-09: Secure asset retrieval.
     Validates asset href to prevent SSRF and restrict to trusted sources.
+    Matches parsed.hostname strictly.
     """
     parsed = urlparse(href)
     if parsed.scheme not in ALLOWED_PROTOCOLS:
         raise ValueError(f"Security error: protocol {parsed.scheme} is not allowed.")
     
-    if parsed.scheme in ["http", "https"]:
-        # Allowlist check, permitting NRSC domains by pattern
-        if parsed.hostname not in ALLOWED_DOMAINS and not (parsed.hostname and parsed.hostname.endswith(".nrsc.gov.in")):
+    if parsed.scheme == "https":
+        if parsed.hostname not in ALLOWED_DOMAINS:
             logger.warning(f"SSRF blocked: Attempt to access unauthorized domain {parsed.hostname}")
             raise ValueError(f"Security error: Domain {parsed.hostname} is not allowlisted.")
             
