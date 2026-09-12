@@ -4,6 +4,7 @@ graph/orchestrator.py — LangGraph state machine & run orchestrator for SatQuer
 
 from typing import Dict, List, Optional
 import uuid
+from evidence.graph_builder import EvidenceGraphBuilder
 from nodes.intent_extractor import extract_intent_and_plan
 from packages.contracts.agent import MissionState
 from security.sanitizer import sanitize_prompt
@@ -88,6 +89,30 @@ class AgentOrchestrator:
         # 4. GATE_CHECK
         state.status = "GATE_CHECK"
         state.confidence_score = 0.88
+
+        # Build Evidence Graph
+        ev_builder = EvidenceGraphBuilder(mission_id=state.mission_id)
+        obs_node = ev_builder.add_observation(
+            {
+                "asset_id": state.observation_ids[0],
+                "sensor": "S1_SAR",
+                "datetime": "2026-09-02T00:35:12Z",
+            }
+        )
+        inf_node = ev_builder.add_inference(
+            input_node_ids=[obs_node.node_id],
+            model_name="water_segmentation",
+            model_version="v2.1",
+            results={"inundated_sqkm": 142.5},
+            confidence=0.88,
+        )
+        ev_builder.add_metric(
+            inference_node_id=inf_node.node_id,
+            metric_name="inundation_area_sqkm",
+            value=142.5,
+            unit="km2",
+        )
+        state.evidence_graph = ev_builder.build().model_dump()
 
         # 5. COMPLETED
         state.status = "COMPLETED"
