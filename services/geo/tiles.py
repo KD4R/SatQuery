@@ -1,5 +1,6 @@
 import logging
 from fastapi import APIRouter
+
 try:
     from titiler.core.factory import TilerFactory
     from titiler.core.errors import TilerError
@@ -16,12 +17,12 @@ if TilerFactory:
     # Implements P4-15: TiTiler integration
     # Embedding titiler within the analysis service boundary for dynamic COG delivery
     cog_tiler = TilerFactory()
-    
+
     # Mount titiler routes
     router.include_router(cog_tiler.router)
 else:
     logger.warning("TiTiler not installed. Tile endpoints will be unavailable.")
-    
+
     @router.get("/{z}/{x}/{y}")
     def tile_stub(z: int, x: int, y: int):
         return {"error": "TiTiler integration active but package missing"}

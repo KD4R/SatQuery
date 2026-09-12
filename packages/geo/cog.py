@@ -4,13 +4,14 @@ import os
 
 logger = logging.getLogger(__name__)
 
+
 def generate_cog(source_path: str, target_path: str, context: dict = None) -> str:
     """
     Implements P4-13: COG generation and overviews.
     Generates a Cloud Optimized GeoTIFF (COG) WITH overviews (pyramids) for fast zoom rendering.
     """
     logger.info(f"Generating COG with overviews for {source_path}")
-    
+
     if not os.path.exists(source_path):
         raise FileNotFoundError(f"Source raster not found: {source_path}")
 
@@ -25,12 +26,15 @@ def generate_cog(source_path: str, target_path: str, context: dict = None) -> st
 
     # 2. Translate to COG format, preserving overviews (COPY_SRC_OVERVIEWS=YES)
     cog_cmd = [
-        "gdal_translate", 
-        source_path, 
-        target_path, 
-        "-of", "COG", 
-        "-co", "COMPRESS=DEFLATE",
-        "-co", "COPY_SRC_OVERVIEWS=YES"
+        "gdal_translate",
+        source_path,
+        target_path,
+        "-of",
+        "COG",
+        "-co",
+        "COMPRESS=DEFLATE",
+        "-co",
+        "COPY_SRC_OVERVIEWS=YES",
     ]
     try:
         subprocess.run(cog_cmd, check=True, capture_output=True, text=True)

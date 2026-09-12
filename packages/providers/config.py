@@ -4,21 +4,27 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
+
 class ProviderConfig(BaseSettings):
     """
     Configuration and secure secret boundary for EO Data Providers.
     Uses SecretStr to ensure credentials are masked in logs and stack traces.
     """
+
     bhoonidhi_username: SecretStr = Field(default=SecretStr(""), alias="BHOONIDHI_USERNAME")
     bhoonidhi_password: SecretStr = Field(default=SecretStr(""), alias="BHOONIDHI_PASSWORD")
-    bhoonidhi_api_url: str = Field(default="https://bhoonidhi-api.nrsc.gov.in", alias="BHOONIDHI_API_URL")
-    
+    bhoonidhi_api_url: str = Field(
+        default="https://bhoonidhi-api.nrsc.gov.in", alias="BHOONIDHI_API_URL"
+    )
+
     # Redis configuration for token store and distributed locking
     redis_url: SecretStr = Field(default=SecretStr("redis://localhost:6379/0"), alias="REDIS_URL")
-    
+
     # PostGIS connection string
-    db_connection_string: SecretStr = Field(default=SecretStr("postgresql://user:pass@localhost:5432/satquery"), alias="DATABASE_URL")
-    
+    db_connection_string: SecretStr = Field(
+        default=SecretStr("postgresql://user:pass@localhost:5432/satquery"), alias="DATABASE_URL"
+    )
+
     # S3 / MinIO Configuration for Asset Staging
     s3_endpoint: str = Field(default="s3.amazonaws.com", alias="S3_ENDPOINT")
     s3_access_key: SecretStr = Field(default=SecretStr(""), alias="S3_ACCESS_KEY")
@@ -30,8 +36,10 @@ class ProviderConfig(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+
 # Global provider configuration singleton
 config = ProviderConfig()
+
 
 def mask_sensitive_url(url: str) -> str:
     """Utility to mask credentials in URLs before logging."""

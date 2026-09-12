@@ -23,6 +23,7 @@ ALLOWED_DOMAINS = {
     "stac.dataspace.copernicus.eu",
 }
 
+
 def validate_asset_href(href: str) -> str:
     """
     Implements P4-09: Secure asset retrieval.
@@ -32,13 +33,14 @@ def validate_asset_href(href: str) -> str:
     parsed = urlparse(href)
     if parsed.scheme not in ALLOWED_PROTOCOLS:
         raise ValueError(f"Security error: protocol {parsed.scheme} is not allowed.")
-    
+
     if parsed.scheme == "https":
         if parsed.hostname not in ALLOWED_DOMAINS:
             logger.warning(f"SSRF blocked: Attempt to access unauthorized domain {parsed.hostname}")
             raise ValueError(f"Security error: Domain {parsed.hostname} is not allowlisted.")
-            
+
     return href
+
 
 def validate_geojson_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -49,14 +51,14 @@ def validate_geojson_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("Geometry must be a dictionary")
     if "type" not in geometry or "coordinates" not in geometry:
         raise ValueError("Invalid GeoJSON geometry structure")
-        
+
     # 1. Complexity limits (DoS protection)
     # Check string representation as a fast proxy for deep nesting / huge vertex counts
     geom_str = json.dumps(geometry)
     if geom_str.count("[") > 10000:
         logger.warning("GeoJSON validation failed: Vertex count exceeds complexity limits.")
         raise ValueError("Geometry exceeds maximum vertex complexity limits.")
-        
+
     # 2. Topological validation using Shapely
     try:
         s = shape(geometry)
@@ -64,5 +66,5 @@ def validate_geojson_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError("Invalid geometry topology (e.g., self-intersecting polygons).")
     except Exception as e:
         raise ValueError(f"Malformed geometry: {str(e)}")
-        
+
     return geometry

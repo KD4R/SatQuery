@@ -1,17 +1,18 @@
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import logging
-import urllib3
 
 import pystac_client
 from packages.providers.base import AbstractProvider
 
 logger = logging.getLogger(__name__)
 
+
 class STACProvider(AbstractProvider):
     """
     Generic STAC API provider for standard STAC catalogs (e.g., Planetary Computer).
     """
+
     def __init__(self, name: str, url: str):
         self.name = name
         self.url = url
@@ -22,7 +23,7 @@ class STACProvider(AbstractProvider):
         if self._client is None:
             # We open the client with ignore_conformance for maximum compatibility
             # In a strict production system, we rely on the requests underlying retries.
-            # pystac_client does not natively expose timeout in open(), so we handle timeouts on actual search.
+            # pystac_client does not natively expose timeout in open(), so we handle timeouts on actual search.  # noqa: E501
             self._client = pystac_client.Client.open(self.url, ignore_conformance=True)
         return self._client
 
@@ -33,32 +34,29 @@ class STACProvider(AbstractProvider):
         end_date: datetime,
         cloud_cover: float = 100.0,
         context: dict = None,
-        **kwargs
+        **kwargs,
     ) -> List[Dict[str, Any]]:
         """
         Standard STAC ItemSearch using GeoJSON polygon intersects and datetime range.
         """
         from services.eo_data.telemetry import tracer, inject_context_to_span
+
         context = context or {}
         with tracer.start_as_current_span(f"stac_search_{self.name}") as span:
             inject_context_to_span(span, context)
             try:
                 datetime_str = f"{start_date.isoformat()}Z/{end_date.isoformat()}Z"
-                
-                search_args = {
-                    "intersects": polygon,
-                    "datetime": datetime_str,
-                    "query": {}
-                }
+
+                search_args = {"intersects": polygon, "datetime": datetime_str, "query": {}}
 
                 if cloud_cover < 100.0:
                     search_args["query"]["eo:cloud_cover"] = {"lt": cloud_cover}
-                    
+
                 if "collections" in kwargs:
                     search_args["collections"] = kwargs["collections"]
 
                 search = self.client.search(**search_args)
-                
+
                 items = list(search.items())
                 logger.info(f"STACProvider '{self.name}' found {len(items)} items.")
                 return [item.to_dict() for item in items]
@@ -69,6 +67,7 @@ class STACProvider(AbstractProvider):
 
     def get_asset(self, item_id: str, asset_key: str, context: dict = None) -> Optional[str]:
         from services.eo_data.telemetry import tracer, inject_context_to_span
+
         context = context or {}
         with tracer.start_as_current_span(f"stac_get_asset_{self.name}") as span:
             inject_context_to_span(span, context)

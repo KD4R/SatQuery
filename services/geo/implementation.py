@@ -1,12 +1,9 @@
+import json
 import logging
 import os
-import json
-import subprocess
-from contextlib import contextmanager
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, Optional
 
-import rasterio
-from rasterio.env import Env
+import redis as _redis
 from celery import Celery
 
 from packages.geo.raster import validate_raster
@@ -14,9 +11,7 @@ from packages.geo.crs import normalize_crs
 from packages.geo.clipping import clip_raster_to_aoi
 from packages.geo.cog import generate_cog
 from packages.providers.config import config as provider_config
-from services.eo_data.telemetry import (
-    tracer, geo_job_duration_ms, inject_context_to_span
-)
+from services.eo_data.telemetry import tracer, geo_job_duration_ms, inject_context_to_span
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +22,13 @@ celery_app = Celery(
     backend=provider_config.redis_url.get_secret_value(),
 )
 # In test environments (CELERY_TASK_ALWAYS_EAGER=true), run tasks synchronously.
-import os as _celery_os
-if _celery_os.environ.get("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
+if os.environ.get("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
     celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
 
 try:
-    import redis as _redis
-    redis_client = _redis.from_url(provider_config.redis_url.get_secret_value(), decode_responses=True)
+    redis_client = _redis.from_url(
+        provider_config.redis_url.get_secret_value(), decode_responses=True
+    )
 except Exception as _e:
     logger.error(f"Redis initialization failed: {_e}")
     redis_client = None
@@ -77,9 +72,10 @@ def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, cont
                         clipped_path = reprojected_path.replace("_utm.tif", "_clipped.tif")
                         clip_raster_to_aoi(reprojected_path, clipped_path, aoi_geojson)
                         pre_cog_path = clipped_path
-                        
+
                         # Persist AOI
                         from packages.geo.postgis import postgis_ops
+
                         if postgis_ops:
                             org_id = context.get("organization_id", "default_org")
                             postgis_ops.insert_aoi(org_id, job_id, f"Job {job_id} AOI", aoi_geojson)
@@ -106,6 +102,7 @@ class FixtureFallbackManager:
     P4-17: Returns pinned deterministic fixtures when live provider calls fail.
     Fixture files live in data/fixtures/ and are loaded by logical name.
     """
+
     def __init__(self, fixture_dir: str = "data/fixtures"):
         self.fixture_dir = fixture_dir
 

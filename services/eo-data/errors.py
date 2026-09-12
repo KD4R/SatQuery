@@ -1,8 +1,10 @@
 from pydantic import BaseModel
 from typing import List, Optional
 
+
 class ErrorResponse(BaseModel):
     """Canonical ErrorResponse as defined in Engineering Rules."""
+
     code: str
     message: str
     details: List[str]

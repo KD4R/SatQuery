@@ -1,13 +1,16 @@
+import json
 import logging
-from typing import List, Dict, Any
+import os as _os
 from contextlib import contextmanager
+from typing import Any, Dict, List
+
 import psycopg2
 from psycopg2 import pool
-import json
 
 from packages.providers.config import config
 
 logger = logging.getLogger(__name__)
+
 
 class PostGISOperations:
     """
@@ -15,12 +18,11 @@ class PostGISOperations:
     Executes all DB spatial operations utilizing a robust Connection Pool.
     Strictly enforces the Row-Level Security (RLS) context by setting 'satquery.org_id'.
     """
+
     def __init__(self):
         try:
             self.pool = pool.ThreadedConnectionPool(
-                minconn=1,
-                maxconn=20,
-                dsn=config.db_connection_string.get_secret_value()
+                minconn=1, maxconn=20, dsn=config.db_connection_string.get_secret_value()
             )
         except psycopg2.Error as e:
             logger.error(f"Failed to initialize PostGIS connection pool: {e}")
@@ -61,10 +63,11 @@ class PostGISOperations:
         geom_str = json.dumps(geojson)
         with self._get_connection(org_id) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO aois (id, org_id, name, geom) VALUES (%s, %s, %s, ST_GeomFromGeoJSON(%s))",
-                    (aoi_id, org_id, name, geom_str)
+                sql = (
+                    "INSERT INTO aois (id, org_id, name, geom) "
+                    "VALUES (%s, %s, %s, ST_GeomFromGeoJSON(%s))"
                 )
+                cur.execute(sql, (aoi_id, org_id, name, geom_str))
             conn.commit()
 
     def get_intersecting_aois(self, org_id: str, geometry: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -75,23 +78,23 @@ class PostGISOperations:
         geom_str = json.dumps(geometry)
         with self._get_connection(org_id) as conn:
             with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT id, name, ST_AsGeoJSON(geom) FROM aois WHERE ST_Intersects(geom, ST_GeomFromGeoJSON(%s))",
-                    (geom_str,)
+                sql = (
+                    "SELECT id, name, ST_AsGeoJSON(geom) FROM aois "
+                    "WHERE ST_Intersects(geom, ST_GeomFromGeoJSON(%s))"
                 )
+                cur.execute(sql, (geom_str,))
                 results = cur.fetchall()
-                
+
         return [{"id": r[0], "name": r[1], "geometry": json.loads(r[2])} for r in results]
 
+
 # Singleton instance — initialized lazily so imports don't crash in test environments
-# without a running database. Call postgis_ops() to get the connection pool instance.
-import os as _os
+# without a running database.
 if not _os.environ.get("SATQUERY_SKIP_DB_INIT"):
     try:
         postgis_ops = PostGISOperations()
     except Exception as _e:
-        import logging as _logging
-        _logging.getLogger(__name__).warning(f"PostGIS pool not initialized at startup: {_e}")
+        logger.warning(f"PostGIS pool not initialized at startup: {_e}")
         postgis_ops = None
 else:
     postgis_ops = None

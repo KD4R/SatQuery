@@ -42,12 +42,13 @@ class _HyphenServiceFinder(importlib.abc.MetaPathFinder):
                 # Package itself
                 init_path = os.path.join(physical_dir, "__init__.py")
                 spec = importlib.util.spec_from_file_location(
-                    fullname, init_path,
+                    fullname,
+                    init_path,
                     submodule_search_locations=[physical_dir],
                 )
                 return spec
             if fullname.startswith(alias_prefix + "."):
-                subpath = fullname[len(alias_prefix) + 1:].replace(".", os.sep)
+                subpath = fullname[len(alias_prefix) + 1 :].replace(".", os.sep)
                 # Try as a module file first, then as a package directory
                 for candidate in [
                     os.path.join(physical_dir, subpath + ".py"),
@@ -60,7 +61,8 @@ class _HyphenServiceFinder(importlib.abc.MetaPathFinder):
                             else None
                         )
                         spec = importlib.util.spec_from_file_location(
-                            fullname, candidate,
+                            fullname,
+                            candidate,
                             submodule_search_locations=search_locs,
                         )
                         return spec

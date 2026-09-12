@@ -15,9 +15,9 @@ def clip_raster_to_aoi(source_path: str, target_path: str, aoi_geojson: Dict[str
     module can be safely loaded in environments that only have the base deps
     installed (e.g. contract-test runners).
     """
-    import rasterio                         # lazy — only needed at call time
+    import rasterio  # lazy — only needed at call time
     from rasterio.mask import mask as rio_mask
-    from shapely.geometry import shape      # lazy — only needed at call time
+    from shapely.geometry import shape  # lazy — only needed at call time
     from pyproj import CRS as ProjCRS, Transformer
 
     with rasterio.open(source_path) as src:
@@ -40,12 +40,14 @@ def clip_raster_to_aoi(source_path: str, target_path: str, aoi_geojson: Dict[str
         out_image, out_transform = rio_mask(src, [aoi_shape], crop=True)
         out_meta = src.meta.copy()
 
-        out_meta.update({
-            "driver": "GTiff",
-            "height": out_image.shape[1],
-            "width": out_image.shape[2],
-            "transform": out_transform,
-        })
+        out_meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": out_transform,
+            }
+        )
 
         with rasterio.open(target_path, "w", **out_meta) as dst:
             dst.write(out_image)
@@ -56,4 +58,5 @@ def clip_raster_to_aoi(source_path: str, target_path: str, aoi_geojson: Dict[str
 def _transform_geometry(geom, transformer):
     """Apply a pyproj Transformer to a Shapely geometry."""
     from shapely.ops import transform
+
     return transform(transformer.transform, geom)

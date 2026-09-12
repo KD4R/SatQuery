@@ -5,6 +5,7 @@ from rasterio.warp import calculate_default_transform, reproject, Resampling, tr
 
 logger = logging.getLogger(__name__)
 
+
 def utm_epsg_for(lon: float, lat: float) -> str:
     """Calculate the correct UTM EPSG code for a given longitude and latitude."""
     if lat > 84 or lat < -80:
@@ -15,12 +16,15 @@ def utm_epsg_for(lon: float, lat: float) -> str:
     else:
         return f"EPSG:{32700 + zone}"
 
+
 def is_projected(crs: rasterio.crs.CRS) -> bool:
     return crs.is_projected
+
 
 def assert_projected(crs: rasterio.crs.CRS) -> None:
     if not is_projected(crs):
         raise ValueError("CRS must be projected, not geographic.")
+
 
 def normalize_crs(source_path: str, target_path: str, target_crs: str = None) -> str:
     """
@@ -39,22 +43,17 @@ def normalize_crs(source_path: str, target_path: str, target_crs: str = None) ->
         if src_crs == target_crs:
             logger.info(f"Raster already in target CRS {target_crs}. Skipping reprojection.")
             return source_path
-            
+
         logger.info(f"Reprojecting from {src_crs} to {target_crs}")
-        
+
         transform, width, height = calculate_default_transform(
             src.crs, target_crs, src.width, src.height, *src.bounds
         )
-        
-        kwargs = src.meta.copy()
-        kwargs.update({
-            'crs': target_crs,
-            'transform': transform,
-            'width': width,
-            'height': height
-        })
 
-        with rasterio.open(target_path, 'w', **kwargs) as dst:
+        kwargs = src.meta.copy()
+        kwargs.update({"crs": target_crs, "transform": transform, "width": width, "height": height})
+
+        with rasterio.open(target_path, "w", **kwargs) as dst:
             for i in range(1, src.count + 1):
                 reproject(
                     source=rasterio.band(src, i),
@@ -63,7 +62,7 @@ def normalize_crs(source_path: str, target_path: str, target_crs: str = None) ->
                     src_crs=src.crs,
                     dst_transform=transform,
                     dst_crs=target_crs,
-                    resampling=Resampling.nearest
+                    resampling=Resampling.nearest,
                 )
-                
+
     return target_path
