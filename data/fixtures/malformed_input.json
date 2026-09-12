@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "_fixture_purpose": "Malformed STAC response — missing required 'datetime' and 'geometry' fields. Used to test error-path normalization handling.",
+  "features": [
+    {
+      "type": "Feature",
+      "stac_version": "1.0.0",
+      "id": "MALFORMED_MISSING_DATETIME",
+      "collection": "eos-04-sar",
+      "properties": {
+        "platform": "EOS-04",
+        "instruments": ["SAR"]
+      },
+      "links": [],
+      "assets": {}
+    },
+    {
+      "type": "Feature",
+      "stac_version": "1.0.0",
+      "id": "MALFORMED_EMPTY_ITEM_ID",
+      "collection": "eos-04-sar",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[79.8, 15.1],[80.2, 15.1],[80.2, 15.5],[79.8, 15.5],[79.8, 15.1]]]
+      },
+      "properties": {
+        "datetime": "2026-09-10T10:00:00Z",
+        "platform": "EOS-04",
+        "instruments": ["SAR"],
+        "eo:cloud_cover": 1001.0
+      },
+      "links": [],
+      "assets": {}
+    }
+  ]
+}

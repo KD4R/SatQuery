@@ -1,0 +1,10 @@
+{
+  "_fixture_purpose": "Edge-case CRS metadata record. Describes a raster that is in EPSG:4326 (geographic, NOT projected) with its centroid over Assam (~93°E). The correct UTM target zone is EPSG:32646 (zone 46N). Used to verify normalize_crs() selects the right zone dynamically rather than defaulting to the hardcoded EPSG:32643.",
+  "centroid_lon": 93.0,
+  "centroid_lat": 26.0,
+  "source_crs": "EPSG:4326",
+  "expected_target_crs": "EPSG:32646",
+  "utm_zone": "46N",
+  "aoi_name": "Brahmaputra Floodplain, Assam",
+  "note": "UTM zones are 6° wide. Assam (92-95°E) falls in zone 46. Using EPSG:32643 (zone 43, valid for 72-78°E) introduces ~3-zone offset — approx 150-250 km horizontal displacement error."
+}

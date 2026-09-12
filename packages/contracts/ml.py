@@ -6,7 +6,7 @@ Both P3 (ml/contracts/) and P4 (packages/contracts/data.py) independently built
 SceneRef models that are incompatible:
 
   P3  uses strict Enums, ``href``, ``frozen=True``, ``extra="forbid"``
-  P4  uses plain strings, ``stac_href``, adds ``cloud_cover``
+  P4  uses plain strings, ``href``, adds ``cloud_cover``
 
 This module is the reconciliation. It takes the best of both:
 
@@ -18,7 +18,7 @@ This module is the reconciliation. It takes the best of both:
     tightened cannot slip through when nested)
   * P4's ``cloud_cover`` field (needed by the eo-data search pipeline)
   * The field is named ``href`` — the canonical download URL for the asset,
-    validated against the SSRF allowlist before use. ``stac_href`` was P4's internal
+    validated against the SSRF allowlist before use. ``href`` was P4's internal
     name; this is the cross-service name.
 
 DO NOT import from ml.contracts or packages.contracts.data after this module
@@ -95,7 +95,7 @@ class SceneRef(Strict):
     ``href``
         Canonical download URL for the asset. Validated against the SSRF
         allowlist in services/inference before it is ever dereferenced.
-        (Previously ``stac_href`` in the P4 branch — renamed for clarity.)
+        (Previously ``href`` in the P4 branch — renamed for clarity.)
     ``cloud_cover``
         Tile-level cloud cover percentage [0, 100]. Required by the eo-data
         search pipeline for optical filtering. None for SAR (cloud-blind).

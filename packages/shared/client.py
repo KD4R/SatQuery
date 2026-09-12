@@ -32,8 +32,6 @@ class InternalClientError(Exception):
 class CircuitBreakerOpenError(Exception):
     """Raised when the internal client's circuit breaker is open."""
 
-    pass
-
 
 class CircuitBreaker:
     """Simple in-memory state machine for circuit breaking."""

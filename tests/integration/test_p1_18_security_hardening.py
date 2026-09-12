@@ -161,8 +161,8 @@ def test_owasp_a07_expired_token_returns_401(mission):
 def test_owasp_a07_tampered_token_returns_401(mission):
     """OWASP A07: Signature-tampered token → 401 with TOKEN_INVALID code."""
     good_token = _token("user:viewer-1", "org_alpha", roles=["viewer"])
-    # Flip last character to corrupt the signature
-    tampered = good_token[:-1] + ("A" if good_token[-1] != "A" else "B")
+    # Corrupt a character in the middle of the signature to ensure it's invalid
+    tampered = good_token[:-10] + "corrupted" + good_token[-1:]
     resp = mission.get(
         "/api/v1/missions",
         headers={"Authorization": f"Bearer {tampered}"},

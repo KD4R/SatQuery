@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "_fixture_purpose": "Bhoonidhi response with Online=N (offline product). Used to verify the _bhoonidhi_status=PRODUCT_OFFLINE annotation path in BhoonidhiAdapter.search().",
+  "features": [
+    {
+      "type": "Feature",
+      "stac_version": "1.0.0",
+      "id": "EOS-04_SAR_20260801_OFFLINE",
+      "collection": "eos-04-sar",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [79.8, 15.1],
+            [80.2, 15.1],
+            [80.2, 15.5],
+            [79.8, 15.5],
+            [79.8, 15.1]
+          ]
+        ]
+      },
+      "properties": {
+        "datetime": "2026-08-01T08:00:00Z",
+        "platform": "EOS-04",
+        "instruments": ["SAR"],
+        "sat:relative_orbit": 42,
+        "sat:orbit_state": "ASCENDING",
+        "eo:cloud_cover": null,
+        "Online": "N"
+      },
+      "links": [
+        {
+          "rel": "self",
+          "href": "https://bhoonidhi-api.nrsc.gov.in/collections/EOS-04/items/EOS-04_SAR_20260801_OFFLINE"
+        }
+      ],
+      "assets": {
+        "vh": {
+          "href": "https://bhoonidhi-api.nrsc.gov.in/data/download/EOS-04_SAR_20260801_OFFLINE_VH.tif",
+          "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+        }
+      }
+    }
+  ]
+}

@@ -36,7 +36,6 @@ class BaseTool(ABC):
     @abstractmethod
     def execute(self, **kwargs: Any) -> ToolResult:
         """Executes the tool with validated arguments."""
-        pass
 
     def get_schema(self) -> Dict[str, Any]:
         """Returns JSON schema representation of the tool's input contract."""
