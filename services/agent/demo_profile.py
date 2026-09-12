@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 import uuid
 
 from services.agent.evidence.graph_builder import EvidenceGraphBuilder
-from packages.contracts.agent import ConfidenceResponse, MissionState
+from services.agent.schemas import ConfidenceResponse, MissionState
 
 _DEFAULT_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "pinned_flood_mission.json"
 

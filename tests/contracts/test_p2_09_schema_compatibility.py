@@ -4,7 +4,7 @@ Contract compatibility tests for P2-09: SensorDecisionRequest and SensorDecision
 """
 
 import pytest
-from packages.contracts.agent import SensorDecisionRequest, SensorDecisionResponse
+from services.agent.schemas import SensorDecisionRequest, SensorDecisionResponse
 
 
 @pytest.mark.contract

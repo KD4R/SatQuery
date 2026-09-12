@@ -3,7 +3,7 @@ nodes/sensor_arbitrator.py — Adaptive sensor arbitration based on physics, wea
 """
 
 from typing import Optional
-from packages.contracts.agent import SensorDecisionResponse
+from services.agent.schemas import SensorDecisionResponse
 
 
 def arbitrate_sensors(

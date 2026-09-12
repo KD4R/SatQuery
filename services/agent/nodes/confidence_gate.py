@@ -3,7 +3,7 @@ nodes/confidence_gate.py — Confidence evaluation and uncertainty gating node.
 """
 
 from typing import Any, Dict, List, Optional
-from packages.contracts.agent import ConfidenceResponse
+from services.agent.schemas import ConfidenceResponse
 
 
 def evaluate_confidence_gate(

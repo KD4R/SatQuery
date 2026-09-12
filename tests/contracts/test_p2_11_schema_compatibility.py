@@ -4,7 +4,7 @@ Contract compatibility tests for P2-11: ConfidenceRequest and ConfidenceResponse
 """
 
 import pytest
-from packages.contracts.agent import ConfidenceRequest, ConfidenceResponse
+from services.agent.schemas import ConfidenceRequest, ConfidenceResponse
 
 
 @pytest.mark.contract

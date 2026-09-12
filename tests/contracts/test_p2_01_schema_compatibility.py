@@ -4,7 +4,7 @@ Contract compatibility tests for P2-01: MissionState schema.
 """
 
 import pytest
-from packages.contracts.agent import (
+from services.agent.schemas import (
     ConfidenceRequest,
     ConfidenceResponse,
     ExecuteRequest,

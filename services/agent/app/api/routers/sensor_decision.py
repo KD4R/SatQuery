@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
-from packages.contracts.agent import SensorDecisionRequest, SensorDecisionResponse
+from services.agent.schemas import SensorDecisionRequest, SensorDecisionResponse
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-sensor-decision"])
 

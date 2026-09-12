@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
-from packages.contracts.agent import ConfidenceRequest, ConfidenceResponse
+from services.agent.schemas import ConfidenceRequest, ConfidenceResponse
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-confidence"])
 

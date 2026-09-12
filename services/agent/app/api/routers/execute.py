@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from services.agent.graph.orchestrator import get_orchestrator
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
-from packages.contracts.agent import ExecuteRequest, ExecuteResponse, MissionState
+from services.agent.schemas import ExecuteRequest, ExecuteResponse, MissionState
 from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.security.validator import validate_aoi_geometry
 

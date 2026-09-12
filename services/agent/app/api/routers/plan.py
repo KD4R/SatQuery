@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Request
 from services.agent.nodes.intent_extractor import extract_intent_and_plan
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
-from packages.contracts.agent import PlanRequest, PlanResponse
+from services.agent.schemas import PlanRequest, PlanResponse
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-plan"])
 

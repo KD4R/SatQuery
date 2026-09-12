@@ -4,7 +4,7 @@ Contract compatibility tests for P2-03: PlanRequest, PlanResponse, and PlanStep.
 """
 
 import pytest
-from packages.contracts.agent import PlanRequest, PlanResponse, PlanStep
+from services.agent.schemas import PlanRequest, PlanResponse, PlanStep
 
 
 @pytest.mark.contract

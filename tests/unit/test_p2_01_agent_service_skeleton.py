@@ -6,7 +6,7 @@ Unit tests for P2-01: Agent service skeleton and MissionState.
 import pytest
 from pydantic import ValidationError
 
-from packages.contracts.agent import MissionState
+from services.agent.schemas import MissionState
 from services.agent.app.api.implementation import app
 
 

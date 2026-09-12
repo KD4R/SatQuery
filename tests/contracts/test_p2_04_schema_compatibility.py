@@ -4,7 +4,7 @@ Contract compatibility tests for P2-04: ExecuteRequest and ExecuteResponse.
 """
 
 import pytest
-from packages.contracts.agent import ExecuteRequest, ExecuteResponse
+from services.agent.schemas import ExecuteRequest, ExecuteResponse
 
 
 @pytest.mark.contract
