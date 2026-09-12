@@ -564,8 +564,8 @@ def test_p4_12_schema_compatibility():
     fake_image = MagicMock()
     fake_image.shape = (1, 10, 10)
 
-    # Patch `mask` at the clipping module's own namespace (imported as `from rasterio.mask import mask`)
-    with patch("packages.geo.clipping.mask", return_value=(fake_image, MagicMock())):
+    # Patch at the source — lazy import inside function resolves via rasterio.mask.mask
+    with patch("rasterio.mask.mask", return_value=(fake_image, MagicMock())):
         with patch("rasterio.open", side_effect=[mock_src, mock_dst]):
             result = clip_raster_to_aoi("/src.tif", "/dst.tif", aoi)
     assert result == "/dst.tif"
