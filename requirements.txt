@@ -11,6 +11,8 @@ boto3
 # ML  (P3: ml/)
 numpy>=1.24
 scipy>=1.10
+pystac-client
+prometheus-client
 
 uvicorn
 sqlalchemy

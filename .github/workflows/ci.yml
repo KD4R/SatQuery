@@ -169,6 +169,10 @@ jobs:
             echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/mission.json
           fi
           git checkout -
+          
+          # Re-export the schemas for the current branch so docs/openapi/ contains the PR's version,
+          # not the version generated while we were checked out on main.
+          python scripts/export_openapi.py
 
       - name: Run oasdiff (Gateway)
         uses: oasdiff/oasdiff-action/breaking@main
