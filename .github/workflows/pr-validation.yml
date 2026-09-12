@@ -28,9 +28,11 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          if ! echo "$PR_TITLE" | grep -qE '^(feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)(\(.+\))?: .+'; then
+          PR_TITLE_NORMALIZED="$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]')"
+          if ! echo "$PR_TITLE_NORMALIZED" | grep -qE '^((feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)(\(.+\))?: .+|(feat|fix|chore|docs|refactor|test|hotfix|ci|perf|style|revert)/.+)$'; then
             echo "❌ PR title '$PR_TITLE' does not follow Conventional Commits."
             echo "   Expected format: type(scope): description"
+            echo "   Also accepted: type/description"
             exit 1
           fi
           echo "✅ PR title '$PR_TITLE' is valid."
