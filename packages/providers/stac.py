@@ -75,7 +75,7 @@ class STACProvider(AbstractProvider):
                 item = self.client.get_item(item_id)
                 if not item or asset_key not in item.assets:
                     return None
-                return item.assets[asset_key].href
+                return item.assets[asset_key].href  # type: ignore
             except Exception as e:
                 span.record_exception(e)
                 logger.error(f"Failed to get asset '{asset_key}' for item '{item_id}': {e}")

@@ -22,7 +22,7 @@ try:
     redis_client = redis.from_url(config.redis_url.get_secret_value(), decode_responses=True)
 except Exception as e:
     logger.error(f"Redis initialization failed: {e}")
-    redis_client = None
+    redis_client = None  # type: ignore
 
 
 class SearchService:

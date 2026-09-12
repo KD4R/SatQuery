@@ -31,7 +31,7 @@ try:
     )
 except Exception as _e:
     logger.error(f"Redis initialization failed: {_e}")
-    redis_client = None
+    redis_client = None  # type: ignore
 
 
 @celery_app.task(bind=True, max_retries=3)
