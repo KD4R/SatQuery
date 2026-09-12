@@ -1,5 +1,5 @@
 """
-security package — Defenses, sanitization, validation, and audit for SatQuery AI.
+security package — Defenses, sanitization, validation, budgets, and audit for SatQuery AI.
 """
 
 from security.exceptions import (
@@ -10,6 +10,7 @@ from security.exceptions import (
     ToolPermissionDeniedError,
 )
 from security.sanitizer import check_prompt_injection, sanitize_prompt
+from security.tool_budget import ToolBudget
 from security.validator import validate_aoi_geometry, validate_intent
 
 __all__ = [
@@ -17,6 +18,7 @@ __all__ = [
     "GeometryValidationError",
     "PromptInjectionError",
     "SecurityError",
+    "ToolBudget",
     "ToolPermissionDeniedError",
     "check_prompt_injection",
     "sanitize_prompt",
