@@ -50,7 +50,10 @@ from pathlib import Path
 #: letting the mean hide it.
 VALIDATION_REGIONS: frozenset[str] = frozenset({"India", "Somalia"})
 
-_STEM = re.compile(r"^(?P<region>[A-Za-z]+)_(?P<id>\d+)$")
+#: Region names may contain hyphens -- Sen1Floods11 has ``Sri-Lanka``. Kept in step
+#: with ``_SAFE_STEM`` in fetch_sen1floods11.py; a name the fetcher accepts must be
+#: a name the splitter can read, or chips land on disk that nothing can use.
+_STEM = re.compile(r"^(?P<region>[A-Za-z]+(?:-[A-Za-z]+)*)_(?P<id>\d+)$")
 
 
 class SplitError(ValueError):

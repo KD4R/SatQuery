@@ -100,6 +100,25 @@ def test_regions_are_parsed_from_chip_names() -> None:
     assert region_of("Ghana_277") == "Ghana"
 
 
+def test_a_hyphenated_region_name_is_read_correctly() -> None:
+    """Sen1Floods11 contains Sri-Lanka, and the first pattern rejected it.
+
+    The failure was not silent -- the fetcher refused the whole download rather
+    than sanitising the name, which is the right direction to fail in. But it made
+    the dataset unfetchable, so the pattern and this test exist together: the
+    splitter must read every name the fetcher accepts, or chips land on disk that
+    nothing downstream can use.
+    """
+    assert region_of("Sri-Lanka_152185") == "Sri-Lanka"
+
+
+@pytest.mark.parametrize("bad", ["../escape_1", "a/b_1", "India", "_1", "India_", "India_abc"])
+def test_names_that_are_not_region_and_id_are_refused(bad: str) -> None:
+    """These become filesystem paths, so anything unexpected is hostile."""
+    with pytest.raises(SplitError):
+        region_of(bad)
+
+
 def test_an_unparseable_chip_name_is_refused() -> None:
     """Silently defaulting to one region would put every chip on the same side."""
     with pytest.raises(SplitError, match="cannot read a region"):

@@ -53,16 +53,23 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-#: A chip stem is a region name and a numeric id, e.g. ``India_1050276``. Anchored
-#: and character-restricted so that a value read from the remote split index cannot
-#: contain a path separator, a drive letter or a ``..`` component.
+#: A chip stem is a region name and a numeric id, e.g. ``India_1050276`` or
+#: ``Sri-Lanka_152185``. Anchored and character-restricted so that a value read
+#: from the remote split index cannot contain a path separator, a drive letter or
+#: a ``..`` component.
 #:
 #: The index is fetched over the network, so its contents are untrusted input even
 #: though the host is reputable. Without this, a compromised or malformed index
 #: could steer ``write_bytes`` anywhere the user running the script can write --
 #: the destination directory is joined with the value, and ``Path("a") / "/etc/x"``
 #: silently discards the "a".
-_SAFE_STEM = re.compile(r"^[A-Za-z][A-Za-z0-9]*_[0-9]+$")
+#:
+#: Hyphens are permitted inside the region name because Sen1Floods11 contains
+#: ``Sri-Lanka``; the first version of this pattern did not allow them and refused
+#: the whole download. Hyphens are only allowed *between* letter groups, so a stem
+#: can be neither ``-x`` nor ``x-``, and no arrangement of letters and hyphens can
+#: form ``.``, ``..`` or a path separator.
+_SAFE_STEM = re.compile(r"^[A-Za-z]+(?:-[A-Za-z]+)*_[0-9]+$")
 
 BUCKET = "https://storage.googleapis.com/sen1floods11"
 
