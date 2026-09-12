@@ -1,15 +1,12 @@
-// Stub for generated API client
-// To be replaced by the actual generator when backend contracts are frozen (P5-02)
+/* generated using openapi-typescript-codegen -- do not edit */
+/* istanbul ignore file */
+/* tslint:disable */
+/* eslint-disable */
+export { ApiError } from './core/ApiError';
+export { CancelablePromise, CancelError } from './core/CancelablePromise';
+export { OpenAPI } from './core/OpenAPI';
+export type { OpenAPIConfig } from './core/OpenAPI';
 
-export interface Mission {
-    id: string;
-    name: string;
-}
+export type { HealthStatus } from './models/HealthStatus';
 
-export class ApiClient {
-    constructor(private baseUrl: string) {}
-
-    async getMissions(): Promise<Mission[]> {
-        return [];
-    }
-}
+export { DefaultService } from './services/DefaultService';
