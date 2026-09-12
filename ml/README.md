@@ -79,7 +79,7 @@ has an explicit guard and a test rather than a comment.
 |---|---|---|
 | **Area in degrees** | Hectares computed in EPSG:4326 are wrong by a factor that varies with latitude, and are internally consistent enough to survive review | `Measurement` rejects physical units in a geographic CRS; `pixel_area_m2` refuses to run |
 | **Double dB conversion** | Sen1Floods11 chips are *already* in decibels. Converting again corrupts them silently | `ensure_decibel` takes the *declared* scale and converts only when needed — it never inspects values to guess |
-| **Band-order mismatch** | Sen1Floods11 files are VH-then-VV; models here consume VV-then-VH. Mismatching normalises each channel with the other's statistics | `RasterSpec.band_order` is explicit; preflight compares source against model order and refuses |
+| **Band-order mismatch** | Two bands of the same dtype and shape are interchangeable to every tool in the stack, so a swap normalises each channel with the other's statistics | `RasterSpec.band_order` is explicit; preflight compares source against model order and refuses. Measured: Sen1Floods11 v1.1 is **VV(0) then VH(1)**, contradicting some published descriptions — see ADR-0007 D3 |
 | **No-data counted as background** | Sen1Floods11 labels `-1` at chip borders. Scoring those as correct background inflates every metric | `confusion()` requires an explicit `ignore_value`, and *raises* if unexpected labels survive — because casting `-1` to bool makes it `True` |
 
 Also pinned: water is **dark** in SAR, so flooding is a *decrease* in backscatter and

@@ -10,20 +10,28 @@ they produce a plausible number rather than an exception:
    both and one of them is wrong by a logarithm. Nothing crashes; the mask looks
    reasonable; the hectare figure is simply incorrect.
 
-2. **Band-order mismatch.** Sen1Floods11 files are written VH first, VV second.
-   Models in this project consume (VV, VH) because that is the order the
-   normalisation statistics were computed in. If a loader forgets to reorder,
-   each channel is normalised with the other channel's mean and standard
-   deviation. Again: no crash, wrong answer.
+2. **Band-order mismatch.** Two bands of the same dtype and shape are freely
+   interchangeable to every tool in the stack, so swapping them normalises each
+   channel with the other channel's mean and standard deviation. Again: no crash,
+   wrong answer. Note that published descriptions of Sen1Floods11 disagree with
+   the files themselves on this point -- see the reference below -- which is
+   precisely why the order is declared rather than assumed.
 
 Both are therefore represented as *declared, validated data* rather than as
 conventions living in someone's head. Nothing downstream is permitted to guess.
 
-Reference for the Sen1Floods11 conventions used here:
-    Sen1Floods11 official repository, https://github.com/cloudtostreet/Sen1Floods11
-    - S1 layer: 2 bands, Float32, band order VH (0) then VV (1), units decibels
+Sen1Floods11 conventions, MEASURED from the v1.1 hand-labelled chips rather
+than taken from the documentation (see docs/adr/ADR-0007, D3):
+    - S1 layer: 2 bands, Float32, band order **VV (0) then VH (1)**, units
+      decibels. The GeoTIFF band descriptions read ('VV', 'VH') on every chip
+      inspected, and band 0 sits ~6 dB above band 1 throughout, which is the
+      physical signature of co-polarised versus cross-polarised backscatter.
+      Some secondary descriptions of this dataset state VH-then-VV; they
+      disagree with the files. Trust the files.
     - Label layer: 1 band, Int16, encoding -1 no-data / 0 not-water / 1 water
-    - Chips: 512 x 512 at 10 m, EPSG:4326
+    - Chips: 512 x 512, EPSG:4326 at 8.983e-05 deg -- **geographic, not
+      projected**, so reprojection is mandatory before any area measurement
+    Repository: https://github.com/cloudtostreet/Sen1Floods11
 """
 
 from __future__ import annotations

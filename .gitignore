@@ -22,3 +22,10 @@ Thumbs.db
 
 # Misc
 *.log
+
+# Benchmark imagery -- downloaded, never committed.
+# Sen1Floods11 chips are ~1 MB each and are reproducible from
+# fetch_sen1floods11.py, so the repo stores the fetcher, not the data.
+data/sen1floods11/
+*.tif
+*.tiff

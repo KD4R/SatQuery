@@ -138,10 +138,10 @@ def validate_against_spec(
         raise PreflightError(
             "band order mismatch: source provides "
             f"{tuple(b.value for b in actual.band_order)} but the model expects "
-            f"{tuple(b.value for b in expected.band_order)}. Reorder explicitly -- "
-            "Sen1Floods11 files are written VH then VV while models here consume "
-            "VV then VH, and silently mismatching them normalises each channel with "
-            "the other channel's statistics."
+            f"{tuple(b.value for b in expected.band_order)}. Reorder explicitly; "
+            "silently mismatching them normalises each channel with the other "
+            "channel's statistics, which produces a plausible wrong answer rather "
+            "than an error."
         )
     if actual.crs != expected.crs:
         raise PreflightError(f"CRS mismatch: source is {actual.crs}, model expects {expected.crs}")

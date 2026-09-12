@@ -69,11 +69,21 @@ measurement does not have.
 argument and converts only when needed. Nothing inspects pixel values to guess.
 
 **Reason.** These are the two defects that produce a plausible wrong number rather
-than an exception. Sen1Floods11 chips are stored in decibels with band order VH then
-VV; models here consume VV then VH. Inferring either would sometimes be wrong, and a
-sometimes-wrong silent conversion is worse than no conversion.
+than an exception. Inferring either would sometimes be wrong, and a sometimes-wrong
+silent conversion is worse than no conversion.
 
-**Source.** Sen1Floods11 official repository — S1 layer: 2 bands, Float32, VH(0) then
+**This decision has already paid for itself.** The foundation commit documented
+Sen1Floods11 as VH-then-VV, taken from secondary descriptions of the dataset. On
+inspecting the actual v1.1 hand-labelled chips, every file carries band
+descriptions `('VV', 'VH')`, and band 0 sits ~6 dB above band 1 on all twelve
+chips measured -- the physical signature of co-polarised versus cross-polarised
+backscatter. **The real order is VV(0) then VH(1).** No code changed as a result,
+because no code ever inferred the order; only the prose was wrong. Had the loader
+assumed the documented order, every channel would have been normalised with the
+other channel's statistics and nothing would have crashed.
+
+**Source.** Measured directly from the v1.1 chips with rasterio; the reference
+repository is — S1 layer: 2 bands, Float32, VH(0) then
 VV(1), units decibels; labels Int16 with −1 no-data / 0 not-water / 1 water.
 <https://github.com/cloudtostreet/Sen1Floods11>
 
