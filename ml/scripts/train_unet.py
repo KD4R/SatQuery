@@ -196,6 +196,13 @@ def main() -> int:
     parser.add_argument("--base-channels", type=int, default=8)
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="continue from artifacts/<out>/last.pt instead of starting over. "
+        "Training on CPU takes minutes and a run that dies at epoch 50 should not "
+        "restart at 1; this also lets a long run be split across shorter sessions.",
+    )
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -230,11 +237,52 @@ def main() -> int:
     args.out.mkdir(parents=True, exist_ok=True)
     history: list[EpochResult] = []
     best_iou = -1.0
+    start_epoch = 1
+
+    # Resuming restores the optimiser and scheduler as well as the weights.
+    # Restoring weights alone is the classic half-resume: AdamW's moment estimates
+    # restart from zero and the cosine schedule restarts at its peak learning rate,
+    # so the first epoch after a resume takes a large step in a random direction and
+    # undoes several epochs of progress. It looks like instability rather than a
+    # bug, which is why it is easy to live with for a long time.
+    last_path = args.out / "last.pt"
+    if args.resume:
+        if not last_path.is_file():
+            print(f"--resume given but {last_path} does not exist", file=sys.stderr)
+            return 2
+        state = torch.load(last_path, weights_only=False)
+        model.load_state_dict(state["state_dict"])
+        optimiser.load_state_dict(state["optimiser"])
+        scheduler.load_state_dict(state["scheduler"])
+        start_epoch = state["epoch"] + 1
+        best_iou = state["best_iou"]
+        history = [EpochResult(**h) for h in state["history"]]
+
+        saved = Normalisation.from_dict(state["normalisation"])
+        if saved != normalisation:
+            print(
+                "REFUSING to resume: the normalisation constants in the checkpoint "
+                "differ from those fitted now, which means the training data or the "
+                "split has changed. Continuing would train a model on one "
+                "distribution using another's statistics.",
+                file=sys.stderr,
+            )
+            return 2
+
+        if start_epoch > args.epochs:
+            # Falls through to the report rather than returning. A finished run
+            # asked for its numbers should produce them: the evaluation is the
+            # deliverable, and the first version of this exited here, which meant a
+            # run whose final report was interrupted could never be reported at all
+            # without retraining it.
+            print(f"already trained {state['epoch']} epochs; reporting only\n")
+        else:
+            print(f"resuming from epoch {start_epoch} (best IoU so far {best_iou:.3f})\n")
 
     print(f"{'epoch':>5} {'loss':>8} {'val IoU':>8} {'val F1':>8} {'sec':>6}")
     print("-" * 40)
 
-    for epoch in range(1, args.epochs + 1):
+    for epoch in range(start_epoch, args.epochs + 1):
         started = time.time()
         model.train()
         losses = []
@@ -262,6 +310,21 @@ def main() -> int:
 
         # Selected on validation IoU, which is held-out by region. Selecting on
         # training loss would pick the most memorised epoch.
+        # Written every epoch so a killed run resumes from where it stopped, as
+        # opposed to best.pt which is written only on improvement.
+        torch.save(
+            {
+                "state_dict": model.state_dict(),
+                "optimiser": optimiser.state_dict(),
+                "scheduler": scheduler.state_dict(),
+                "normalisation": normalisation.to_dict(),
+                "epoch": epoch,
+                "best_iou": best_iou if iou <= best_iou else iou,
+                "history": [asdict(h) for h in history],
+            },
+            last_path,
+        )
+
         if iou > best_iou:
             best_iou = iou
             torch.save(

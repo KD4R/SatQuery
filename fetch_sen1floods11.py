@@ -70,7 +70,22 @@ BUCKET = "https://storage.googleapis.com/sen1floods11"
 # Verified structurally, not fetched -- if a path 404s the script says so loudly
 # rather than skipping, because a silently-missing layer is how a benchmark ends up
 # scoring against three-quarters of its own data.
-SPLIT_CSV = f"{BUCKET}/v1.1/splits/flood_handlabeled/flood_valid_data.csv"
+#: Which hand-labelled split to read chip names from.
+#:
+#: "valid" was the original default and it silently capped the usable dataset: it
+#: is Sen1Floods11's own validation split, a few dozen chips, and training on 41 of
+#: them is what ADR-0007 D14 identifies as the binding constraint on the first
+#: U-Net. "train" is the larger split; "all" concatenates every hand-labelled one.
+#:
+#: Note these are the DATASET's splits, not this project's. Our train/validation
+#: division is by region (ml/training/splits.py) and is applied to whatever is on
+#: disk, so pulling more chips here only ever adds data -- it cannot leak a
+#: validation chip into training.
+SPLIT_CSVS = {
+    "train": "flood_train_data.csv",
+    "valid": "flood_valid_data.csv",
+    "test": "flood_test_data.csv",
+}
 HAND = f"{BUCKET}/v1.1/data/flood_events/HandLabeled"
 
 # suffix in the split CSV -> (subdirectory, required?)
@@ -139,13 +154,13 @@ def fetch(url: str) -> bytes:
         return resp.read()
 
 
-def read_split(limit: int) -> list[str]:
+def read_split(limit: int, urls: list[str]) -> list[str]:
     """Return chip stems, e.g. 'India_294934', from the validation split CSV."""
     try:
-        raw = fetch(SPLIT_CSV).decode("utf-8")
+        raw = "\n".join(fetch(url).decode("utf-8") for url in urls)
     except urllib.error.HTTPError as exc:
         sys.exit(
-            f"Could not read the split index ({exc.code}) at:\n  {SPLIT_CSV}\n\n"
+            f"Could not read a split index ({exc.code}) from:\n  " + "\n  ".join(urls) + "\n\n"
             "If this is a 403 you are behind a proxy that blocks storage.googleapis.com.\n"
             "If it is a 404 the dataset layout has moved -- check\n"
             "  https://github.com/cloudtostreet/Sen1Floods11"
@@ -214,6 +229,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--count", type=int, default=12, help="chips to fetch (default 12)")
     ap.add_argument(
+        "--split",
+        default="all",
+        choices=[*SPLIT_CSVS, "all"],
+        help="which hand-labelled index to read names from (default all). "
+        "The dataset's own splits -- this project divides by region separately.",
+    )
+    ap.add_argument(
         "--dest",
         type=Path,
         default=Path("data/sen1floods11"),
@@ -221,8 +243,13 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    print(f"Reading the hand-labelled validation split from\n  {SPLIT_CSV}\n")
-    stems = read_split(args.count)
+    names = list(SPLIT_CSVS.values()) if args.split == "all" else [SPLIT_CSVS[args.split]]
+    urls = [f"{BUCKET}/v1.1/splits/flood_handlabeled/{n}" for n in names]
+    print("Reading hand-labelled chip names from:")
+    for url in urls:
+        print(f"  {url}")
+    print()
+    stems = read_split(args.count, urls)
     print(f"{len(stems)} chips selected.\n")
 
     total = 0

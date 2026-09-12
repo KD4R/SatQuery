@@ -387,6 +387,64 @@ cannot supply that gate.
 
 ---
 
+### D14 — The first U-Net does not beat the deterministic baseline
+
+**Result.** Trained 60 epochs on 41 chips (Ghana, Mekong, Nigeria, Pakistan,
+Paraguay), evaluated on 19 chips from two regions never seen in training (India,
+Somalia):
+
+| | IoU | F1 |
+|---|---|---|
+| deterministic baseline | **0.242** | 0.307 |
+| U-Net, 486k parameters | 0.234 | 0.310 |
+
+Stratified, which is where the finding is:
+
+| water in chip | baseline | U-Net |
+|---|---|---|
+| < 1% | 0.003 | **0.003** |
+| 1–10% | 0.147 | 0.124 |
+| 10–30% | 0.324 | **0.354** |
+| > 30% | 0.810 | 0.791 |
+
+**The model did not learn the one thing it was added to learn.** D13 identified the
+capability gap as the ability to output *nothing* on a dry scene. The `<1%` row is
+unchanged. The model over-predicts water on dry ground exactly as Otsu does.
+
+**It is not a calibration problem.** The decision threshold was swept, in case the
+model had learned something that 0.5 was hiding:
+
+| threshold | IoU | precision | recall | IoU `<1%` |
+|---|---|---|---|---|
+| 0.3 | 0.139 | 0.139 | 0.995 | 0.002 |
+| 0.5 | **0.234** | 0.257 | 0.778 | 0.003 |
+| 0.7 | 0.174 | 0.554 | 0.202 | 0.005 |
+| 0.9 | 0.058 | 0.520 | 0.063 | 0.004 |
+
+0.5 is already near-optimal, and no threshold rescues the dry chips. Raising it
+trades recall away without buying precision where it is needed. The model has not
+learned a signal that a better cut point would expose.
+
+**Diagnosis: not enough data, and the architecture is not the suspect.** Two
+supporting observations. The one bucket where the model *does* beat the baseline is
+10–30% water (+0.030), the regime with enough positive pixels to learn a boundary
+from and enough negatives to constrain it. And validation IoU plateaued from epoch
+53 — the model converged; it did not run out of time.
+
+41 training chips is the binding constraint. It is also self-inflicted:
+`fetch_sen1floods11.py` reads `flood_valid_data.csv`, so every chip used here comes
+from Sen1Floods11's *validation* split. The hand-labelled train split is a separate,
+larger CSV that has not been touched, and there is a much larger weakly-labelled
+set beyond it. Fetching those is the obvious next move and costs nothing but disk.
+
+**What is reportable today.** The deterministic baseline, at IoU 0.242 on held-out
+regions, is the current best method — and the harness said so rather than hiding
+it, which is the property that makes the number worth quoting at all. A learned
+model that ties its baseline on 41 chips is a normal result, not a failed project;
+what would have been a failure is reporting 0.234 as an improvement.
+
+---
+
 ## Open questions
 
 These do not block this commit. Each blocks something later.
