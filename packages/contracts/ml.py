@@ -33,12 +33,12 @@ from decimal import Decimal
 from enum import Enum
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
-
+from pydantic import BaseModel, ConfigDict, Field
 
 # ---------------------------------------------------------------------------
 # Base
 # ---------------------------------------------------------------------------
+
 
 class Strict(BaseModel):
     """Immutable, allowlist-validated base for all contract objects.
@@ -59,6 +59,7 @@ class Strict(BaseModel):
 # ---------------------------------------------------------------------------
 # Scene identity
 # ---------------------------------------------------------------------------
+
 
 class Provider(str, Enum):
     """Where a scene came from.
@@ -133,6 +134,7 @@ class Observation(Strict):
 # ---------------------------------------------------------------------------
 # Measurement & Analysis (harvested from P3's ml/contracts/)
 # ---------------------------------------------------------------------------
+
 
 class MeasurementUnit(str, Enum):
     """Units a measurement may be expressed in."""
