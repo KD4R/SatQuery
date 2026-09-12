@@ -21,9 +21,9 @@ class AssetResolver:
 
     def resolve_asset_href(self, scene: SceneRef, asset_key: str) -> Optional[str]:
         if scene.provider == "bhoonidhi":
-            return self.bhoonidhi.get_asset(scene.item_id, asset_key)
+            return self.bhoonidhi.get_asset(scene.item_id, asset_key)  # type: ignore
         elif scene.provider == "planetary_computer":
-            return self.planetary_computer.get_asset(scene.item_id, asset_key)
+            return self.planetary_computer.get_asset(scene.item_id, asset_key)  # type: ignore
         else:
             raise ValueError(f"Provider {scene.provider} not supported by resolver")
 

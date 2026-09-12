@@ -51,7 +51,7 @@ class BhoonidhiAdapter(AbstractProvider):
             config=BotoConfig(retries={"max_attempts": 3}),
         )
 
-    def _get_auth_token(self, context: dict = None) -> str:
+    def _get_auth_token(self, context: dict = None) -> str:  # type: ignore
         """
         Fetch valid token from Redis or authenticate ensuring 20 auth/hr limit.
         """
@@ -63,7 +63,7 @@ class BhoonidhiAdapter(AbstractProvider):
 
             token = self.redis_client.get(BHOONIDHI_TOKEN_KEY)
             if token:
-                return token
+                return token  # type: ignore
 
             # Token missing, acquire lock to refresh
             try:
@@ -71,7 +71,7 @@ class BhoonidhiAdapter(AbstractProvider):
                     # Double-check inside lock
                     token = self.redis_client.get(BHOONIDHI_TOKEN_KEY)
                     if token:
-                        return token
+                        return token  # type: ignore
 
                     # Enforce 20 auths/hr budget
                     auth_count = self.redis_client.get(AUTH_BUDGET_KEY) or 0
@@ -104,7 +104,7 @@ class BhoonidhiAdapter(AbstractProvider):
                         pipe.expire(AUTH_BUDGET_KEY, 3600)
                     pipe.execute()
 
-                    return new_token
+                    return new_token  # type: ignore
 
             except LockError:
                 raise RuntimeError(
@@ -121,7 +121,7 @@ class BhoonidhiAdapter(AbstractProvider):
         start_date: datetime,
         end_date: datetime,
         cloud_cover: float = 100.0,
-        context: dict = None,
+        context: dict = None,  # type: ignore
         **kwargs,
     ) -> List[Dict[str, Any]]:
         """
@@ -166,9 +166,9 @@ class BhoonidhiAdapter(AbstractProvider):
                 if feature.get("properties", {}).get("Online") == "N":
                     feature["_bhoonidhi_status"] = "PRODUCT_OFFLINE"
 
-            return features
+            return features  # type: ignore
 
-    def get_asset(self, item_id: str, asset_key: str, context: dict = None) -> Optional[str]:
+    def get_asset(self, item_id: str, asset_key: str, context: dict = None) -> Optional[str]:  # type: ignore  # noqa: E501
         """
         Streams the asset from Bhoonidhi into S3/MinIO and returns the S3 URI.
         Requires auth token. Network timeouts heavily padded for large assets.

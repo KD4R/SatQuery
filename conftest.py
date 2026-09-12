@@ -41,11 +41,20 @@ class _HyphenServiceFinder(importlib.abc.MetaPathFinder):
             if fullname == alias_prefix:
                 # Package itself
                 init_path = os.path.join(physical_dir, "__init__.py")
-                spec = importlib.util.spec_from_file_location(
-                    fullname,
-                    init_path,
-                    submodule_search_locations=[physical_dir],
-                )
+                if os.path.exists(init_path):
+                    spec = importlib.util.spec_from_file_location(
+                        fullname,
+                        init_path,
+                        submodule_search_locations=[physical_dir],
+                    )
+                else:
+                    # Treat as namespace package if no __init__.py
+                    spec = importlib.machinery.ModuleSpec(
+                        fullname,
+                        None,
+                        is_package=True
+                    )
+                    spec.submodule_search_locations = [physical_dir]
                 return spec
             if fullname.startswith(alias_prefix + "."):
                 subpath = fullname[len(alias_prefix) + 1 :].replace(".", os.sep)

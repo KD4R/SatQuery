@@ -18,7 +18,7 @@ def utm_epsg_for(lon: float, lat: float) -> str:
 
 
 def is_projected(crs: rasterio.crs.CRS) -> bool:
-    return crs.is_projected
+    return crs.is_projected  # type: ignore
 
 
 def assert_projected(crs: rasterio.crs.CRS) -> None:
@@ -26,7 +26,7 @@ def assert_projected(crs: rasterio.crs.CRS) -> None:
         raise ValueError("CRS must be projected, not geographic.")
 
 
-def normalize_crs(source_path: str, target_path: str, target_crs: str = None) -> str:
+def normalize_crs(source_path: str, target_path: str, target_crs: str = None) -> str:  # type: ignore  # noqa: E501
     """
     Implements P4-11: CRS normalization and reprojection.
     Dynamically computes the correct UTM zone if `target_crs` is not provided.

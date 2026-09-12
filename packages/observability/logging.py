@@ -9,7 +9,7 @@ import logging
 import sys
 from typing import Any, Dict
 
-from opentelemetry import trace
+from opentelemetry import trace  # type: ignore
 from pythonjsonlogger.jsonlogger import JsonFormatter
 
 

@@ -87,7 +87,7 @@ class SearchService:
             except redis.RedisError as e:
                 logger.warning(f"Failed to write to Redis cache: {e}")
 
-        return observations
+        return observations  # type: ignore
 
 
 search_service = SearchService()

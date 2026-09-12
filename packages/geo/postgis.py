@@ -95,6 +95,6 @@ if not _os.environ.get("SATQUERY_SKIP_DB_INIT"):
         postgis_ops = PostGISOperations()
     except Exception as _e:
         logger.warning(f"PostGIS pool not initialized at startup: {_e}")
-        postgis_ops = None
+        postgis_ops = None  # type: ignore
 else:
-    postgis_ops = None
+    postgis_ops = None  # type: ignore

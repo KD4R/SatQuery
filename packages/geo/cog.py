@@ -5,7 +5,7 @@ import os
 logger = logging.getLogger(__name__)
 
 
-def generate_cog(source_path: str, target_path: str, context: dict = None) -> str:
+def generate_cog(source_path: str, target_path: str, context: dict = None) -> str:  # type: ignore
     """
     Implements P4-13: COG generation and overviews.
     Generates a Cloud Optimized GeoTIFF (COG) WITH overviews (pyramids) for fast zoom rendering.

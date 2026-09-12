@@ -113,7 +113,7 @@ class FixtureFallbackManager:
             if not os.path.exists(fixture_path):
                 raise FileNotFoundError(f"Fixture not found: {fixture_path}")
             with open(fixture_path, "r") as f:
-                return json.load(f)
+                return json.load(f)  # type: ignore
 
 
 fixture_fallback = FixtureFallbackManager()

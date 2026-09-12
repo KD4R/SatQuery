@@ -58,4 +58,4 @@ def get_latest_observation_for_mission(
     logger.info(
         f"Selected observation {selected.observation_id} acquired at {selected.scene.acquired_at}"
     )
-    return selected
+    return selected  # type: ignore

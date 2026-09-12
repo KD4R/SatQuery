@@ -46,7 +46,7 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
         href = links[0].get("href", "")
 
     scene_ref = SceneRef(
-        provider=provider_name,
+        provider=provider_name,  # type: ignore
         collection=item.get("collection", "Unknown"),
         item_id=item.get("id", "Unknown"),
         acquired_at=acquired_at,

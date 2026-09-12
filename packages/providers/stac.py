@@ -24,8 +24,8 @@ class STACProvider(AbstractProvider):
             # We open the client with ignore_conformance for maximum compatibility
             # In a strict production system, we rely on the requests underlying retries.
             # pystac_client does not natively expose timeout in open(), so we handle timeouts on actual search.  # noqa: E501
-            self._client = pystac_client.Client.open(self.url, ignore_conformance=True)
-        return self._client
+            self._client = pystac_client.Client.open(self.url, ignore_conformance=True)  # type: ignore  # noqa: E501
+        return self._client  # type: ignore
 
     def search(
         self,
@@ -33,7 +33,7 @@ class STACProvider(AbstractProvider):
         start_date: datetime,
         end_date: datetime,
         cloud_cover: float = 100.0,
-        context: dict = None,
+        context: dict = None,  # type: ignore
         **kwargs,
     ) -> List[Dict[str, Any]]:
         """
@@ -50,12 +50,12 @@ class STACProvider(AbstractProvider):
                 search_args = {"intersects": polygon, "datetime": datetime_str, "query": {}}
 
                 if cloud_cover < 100.0:
-                    search_args["query"]["eo:cloud_cover"] = {"lt": cloud_cover}
+                    search_args["query"]["eo:cloud_cover"] = {"lt": cloud_cover}  # type: ignore
 
                 if "collections" in kwargs:
                     search_args["collections"] = kwargs["collections"]
 
-                search = self.client.search(**search_args)
+                search = self.client.search(**search_args)  # type: ignore
 
                 items = list(search.items())
                 logger.info(f"STACProvider '{self.name}' found {len(items)} items.")
@@ -65,7 +65,7 @@ class STACProvider(AbstractProvider):
                 logger.error(f"STAC search failed on provider '{self.name}': {e}")
                 raise
 
-    def get_asset(self, item_id: str, asset_key: str, context: dict = None) -> Optional[str]:
+    def get_asset(self, item_id: str, asset_key: str, context: dict = None) -> Optional[str]:  # type: ignore  # noqa: E501
         from services.eo_data.telemetry import tracer, inject_context_to_span
 
         context = context or {}

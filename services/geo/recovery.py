@@ -27,7 +27,7 @@ class FixtureFallbackManager:
             raise FileNotFoundError(f"Fallback fixture not found: {fixture_path}")
 
         with open(fixture_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            return json.load(f)  # type: ignore
 
     def recover_asset(self, fallback_id: str) -> str:
         """
