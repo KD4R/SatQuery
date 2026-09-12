@@ -38,7 +38,7 @@ class SearchService:
         with tracer.start_as_current_span("search_observations") as span:
             inject_context_to_span(span, context)
             
-            cache_key = f"stac:mirror:{hashlib.md5(json.dumps({'p': polygon, 's': start_date.isoformat()}, sort_keys=True).encode()).hexdigest()}"
+            cache_key = f"stac:mirror:{hashlib.md5(json.dumps({'p': polygon, 's': start_date.isoformat()}, sort_keys=True).encode(), usedforsecurity=False).hexdigest()}"
             if redis_client:
                 try:
                     if cached := redis_client.get(cache_key):

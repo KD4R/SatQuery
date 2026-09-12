@@ -36,7 +36,7 @@ class SearchService:
             "kwargs": kwargs
         }
         payload_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
-        return f"stac:mirror:{hashlib.md5(payload_bytes).hexdigest()}"
+        return f"stac:mirror:{hashlib.md5(payload_bytes, usedforsecurity=False).hexdigest()}"
 
     def search_observations(
         self,
