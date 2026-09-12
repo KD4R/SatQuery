@@ -1,9 +1,10 @@
 """
-services/agent/app/api/routers/sensor_decision.py — Adaptive sensor decision router.
+services/agent/app/api/routers/sensor_decision.py — Adaptive sensor decision router (P2-09).
 """
 
 from typing import Optional
 from fastapi import APIRouter, Depends, Request
+from nodes.sensor_arbitrator import arbitrate_sensors
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from packages.contracts.agent import SensorDecisionRequest, SensorDecisionResponse
@@ -20,29 +21,10 @@ async def sensor_decision(
 ) -> SensorDecisionResponse:
     trace_id: Optional[str] = request.headers.get("X-Trace-Id")
 
-    # Deterministic sensor arbitration rule:
-    # If cloud cover > 20% or night -> SAR is mandatory for all-weather penetration
-    if payload.cloud_cover_percentage > 20.0 or payload.is_night:
-        primary = "SAR"
-        secondary = "OPTICAL" if not payload.is_night else None
-        rationale = (
-            f"High cloud cover ({payload.cloud_cover_percentage}%) or night ({payload.is_night}) "
-            "requires SAR active microwave imaging to penetrate atmospheric occlusion."
-        )
-        score = 0.95
-    else:
-        primary = "OPTICAL"
-        secondary = "SAR"
-        rationale = (
-            f"Low cloud cover ({payload.cloud_cover_percentage}%) enables multispectral Optical "
-            "imagery with high spatial resolution and water index calculation."
-        )
-        score = 0.90
-
-    return SensorDecisionResponse(
-        primary_sensor=primary,
-        secondary_sensor=secondary,
-        rationale=rationale,
-        arbitration_score=score,
+    return arbitrate_sensors(
+        hazard_type=payload.hazard_type,
+        cloud_cover=payload.cloud_cover_percentage,
+        is_night=payload.is_night,
+        priority=payload.priority,
         trace_id=trace_id,
     )
