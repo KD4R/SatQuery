@@ -27,6 +27,7 @@ from services.agent.app.api.routers.confidence import router as confidence_route
 from services.agent.app.api.routers.execute import router as execute_router
 from services.agent.app.api.routers.plan import router as plan_router
 from services.agent.app.api.routers.sensor_decision import router as sensor_decision_router
+from services.agent.app.api.routers.tools import router as tools_router
 
 setup_logging("agent")
 
@@ -126,6 +127,7 @@ app.include_router(plan_router)
 app.include_router(execute_router)
 app.include_router(sensor_decision_router)
 app.include_router(confidence_router)
+app.include_router(tools_router)
 
 _health_router = APIRouter(prefix="/api/v1")
 
