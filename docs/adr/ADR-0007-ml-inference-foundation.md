@@ -331,9 +331,59 @@ model's problem to fix; the MMU's job is to drop patches too small to act on. A
 test pins the constant so that a future "optimisation" toward the score is visible
 in review.
 
-**Headline, honestly stated.** Postprocessing moves the baseline from **IoU 0.187
-to 0.221**, an 18% relative gain, entirely from morphology and the MMU. It does
-not rescue a weak detector, and it was never going to.
+**Headline, corrected on more data.** The figures above were measured on nine
+chips. On 57 chips across seven regions the same comparison gives **0.257 raw,
+0.267 postprocessed** — a 4% relative gain, not 18%. The nine-chip result was
+overfit to its sample, and the correction is recorded rather than quietly
+substituted because the first number was already quoted in a commit message.
+
+Postprocessing is still worth keeping — it removes false positives an operator
+would otherwise have to explain, and the reporting it produces is what makes the
+number auditable — but it is a tidying step, not an accuracy strategy.
+
+---
+
+### D13 — The baseline's failure is concentrated, not diffuse
+
+**Finding.** Scored over 57 hand-labelled chips from seven regions, IoU is almost
+entirely predicted by how much water the chip actually contains:
+
+| water in chip | n | mean IoU |
+|---|---|---|
+| < 1% | 19 | **0.004** |
+| 1–10% | 19 | 0.181 |
+| 10–30% | 10 | 0.535 |
+| > 30% | 9 | **0.704** |
+
+The distribution is bimodal, not centred: 28 chips score below 0.05 and 13 score
+above 0.6. Mean precision is 0.333 against mean recall of 0.728.
+
+**Reading.** On a genuinely flooded scene the deterministic baseline is *good* —
+IoU 0.70 is within reach of published supervised results. It fails catastrophically
+on scenes with little or no water, and it fails in one specific way: Otsu always
+splits a histogram, so on a dry scene it invents a flood. High recall with poor
+precision is exactly that signature. The overall mean of 0.267 is not a
+description of the method's quality; it is 19 dry chips dragging down 18 good ones.
+
+This is D10 quantified. It also relocates the problem. The baseline does not need a
+better threshold — the threshold is fine where there is something to threshold. It
+needs a **gate** that answers "is there any flood in this scene at all?", and
+abstains when the answer is no. D10 established that Otsu's own goodness-of-fit
+cannot supply that gate.
+
+**Consequences.**
+
+1. This is the clearest statement so far of what the learned model must contribute:
+   not a sharper boundary on flooded scenes, but the ability to say *no water here*.
+   A U-Net trained with dry chips in the training set learns that directly, which
+   Otsu structurally cannot.
+2. Any headline accuracy figure must be stated **stratified**. A single mean over a
+   mixed set is dominated by the proportion of dry chips in the sample, so it says
+   more about the sample than about the method — and it moves whenever the sample
+   does, which is how a benchmark number becomes unfalsifiable.
+3. Regional spread is now visible and should be watched rather than averaged away:
+   Mekong 0.563, India 0.319, Somalia 0.047 (n=5). Whether Somalia is genuinely
+   harder or simply drier is not yet established.
 
 ---
 
