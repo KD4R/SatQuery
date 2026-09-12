@@ -3,8 +3,8 @@ import os
 import json
 from unittest.mock import patch, MagicMock
 
-from services.analysis.recovery import FixtureFallbackManager
-from services.analysis.worker import process_geo_job
+from services.geo.recovery import FixtureFallbackManager
+from services.geo.worker import process_geo_job
 
 def test_fixture_fallback_manager_loads_valid_fixture(tmp_path):
     """P4-17: Verifies fallback manager accurately loads pinned JSON fixtures when APIs fail."""
@@ -24,7 +24,7 @@ def test_fixture_fallback_manager_raises_on_missing(tmp_path):
     with pytest.raises(FileNotFoundError, match="Fallback fixture not found"):
         manager.recover_search("missing_fixture")
 
-@patch("services.analysis.worker.redis_client")
+@patch("services.geo.worker.redis_client")
 def test_async_geojob_worker_idempotency(mock_redis):
     """P4-16: Verifies Celery Async GeoJob worker honors Redis SETNX locks to prevent duplicate heavy ML jobs."""
     # Simulate job already running/completed

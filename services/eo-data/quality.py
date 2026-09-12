@@ -3,7 +3,7 @@ from typing import Dict, Any
 from shapely.geometry import shape
 import pyproj
 from shapely.ops import transform
-from packages.contracts.data import Observation
+from packages.contracts import Observation
 
 logger = logging.getLogger(__name__)
 

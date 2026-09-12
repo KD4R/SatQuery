@@ -2,8 +2,8 @@ import logging
 from typing import List, Optional
 from datetime import datetime, timedelta
 
-from packages.contracts.data import Observation
-from services.discovery.search import search_service
+from packages.contracts import Observation
+from services.eo_data.search import search_service
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import uuid
 import logging
 
-from packages.contracts.data import Observation, SceneRef
+from packages.contracts import Observation, SceneRef
 
 logger = logging.getLogger(__name__)
 

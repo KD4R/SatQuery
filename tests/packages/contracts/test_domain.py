@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from pydantic import ValidationError
-from packages.contracts.data import SceneRef, Observation
+from packages.contracts import SceneRef, Observation
 
 def test_sceneref_valid_creation():
     """P4-03: Tests valid SceneRef model creation"""

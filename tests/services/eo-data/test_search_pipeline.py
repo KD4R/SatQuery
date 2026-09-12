@@ -3,10 +3,10 @@ from datetime import datetime, timezone
 import json
 from unittest.mock import patch, MagicMock
 
-from services.discovery.normalization import normalize_stac_item
-from services.discovery.search import SearchService
-from services.discovery.quality import score_observation_quality
-from packages.contracts.data import Observation, SceneRef
+from services.eo_data.normalization import normalize_stac_item
+from services.eo_data.search import SearchService
+from services.eo_data.quality import score_observation_quality
+from packages.contracts import Observation, SceneRef
 
 def test_normalize_stac_item_fails_on_missing_datetime():
     """P4-06: Normalization pipeline robustly rejects malformed STAC items."""
@@ -44,9 +44,9 @@ def test_score_observation_quality_computes_overlap():
     assert score == pytest.approx(0.9)
     assert obs.normalized_properties["data_quality_score"] == pytest.approx(0.9)
 
-@patch("services.discovery.search.redis_client")
-@patch("services.discovery.search.BhoonidhiAdapter")
-@patch("services.discovery.search.STACProvider")
+@patch("services.eo_data.search.redis_client")
+@patch("services.eo_data.search.BhoonidhiAdapter")
+@patch("services.eo_data.search.STACProvider")
 def test_search_service_cache_hit(mock_stac, mock_bhoonidhi, mock_redis):
     """P4-07: Search service successfully avoids hitting live APIs when STAC mirror cache hits."""
     service = SearchService()

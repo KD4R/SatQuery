@@ -8,8 +8,8 @@ import redis
 from packages.providers.config import config
 from packages.providers.bhoonidhi import BhoonidhiAdapter
 from packages.providers.stac import STACProvider
-from services.discovery.normalization import normalize_pipeline
-from packages.contracts.data import Observation
+from services.eo_data.normalization import normalize_pipeline
+from packages.contracts import Observation
 
 logger = logging.getLogger(__name__)
 

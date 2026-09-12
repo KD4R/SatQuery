@@ -27,7 +27,7 @@ except Exception as e:
     logger.error(f"Redis initialization failed: {e}")
     redis_client = None
 
-from packages.contracts.data import SceneRef, Observation, Provider, PassDirection, AssetRef
+from packages.contracts import SceneRef, Observation, Provider, PassDirection, AssetRef
 
 class SearchService:
     def __init__(self):

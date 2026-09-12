@@ -28,7 +28,7 @@ if "psycopg2" not in sys.modules:
 
 from services.eo_data.api import router as eo_router
 from services.geo.api import router as geo_router
-from packages.contracts.data import SceneRef, Observation, Provider, PassDirection
+from packages.contracts import SceneRef, Observation, Provider, PassDirection
 from packages.geo.validation import validate_geojson_geometry, validate_asset_href, ALLOWED_DOMAINS, ALLOWED_PROTOCOLS
 from packages.geo.crs import utm_epsg_for
 
@@ -66,7 +66,7 @@ def _make_scene_ref(**overrides) -> SceneRef:
 
 def _make_observation(**scene_overrides) -> Observation:
     scene = _make_scene_ref(**scene_overrides)
-    from packages.contracts.data import AssetRef
+    from packages.contracts import AssetRef
     return Observation(
         observation_id="obs-001",
         scene=scene,
@@ -95,7 +95,7 @@ def test_p4_01_service_boundary():
 
 def test_p4_01_schema_compatibility():
     """SceneRef and Observation are importable from the canonical contracts package."""
-    from packages.contracts.data import SceneRef, Observation, Provider, PassDirection
+    from packages.contracts import SceneRef, Observation, Provider, PassDirection
     assert Provider.BHOONIDHI == "bhoonidhi"
     assert PassDirection.ASCENDING == "ASCENDING"
 

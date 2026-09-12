@@ -1,6 +1,6 @@
 import logging
 from typing import Optional
-from packages.contracts.data import SceneRef
+from packages.contracts import SceneRef
 from packages.providers.bhoonidhi import BhoonidhiAdapter
 from packages.providers.stac import STACProvider
 
