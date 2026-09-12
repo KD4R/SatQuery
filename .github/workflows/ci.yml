@@ -38,13 +38,13 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Black format check
-        run: black --check --diff services packages tests conftest.py
+        run: black --check --diff services packages tests ml conftest.py
 
       - name: Flake8 lint
-        run: flake8 services packages tests
+        run: flake8 services packages tests ml
 
       - name: Mypy type check
-        run: mypy services packages --ignore-missing-imports
+        run: mypy services packages ml --ignore-missing-imports
 
   # ── 2. Unit tests ───────────────────────────────────────────────────────────
   unit-tests:

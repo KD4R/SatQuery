@@ -10,7 +10,7 @@ exclude = '''
 '''
 
 [tool.pytest.ini_options]
-testpaths = ["services", "packages", "tests"]
+testpaths = ["services", "packages", "tests", "ml"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
