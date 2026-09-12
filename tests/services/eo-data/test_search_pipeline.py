@@ -21,8 +21,9 @@ def test_score_observation_quality_computes_overlap():
     """P4-19: Quality scoring correctly projects to EPSG:32643 and scores geometry."""
     # Create a mock observation
     scene = SceneRef(
-        provider="dummy", collection="dummy", item_id="1", acquired_at=datetime.now(timezone.utc),
-        platform="P", instrument="SAR", stac_href="href", cloud_cover=10.0
+        provider="bhoonidhi", collection="dummy", item_id="1", acquired_at=datetime.now(timezone.utc),
+        platform="P", instrument="SAR", href="https://example.com/item.tif", cloud_cover=10.0,
+        relative_orbit=123, pass_direction="ASCENDING"
     )
     obs = Observation(
         observation_id="123",
@@ -56,7 +57,8 @@ def test_search_service_cache_hit(mock_stac, mock_bhoonidhi, mock_redis):
         "observation_id": "1",
         "scene": {
             "provider": "bhoonidhi", "collection": "C", "item_id": "I",
-            "acquired_at": "2026-09-10T10:00:00Z", "platform": "P", "instrument": "I", "stac_href": "H"
+            "acquired_at": "2026-09-10T10:00:00Z", "platform": "P", "instrument": "I", "href": "H",
+            "relative_orbit": 1, "pass_direction": "ASCENDING", "cloud_cover": 0.0
         },
         "geometry": {"type": "Point", "coordinates": [0,0]},
         "assets": {}

@@ -27,7 +27,7 @@ except Exception as e:
     logger.error(f"Redis initialization failed: {e}")
     redis_client = None
 
-from packages.contracts import SceneRef, Observation, Provider, PassDirection, AssetRef
+from packages.contracts import SceneRef, Observation, Provider, PassDirection
 
 class SearchService:
     def __init__(self):
@@ -92,7 +92,7 @@ class SearchService:
                         instrument=props.get("instruments", ["Unknown"])[0],
                         relative_orbit=props.get("sat:relative_orbit"),
                         pass_direction=pass_direction,
-                        stac_href=item.get("links", [{"href": ""}])[0]["href"],
+                        href=item.get("links", [{"href": ""}])[0]["href"],
                         cloud_cover=c_cover_val,
                     )
                     obs = Observation(
@@ -100,11 +100,7 @@ class SearchService:
                         scene=scene,
                         geometry=item.get("geometry", {}),
                         assets={
-                            k: AssetRef(
-                                href=v.get("href", ""),
-                                media_type=v.get("type"),
-                                roles=v.get("roles")
-                            ) for k, v in item.get("assets", {}).items()
+                            k: v.get("href", "") for k, v in item.get("assets", {}).items() if "href" in v
                         },
                         normalized_properties={
                             "offline_status": item.get("_bhoonidhi_status"),

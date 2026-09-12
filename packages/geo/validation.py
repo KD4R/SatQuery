@@ -61,10 +61,7 @@ def validate_geojson_geometry(geometry: Dict[str, Any]) -> Dict[str, Any]:
     try:
         s = shape(geometry)
         if not s.is_valid:
-            # Attempt to buffer by 0 to fix minor topological errors (e.g. self-intersections)
-            s = s.buffer(0)
-            if not s.is_valid:
-                raise ValueError("Invalid geometry topology (e.g., self-intersecting polygons).")
+            raise ValueError("Invalid geometry topology (e.g., self-intersecting polygons).")
     except Exception as e:
         raise ValueError(f"Malformed geometry: {str(e)}")
         

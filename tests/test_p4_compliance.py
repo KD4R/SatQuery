@@ -57,7 +57,7 @@ def _make_scene_ref(**overrides) -> SceneRef:
         instrument="SAR",
         relative_orbit=42,
         pass_direction=PassDirection.ASCENDING,
-        stac_href="https://bhoonidhi-api.nrsc.gov.in/collections/EOS-04/items/EOS-04_SAR_20260910_01",
+        href="https://bhoonidhi-api.nrsc.gov.in/collections/EOS-04/items/EOS-04_SAR_20260910_01",
         cloud_cover=None,
     )
     defaults.update(overrides)
@@ -66,13 +66,18 @@ def _make_scene_ref(**overrides) -> SceneRef:
 
 def _make_observation(**scene_overrides) -> Observation:
     scene = _make_scene_ref(**scene_overrides)
-    from packages.contracts import AssetRef
     return Observation(
-        observation_id="obs-001",
+        observation_id="obs_123",
         scene=scene,
-        geometry={"type": "Polygon", "coordinates": [[[0,0], [1,0], [1,1], [0,1], [0,0]]]},
-        assets={"vh": AssetRef(href="https://bhoonidhi-api.nrsc.gov.in/data/download/dummy_SAR_20260910_01_VH.tif")},
-        normalized_properties={"offline_status": "ONLINE"}
+        geometry={
+            "type": "Polygon",
+            "coordinates": [[[79.8, 15.1], [80.2, 15.1], [80.2, 15.5], [79.8, 15.5], [79.8, 15.1]]]
+        },
+        assets={"vh": "https://bhoonidhi-api.nrsc.gov.in/data/download/dummy_SAR_20260910_01_VH.tif"},
+        normalized_properties={
+            "original_id": "dummy_SAR_20260910_01",
+            "offline_status": "ONLINE"
+        }
     )
 
 
@@ -288,7 +293,7 @@ def test_p4_05_schema_compatibility():
     """Observation model_dump() produces JSON-serialisable output."""
     obs = _make_observation()
     dumped = obs.model_dump(mode="json")
-    assert dumped["observation_id"] == "obs-001"
+    assert dumped["observation_id"] == "obs_123"
     assert dumped["scene"]["provider"] == "bhoonidhi"
 
 
@@ -330,7 +335,7 @@ def test_p4_06_service_boundary():
             acquired_at=datetime.now(timezone.utc),
             platform="P",
             instrument="I",
-            stac_href="https://bhoonidhi-api.nrsc.gov.in/items/i",
+            href="https://bhoonidhi-api.nrsc.gov.in/items/i",
             cloud_cover=None,
             # relative_orbit and pass_direction intentionally omitted
         )

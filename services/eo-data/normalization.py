@@ -34,13 +34,13 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
 
     # Safely extract STAC href to avoid IndexError if links array is empty
     links = item.get("links", [])
-    stac_href = ""
+    href = ""
     for link in links:
         if link.get("rel") == "self":
-            stac_href = link.get("href", "")
+            href = link.get("href", "")
             break
-    if not stac_href and links:
-        stac_href = links[0].get("href", "")
+    if not href and links:
+        href = links[0].get("href", "")
 
     scene_ref = SceneRef(
         provider=provider_name,
@@ -51,7 +51,7 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
         instrument=instrument,
         relative_orbit=relative_orbit,
         pass_direction=pass_direction,
-        stac_href=stac_href,
+        href=href,
         cloud_cover=cloud_cover
     )
 

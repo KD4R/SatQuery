@@ -40,7 +40,8 @@ def test_bhoonidhi_offline_product_tagging(mock_session_class, mock_redis_from_u
     mock_session.post.return_value = mock_response
     
     adapter = BhoonidhiAdapter()
-    features = adapter.search({"type": "Polygon", "coordinates": []}, start_date=None, end_date=None)
+    from datetime import datetime
+    features = adapter.search({"type": "Polygon", "coordinates": []}, start_date=datetime.now(), end_date=datetime.now())
     
     assert "_bhoonidhi_status" not in features[0]
     assert features[1]["_bhoonidhi_status"] == "PRODUCT_OFFLINE"

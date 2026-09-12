@@ -12,7 +12,7 @@ def test_sceneref_valid_creation():
         acquired_at=datetime.now(timezone.utc),
         platform="EOS-04",
         instrument="SAR",
-        stac_href="https://example.com/stac",
+        href="https://example.com/stac",
         relative_orbit=42,
         pass_direction="ASCENDING"
     )

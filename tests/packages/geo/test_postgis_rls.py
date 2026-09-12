@@ -9,6 +9,7 @@ def test_postgis_rls_tenant_isolation(mock_pool_class):
     mock_pool_class.return_value = mock_pool
     
     mock_conn = MagicMock()
+    mock_conn.closed = 0
     mock_pool.getconn.return_value = mock_conn
     mock_cursor = MagicMock()
     # Support context manager
