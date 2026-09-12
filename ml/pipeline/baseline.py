@@ -46,7 +46,8 @@ from ml.contracts.confidence import Confidence
 from ml.contracts.outcome import Abstention, AbstentionReason, Analysis, MissionOutcome
 from ml.contracts.scene import Polarization, SceneRef
 from ml.crs_policy import is_area_safe
-from ml.geo.area import area_hectares
+from ml.geo.area import area_hectares, pixel_area_m2
+from ml.pipeline.postprocess import DEFAULT_MIN_MAPPING_UNIT_HA, postprocess_water_mask
 from ml.io.raster import Raster
 from ml.io.preflight import PreflightError, validate_finite_fraction
 from ml.sar.change import ThresholdError, otsu_threshold
@@ -123,6 +124,7 @@ def detect_water_single_date(
     polarization: Polarization = Polarization.VV,
     permanent_water: npt.NDArray[np.bool_] | None = None,
     min_valid_fraction: float = DEFAULT_MIN_VALID_FRACTION,
+    min_mapping_unit_ha: float = DEFAULT_MIN_MAPPING_UNIT_HA,
     trace_id: str,
 ) -> MissionOutcome:
     """Threshold one SAR scene into open water, and measure it.
@@ -199,23 +201,32 @@ def detect_water_single_date(
     if valid_fraction < 1.0:
         caveats.append(f"{1.0 - valid_fraction:.1%} of the chip is no-data and was excluded")
 
-    if permanent_water is not None:
-        if permanent_water.shape != mask.shape:
-            return Abstention(
-                outcome="abstained",
-                reason=AbstentionReason.INPUT_FAILED_PREFLIGHT,
-                explanation=(
-                    f"permanent-water mask is {permanent_water.shape} but the scene is "
-                    f"{mask.shape}; they must be co-registered before subtraction"
-                ),
-                nearest_usable=None,
-                scenes_seen=tuple(scenes),
-                trace_id=trace_id,
-            )
-        before = int(np.count_nonzero(mask))
-        mask = mask & ~permanent_water.astype(bool)
-        removed = before - int(np.count_nonzero(mask))
-        caveats.append(f"{removed} px of permanent water subtracted")
+    # Clean the raw threshold mask before anything measures it. A thresholded scene
+    # is a map of everything darker than a number, which includes speckle, radar
+    # shadow, smooth tarmac and every river that was there before the event.
+    try:
+        cleaned = postprocess_water_mask(
+            mask,
+            pixel_area_m2=pixel_area_m2(raster.spec.pixel_size_m, raster.spec.crs),
+            permanent_water=permanent_water,
+            min_mapping_unit_ha=min_mapping_unit_ha,
+        )
+    except ValueError as error:
+        return Abstention(
+            outcome="abstained",
+            reason=AbstentionReason.INPUT_FAILED_PREFLIGHT,
+            explanation=str(error),
+            nearest_usable=None,
+            scenes_seen=tuple(scenes),
+            trace_id=trace_id,
+        )
+
+    mask = cleaned.mask
+    caveats.extend(cleaned.caveats)
+
+    # An empty mask after cleaning is a real answer -- "no flood detected here" --
+    # not a failure, so it measures 0 ha rather than abstaining. Abstention means
+    # the question could not be answered; this one was.
 
     measurement = area_hectares(
         mask,

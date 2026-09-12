@@ -43,25 +43,71 @@ from pathlib import Path
 import numpy as np
 import rasterio
 
+from rasterio.enums import Resampling
+from rasterio.warp import reproject
+
 from ml.contracts.scene import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE, confusion
-from ml.io.raster import read_raster
-from ml.pipeline.baseline import water_mask_single_date
+from ml.geo.area import pixel_area_m2
 from ml.io.preflight import PreflightError
+from ml.io.raster import Raster, read_raster, reproject_to_area_safe_crs
+from ml.pipeline.baseline import water_mask_single_date
+from ml.pipeline.postprocess import DEFAULT_MIN_MAPPING_UNIT_HA, postprocess_water_mask
 from ml.sar.change import ThresholdError
 
 DEFAULT_ROOT = Path("data/sen1floods11")
 
 
-def _load_label(path: Path) -> np.ndarray:
+def _load_label_onto(path: Path, target: Raster, *, nodata: int) -> np.ndarray:
+    """Load a label raster and reproject it onto ``target``'s exact grid.
+
+    Nearest-neighbour, always. A label array holds class identifiers, not a
+    continuous quantity: interpolating between -1 (no data) and 1 (water) would
+    invent a 0 (land) nobody drew, and bilinear resampling of a mask is one of the
+    quieter ways to manufacture ground truth.
+
+    Reprojecting the labels rather than scoring on the source grid is deliberate.
+    It scores exactly the mask the pipeline produces, on the grid the pipeline
+    produces it on, rather than a differently-resampled cousin of it -- and the
+    postprocessing step needs a real pixel area in metres, which a geographic grid
+    cannot supply.
+    """
     with rasterio.open(path) as source:
-        label: np.ndarray = source.read(1)
-    return label
+        destination = np.full((target.spec.height, target.spec.width), nodata, dtype=np.int16)
+        reproject(
+            source=rasterio.band(source, 1),
+            destination=destination,
+            src_transform=source.transform,
+            src_crs=source.crs,
+            dst_transform=target.transform,
+            dst_crs=target.spec.crs,
+            resampling=Resampling.nearest,
+            src_nodata=nodata,
+            dst_nodata=nodata,
+        )
+    return destination
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="score the raw threshold mask, skipping postprocessing -- for measuring "
+        "what postprocessing is worth rather than assuming it helps",
+    )
+    parser.add_argument(
+        "--mmu-ha",
+        type=float,
+        default=DEFAULT_MIN_MAPPING_UNIT_HA,
+        help=f"minimum mapping unit in hectares (default {DEFAULT_MIN_MAPPING_UNIT_HA})",
+    )
+    parser.add_argument(
+        "--no-permanent-water",
+        action="store_true",
+        help="ignore the JRC permanent-water layer even when present",
+    )
     parser.add_argument(
         "--polarization",
         default="VV",
@@ -82,7 +128,9 @@ def main() -> int:
         return 2
 
     polarization = Polarization(args.polarization)
-    print(f"{len(scenes)} chips, thresholding {polarization.value}\n")
+    mode = "RAW threshold mask" if args.raw else f"postprocessed, MMU {args.mmu_ha} ha"
+    print(f"{len(scenes)} chips, thresholding {polarization.value} -- {mode}")
+    print("scored on the reprojected UTM grid; labels resampled nearest-neighbour\n")
 
     header = f"{'chip':<22} {'outcome':<10} {'thresh':>7} {'IoU':>6} {'F1':>6} {'vs theirs':>10}"
     print(header)
@@ -94,12 +142,18 @@ def main() -> int:
 
     for scene_path in scenes:
         stem = scene_path.name.replace("_S1Hand.tif", "")
-        truth = _load_label(args.root / "LabelHand" / f"{stem}_LabelHand.tif")
 
-        raster = read_raster(
-            scene_path,
-            declared_band_order=(Polarization.VV, Polarization.VH),
-            declared_scale=BackscatterScale.DECIBEL,
+        raster = reproject_to_area_safe_crs(
+            read_raster(
+                scene_path,
+                declared_band_order=(Polarization.VV, Polarization.VH),
+                declared_scale=BackscatterScale.DECIBEL,
+            )
+        )
+        truth = _load_label_onto(
+            args.root / "LabelHand" / f"{stem}_LabelHand.tif",
+            raster,
+            nodata=SEN1FLOODS11_IGNORE_VALUE,
         )
 
         try:
@@ -118,14 +172,25 @@ def main() -> int:
             )
             continue
 
-        metrics = confusion(detection.mask, truth, ignore_value=SEN1FLOODS11_IGNORE_VALUE)
+        mask = detection.mask
+        if not args.raw:
+            permanent = None
+            permanent_path = args.root / "JRCWaterHand" / f"{stem}_JRCWaterHand.tif"
+            if permanent_path.is_file() and not args.no_permanent_water:
+                permanent = _load_label_onto(permanent_path, raster, nodata=0) == 1
+            mask = postprocess_water_mask(
+                mask,
+                pixel_area_m2=pixel_area_m2(raster.spec.pixel_size_m, raster.spec.crs),
+                permanent_water=permanent,
+                min_mapping_unit_ha=args.mmu_ha,
+            ).mask
+
+        metrics = confusion(mask, truth, ignore_value=SEN1FLOODS11_IGNORE_VALUE)
 
         theirs_path = args.root / "S1OtsuLabelHand" / f"{stem}_S1OtsuLabelHand.tif"
         if theirs_path.is_file():
-            theirs = _load_label(theirs_path)
-            against_theirs = confusion(
-                detection.mask, theirs, ignore_value=SEN1FLOODS11_IGNORE_VALUE
-            )
+            theirs = _load_label_onto(theirs_path, raster, nodata=SEN1FLOODS11_IGNORE_VALUE)
+            against_theirs = confusion(mask, theirs, ignore_value=SEN1FLOODS11_IGNORE_VALUE)
             agreement = against_theirs.intersection_over_union
             agreements.append(agreement)
             agreement_text = f"{agreement:10.3f}"

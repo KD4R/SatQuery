@@ -278,6 +278,65 @@ that they passed review by a reader who had just written the trap list.
 
 ---
 
+### D12 — Postprocessing is tuned for the ground, not for the score
+
+**Decision.** The mask cleanup runs speckle removal, hole filling, minimum mapping
+unit and permanent-water subtraction, in that order, with the MMU defaulting to
+**0.5 ha** and permanent-water subtraction **on in production, off when scoring
+against Sen1Floods11**.
+
+**Two findings from measuring it rather than assuming it.**
+
+**1. Subtracting permanent water makes the benchmark score worse, and is still
+right.** Measured over nine chips:
+
+| configuration | mean IoU |
+|---|---|
+| raw threshold mask | 0.187 |
+| morphology only | 0.203 |
+| morphology + MMU | **0.221** |
+| morphology + MMU + permanent water | 0.194 |
+
+The cause is not a bug. **65.5%** of JRC permanent-water pixels are also marked
+water in Sen1Floods11's `LabelHand`, because Sen1Floods11 is a *surface-water*
+benchmark, not a *flood-change* one. Subtracting the lake therefore removes true
+positives from the score.
+
+For the product the subtraction is unambiguously correct — a reservoir reported as
+flooding is the single most damaging false positive this system can emit. So the
+step stays on by default and the *evaluation* turns it off, with the flag named in
+the output. Optimising it away because it costs 0.03 IoU would be tuning the
+product to the benchmark instead of to the job.
+
+**2. The MMU sweep exposes the detector, not the filter.**
+
+| MMU ha | IoU | precision | recall |
+|---|---|---|---|
+| 0 | 0.203 | 0.294 | 0.696 |
+| 0.5 | 0.221 | 0.322 | 0.661 |
+| 2 | 0.243 | 0.356 | 0.609 |
+| 5 | **0.252** | 0.373 | 0.577 |
+| 50 | 0.215 | 0.349 | 0.363 |
+
+IoU peaks near 5 ha. That is not the filter working — precision at 0 ha is 0.294,
+so seven of every ten detected pixels are wrong, and deleting most of the mask
+raises the average because most of the mask is noise. Recall falls monotonically
+the whole way down.
+
+A 5 ha minimum cannot see a flooded neighbourhood. It would buy 0.03 IoU on nine
+chips and ship a system that misses the thing it exists to find, so the default is
+0.5 ha — inside the 0.1–1 ha range Copernicus EMS rapid mapping uses, and about
+the smallest patch a responder can act on separately. The precision is the learned
+model's problem to fix; the MMU's job is to drop patches too small to act on. A
+test pins the constant so that a future "optimisation" toward the score is visible
+in review.
+
+**Headline, honestly stated.** Postprocessing moves the baseline from **IoU 0.187
+to 0.221**, an 18% relative gain, entirely from morphology and the MMU. It does
+not rescue a weak detector, and it was never going to.
+
+---
+
 ## Open questions
 
 These do not block this commit. Each blocks something later.
