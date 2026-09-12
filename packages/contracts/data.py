@@ -31,6 +31,12 @@ class SceneRef(BaseModel):
     stac_href: str = Field(..., min_length=1, description="Original STAC item href")
     cloud_cover: Optional[float] = Field(..., ge=0, le=100, description="Tile-level cloud %")
 
+class AssetRef(BaseModel):
+    """Reference to a physical asset."""
+    href: str = Field(..., description="Download URL or S3 URI")
+    media_type: Optional[str] = Field(None, description="MIME type of the asset")
+    roles: Optional[list[str]] = Field(None, description="STAC roles for the asset")
+
 class Observation(BaseModel):
     """
     Domain entity for a normalized observation containing STAC item references.
@@ -38,5 +44,5 @@ class Observation(BaseModel):
     observation_id: str = Field(..., description="Internal canonical observation ID")
     scene: SceneRef = Field(..., description="Reference to the underlying STAC scene")
     geometry: Dict[str, Any] = Field(..., description="GeoJSON footprint geometry")
-    assets: Dict[str, str] = Field(..., description="Mapping of asset key (e.g., 'vh', 'visual') to its download/s3 href")
+    assets: Dict[str, AssetRef] = Field(..., description="Mapping of asset key to AssetRef")
     normalized_properties: Dict[str, Any] = Field(default_factory=dict, description="Normalized EO metadata")

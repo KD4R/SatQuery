@@ -1,34 +1,41 @@
 import logging
-import os
 import subprocess
+import os
 
 logger = logging.getLogger(__name__)
 
-def generate_cog(source_path: str, target_path: str) -> str:
+def generate_cog(source_path: str, target_path: str, context: dict = None) -> str:
     """
     Implements P4-13: COG generation and overviews.
-    Uses GDAL via subprocess to convert standard GeoTIFFs to Cloud Optimized GeoTIFFs (COG).
-    This ensures rapid dynamic tile serving by TiTiler.
+    Generates a Cloud Optimized GeoTIFF (COG) WITH overviews (pyramids) for fast zoom rendering.
     """
-    logger.info(f"Generating COG from {source_path} to {target_path}")
+    logger.info(f"Generating COG with overviews for {source_path}")
     
-    # We use gdal_translate for COG creation, explicitly adding overviews
-    command = [
-        "gdal_translate",
-        source_path,
-        target_path,
-        "-of", "COG",
-        "-co", "COMPRESS=DEFLATE",
-        "-co", "OVERVIEWS=IGNORE_EXISTING" # Force standard overview generation
-    ]
-    
+    if not os.path.exists(source_path):
+        raise FileNotFoundError(f"Source raster not found: {source_path}")
+
+    # 1. Build overviews on the source file first (or a temp copy if we don't want to mutate)
+    # Using gdaladdo to build pyramid overviews (levels 2, 4, 8, 16, 32)
+    addo_cmd = ["gdaladdo", "-r", "nearest", source_path, "2", "4", "8", "16", "32"]
     try:
-        subprocess.run(command, check=True, capture_output=True, text=True)
+        subprocess.run(addo_cmd, check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
-        logger.error(f"GDAL COG generation failed: {e.stderr}")
+        logger.error(f"gdaladdo failed: {e.stderr}")
+        raise RuntimeError(f"Failed to generate overviews: {e.stderr}")
+
+    # 2. Translate to COG format, preserving overviews (COPY_SRC_OVERVIEWS=YES)
+    cog_cmd = [
+        "gdal_translate", 
+        source_path, 
+        target_path, 
+        "-of", "COG", 
+        "-co", "COMPRESS=DEFLATE",
+        "-co", "COPY_SRC_OVERVIEWS=YES"
+    ]
+    try:
+        subprocess.run(cog_cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        logger.error(f"gdal_translate failed: {e.stderr}")
         raise RuntimeError(f"Failed to generate COG: {e.stderr}")
-        
-    if not os.path.exists(target_path):
-        raise FileNotFoundError(f"COG generation silently failed, target {target_path} not found.")
-        
+
     return target_path

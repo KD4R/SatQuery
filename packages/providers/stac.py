@@ -32,41 +32,52 @@ class STACProvider(AbstractProvider):
         start_date: datetime,
         end_date: datetime,
         cloud_cover: float = 100.0,
+        context: dict = None,
         **kwargs
     ) -> List[Dict[str, Any]]:
         """
         Standard STAC ItemSearch using GeoJSON polygon intersects and datetime range.
         """
-        try:
-            datetime_str = f"{start_date.isoformat()}Z/{end_date.isoformat()}Z"
-            
-            search_args = {
-                "intersects": polygon,
-                "datetime": datetime_str,
-                "query": {}
-            }
-
-            if cloud_cover < 100.0:
-                search_args["query"]["eo:cloud_cover"] = {"lt": cloud_cover}
+        from services.eo_data.telemetry import tracer, inject_context_to_span
+        context = context or {}
+        with tracer.start_as_current_span(f"stac_search_{self.name}") as span:
+            inject_context_to_span(span, context)
+            try:
+                datetime_str = f"{start_date.isoformat()}Z/{end_date.isoformat()}Z"
                 
-            if "collections" in kwargs:
-                search_args["collections"] = kwargs["collections"]
+                search_args = {
+                    "intersects": polygon,
+                    "datetime": datetime_str,
+                    "query": {}
+                }
 
-            search = self.client.search(**search_args)
-            
-            items = list(search.items())
-            logger.info(f"STACProvider '{self.name}' found {len(items)} items.")
-            return [item.to_dict() for item in items]
-        except Exception as e:
-            logger.error(f"STAC search failed on provider '{self.name}': {e}")
-            raise
+                if cloud_cover < 100.0:
+                    search_args["query"]["eo:cloud_cover"] = {"lt": cloud_cover}
+                    
+                if "collections" in kwargs:
+                    search_args["collections"] = kwargs["collections"]
 
-    def get_asset(self, item_id: str, asset_key: str) -> Optional[str]:
-        try:
-            item = self.client.get_item(item_id)
-            if not item or asset_key not in item.assets:
-                return None
-            return item.assets[asset_key].href
-        except Exception as e:
-            logger.error(f"Failed to get asset '{asset_key}' for item '{item_id}': {e}")
-            raise
+                search = self.client.search(**search_args)
+                
+                items = list(search.items())
+                logger.info(f"STACProvider '{self.name}' found {len(items)} items.")
+                return [item.to_dict() for item in items]
+            except Exception as e:
+                span.record_exception(e)
+                logger.error(f"STAC search failed on provider '{self.name}': {e}")
+                raise
+
+    def get_asset(self, item_id: str, asset_key: str, context: dict = None) -> Optional[str]:
+        from services.eo_data.telemetry import tracer, inject_context_to_span
+        context = context or {}
+        with tracer.start_as_current_span(f"stac_get_asset_{self.name}") as span:
+            inject_context_to_span(span, context)
+            try:
+                item = self.client.get_item(item_id)
+                if not item or asset_key not in item.assets:
+                    return None
+                return item.assets[asset_key].href
+            except Exception as e:
+                span.record_exception(e)
+                logger.error(f"Failed to get asset '{asset_key}' for item '{item_id}': {e}")
+                raise

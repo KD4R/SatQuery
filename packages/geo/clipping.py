@@ -12,10 +12,15 @@ def clip_raster_to_aoi(source_path: str, target_path: str, aoi_geojson: Dict[str
     Memory-efficient windowed clipping using rasterio mask.
     The AOI geojson is expected to be in the same CRS as the source raster.
     """
-    aoi_shape = shape(aoi_geojson)
+    import geopandas as gpd
     
     with rasterio.open(source_path) as src:
         logger.info(f"Clipping raster {source_path} to AOI")
+        
+        # Reproject AOI from EPSG:4326 to raster CRS
+        gdf = gpd.GeoDataFrame.from_features([{"geometry": aoi_geojson, "properties": {}}], crs="EPSG:4326")
+        gdf = gdf.to_crs(src.crs)
+        aoi_shape = gdf.geometry[0]
         
         # Windowed read/masking to prevent OOM on large scenes
         out_image, out_transform = mask(src, [aoi_shape], crop=True)

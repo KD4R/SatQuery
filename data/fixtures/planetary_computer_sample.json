@@ -1,0 +1,47 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "stac_version": "1.0.0",
+      "id": "S2B_MSIL2A_20260908_Guntur",
+      "collection": "sentinel-2-l2a",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [80.2, 16.0],
+            [80.6, 16.0],
+            [80.6, 16.4],
+            [80.2, 16.4],
+            [80.2, 16.0]
+          ]
+        ]
+      },
+      "properties": {
+        "datetime": "2026-09-08T05:30:00Z",
+        "platform": "Sentinel-2B",
+        "instruments": ["MSI"],
+        "sat:relative_orbit": 84,
+        "sat:orbit_state": "ASCENDING",
+        "eo:cloud_cover": 3.2
+      },
+      "links": [
+        {
+          "rel": "self",
+          "href": "https://planetarycomputer.microsoft.com/api/stac/v1/collections/sentinel-2-l2a/items/S2B_MSIL2A_20260908_Guntur"
+        }
+      ],
+      "assets": {
+        "B08": {
+          "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/44/Q/NL/2026/9/S2B_MSIL2A_20260908_Guntur/B08.tif",
+          "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+        },
+        "visual": {
+          "href": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/44/Q/NL/2026/9/S2B_MSIL2A_20260908_Guntur/visual.tif",
+          "type": "image/tiff; application=geotiff; profile=cloud-optimized"
+        }
+      }
+    }
+  ]
+}

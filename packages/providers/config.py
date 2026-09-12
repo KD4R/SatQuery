@@ -1,6 +1,6 @@
 import logging
 from pydantic import Field, SecretStr
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +28,7 @@ class ProviderConfig(BaseSettings):
     # Global timeout bounds for network resilience
     request_timeout_sec: float = Field(default=15.0, alias="REQUEST_TIMEOUT_SEC")
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 # Global provider configuration singleton
 config = ProviderConfig()

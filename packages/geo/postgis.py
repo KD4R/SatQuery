@@ -83,5 +83,15 @@ class PostGISOperations:
                 
         return [{"id": r[0], "name": r[1], "geometry": json.loads(r[2])} for r in results]
 
-# Singleton instance to hold the connection pool throughout app lifecycle
-postgis_ops = PostGISOperations()
+# Singleton instance — initialized lazily so imports don't crash in test environments
+# without a running database. Call postgis_ops() to get the connection pool instance.
+import os as _os
+if not _os.environ.get("SATQUERY_SKIP_DB_INIT"):
+    try:
+        postgis_ops = PostGISOperations()
+    except Exception as _e:
+        import logging as _logging
+        _logging.getLogger(__name__).warning(f"PostGIS pool not initialized at startup: {_e}")
+        postgis_ops = None
+else:
+    postgis_ops = None

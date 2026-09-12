@@ -30,5 +30,7 @@ def validate_raster(file_path: str) -> bool:
                     
                 return True
     except rasterio.errors.RasterioIOError as e:
+        from services.eo_data.telemetry import raster_validation_failure_total
+        raster_validation_failure_total.inc()
         logger.error(f"Raster validation failed: Invalid or corrupted file. {e}")
         raise ValueError(f"Invalid or corrupted raster file: {file_path}")

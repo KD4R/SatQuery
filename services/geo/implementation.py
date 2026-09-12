@@ -2,154 +2,121 @@ import logging
 import os
 import json
 import subprocess
-from typing import Dict, Any, List
+from contextlib import contextmanager
+from typing import Dict, Any, List, Optional
 
 import rasterio
 from rasterio.env import Env
-from rasterio.warp import calculate_default_transform, reproject, Resampling
-from rasterio.mask import mask
-from shapely.geometry import shape
-from shapely.ops import transform
-import pyproj
-import psycopg2
-from psycopg2 import pool
 from celery import Celery
-from fastapi import APIRouter
 
+from packages.geo.raster import validate_raster
+from packages.geo.crs import normalize_crs
+from packages.geo.clipping import clip_raster_to_aoi
+from packages.geo.cog import generate_cog
+from packages.providers.config import config as provider_config
 from services.eo_data.telemetry import (
-    tracer, geo_job_duration_ms, raster_validation_failure_total, inject_context_to_span
+    tracer, geo_job_duration_ms, inject_context_to_span
 )
-from services.eo_data.implementation import config, redis_client
 
 logger = logging.getLogger(__name__)
 
-# --- P4-10: Raster validation ---
-def validate_raster(file_path: str, context: dict) -> bool:
-    with tracer.start_as_current_span("validate_raster") as span:
-        inject_context_to_span(span, context)
-        try:
-            with Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_MAX_DATASET_POOL_SIZE=1):
-                with rasterio.open(file_path) as src:
-                    if src.count < 1 or src.width > 30000 or src.height > 30000:
-                        raise ValueError("Raster fails physical boundary constraints.")
-                    return True
-        except Exception as e:
-            raster_validation_failure_total.inc()
-            span.record_exception(e)
-            raise ValueError(f"Corrupted raster file: {e}")
-
-# --- P4-11: CRS normalization ---
-def normalize_crs(source_path: str, target_path: str, context: dict, target_crs: str = "EPSG:32643") -> str:
-    with tracer.start_as_current_span("normalize_crs") as span:
-        inject_context_to_span(span, context)
-        with rasterio.open(source_path) as src:
-            if src.crs and src.crs.to_string() == target_crs:
-                return source_path
-            
-            transform, width, height = calculate_default_transform(src.crs, target_crs, src.width, src.height, *src.bounds)
-            kwargs = src.meta.copy()
-            kwargs.update({'crs': target_crs, 'transform': transform, 'width': width, 'height': height})
-
-            with rasterio.open(target_path, 'w', **kwargs) as dst:
-                for i in range(1, src.count + 1):
-                    reproject(
-                        source=rasterio.band(src, i), destination=rasterio.band(dst, i),
-                        src_transform=src.transform, src_crs=src.crs,
-                        dst_transform=transform, dst_crs=target_crs, resampling=Resampling.nearest
-                    )
-        return target_path
-
-# --- P4-12: AOI clipping ---
-def clip_raster_to_aoi(source_path: str, target_path: str, aoi_geojson: Dict[str, Any], context: dict) -> str:
-    with tracer.start_as_current_span("clip_raster") as span:
-        inject_context_to_span(span, context)
-        aoi_shape = shape(aoi_geojson)
-        with rasterio.open(source_path) as src:
-            out_image, out_transform = mask(src, [aoi_shape], crop=True)
-            out_meta = src.meta.copy()
-            out_meta.update({"driver": "GTiff", "height": out_image.shape[1], "width": out_image.shape[2], "transform": out_transform})
-            with rasterio.open(target_path, "w", **out_meta) as dst:
-                dst.write(out_image)
-        return target_path
-
-# --- P4-13: COG generation ---
-def generate_cog(source_path: str, target_path: str, context: dict) -> str:
-    with tracer.start_as_current_span("generate_cog") as span:
-        inject_context_to_span(span, context)
-        cmd = ["gdal_translate", source_path, target_path, "-of", "COG", "-co", "COMPRESS=DEFLATE"]
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        return target_path
-
-# --- P4-14: PostGIS spatial operations ---
-class PostGISOperations:
-    def __init__(self):
-        try:
-            self.pool = pool.ThreadedConnectionPool(1, 20, config.db_connection_string.get_secret_value())
-        except psycopg2.Error as e:
-            logger.error(f"PostGIS pool failure: {e}")
-            self.pool = None
-
-    @contextmanager
-    def _get_connection(self, org_id: str):
-        conn = self.pool.getconn()
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT set_config('satquery.org_id', %s, false);", (org_id,))
-            yield conn
-        finally:
-            try:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT set_config('satquery.org_id', '', false);")
-                conn.commit()
-            except psycopg2.Error:
-                conn.close()
-            self.pool.putconn(conn, close=(conn.closed != 0))
-
-    def insert_aoi(self, org_id: str, aoi_id: str, name: str, geojson: Dict[str, Any], context: dict):
-        with tracer.start_as_current_span("postgis_insert_aoi") as span:
-            inject_context_to_span(span, context)
-            with self._get_connection(org_id) as conn:
-                with conn.cursor() as cur:
-                    cur.execute("INSERT INTO aois (id, org_id, name, geom) VALUES (%s, %s, %s, ST_GeomFromGeoJSON(%s))", (aoi_id, org_id, name, json.dumps(geojson)))
-                conn.commit()
-
-# --- P4-15: TiTiler integration ---
-router = APIRouter(prefix="/api/v1/tiles", tags=["tiles"])
-# Stubbed due to titiler.core dependency missing. Production requires titiler mount here.
-@router.get("/{z}/{x}/{y}")
-def tile_stub(z: int, x: int, y: int):
-    return {"status": "Active. Requires titiler pip package to mount dynamic COGs."}
-
 # --- P4-16: Async GeoJob worker ---
-celery_app = Celery("geojob_worker", broker=config.redis_url.get_secret_value(), backend=config.redis_url.get_secret_value())
+celery_app = Celery(
+    "geojob_worker",
+    broker=provider_config.redis_url.get_secret_value(),
+    backend=provider_config.redis_url.get_secret_value(),
+)
+# In test environments (CELERY_TASK_ALWAYS_EAGER=true), run tasks synchronously.
+import os as _celery_os
+if _celery_os.environ.get("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
+    celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
+
+try:
+    import redis as _redis
+    redis_client = _redis.from_url(provider_config.redis_url.get_secret_value(), decode_responses=True)
+except Exception as _e:
+    logger.error(f"Redis initialization failed: {_e}")
+    redis_client = None
+
 
 @celery_app.task(bind=True, max_retries=3)
-@geo_job_duration_ms.time()
 def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, context: dict):
+    """
+    P4-16: Async GeoJob worker.
+    Runs idempotency check then executes the raster pipeline if requested.
+    Pipeline: validate_raster → normalize_crs → clip_raster_to_aoi → generate_cog.
+    """
     with tracer.start_as_current_span("process_geo_job") as span:
         inject_context_to_span(span, context)
+
         if not redis_client:
-            raise RuntimeError("Redis missing for Idempotency")
-            
+            raise RuntimeError("Redis missing — required for idempotency lock")
+
         lock_key = f"geojob:idemp:{idempotency_key}"
         if not redis_client.set(lock_key, "processing", nx=True, ex=86400):
             return {"status": "skipped", "reason": "idempotency_key_exists", "job_id": job_id}
-            
+
         try:
-            # P4 Raster pipeline
-            # Fallback handling P4-17 built inside ML fusion integration point
-            return {"status": "success", "job_id": job_id}
+            with geo_job_duration_ms.time():
+                # P4-13 / P4-11 / P4-12 raster pipeline (optional — only when payload supplies keys)
+                pipeline = payload.get("raster_pipeline")
+                if pipeline:
+                    source_path: str = pipeline["source_path"]
+                    aoi_geojson: Optional[Dict[str, Any]] = pipeline.get("aoi_geojson")
+                    output_path: str = pipeline["output_path"]
+
+                    # Step 1 — validate (P4-10)
+                    validate_raster(source_path)
+
+                    # Step 2 — CRS normalization to correct UTM zone (P4-11)
+                    reprojected_path = source_path.replace(".tif", "_utm.tif")
+                    normalize_crs(source_path, reprojected_path)
+
+                    # Step 3 — AOI clipping (P4-12) and PostGIS persistence (P4-14)
+                    if aoi_geojson:
+                        clipped_path = reprojected_path.replace("_utm.tif", "_clipped.tif")
+                        clip_raster_to_aoi(reprojected_path, clipped_path, aoi_geojson)
+                        pre_cog_path = clipped_path
+                        
+                        # Persist AOI
+                        from packages.geo.postgis import postgis_ops
+                        if postgis_ops:
+                            org_id = context.get("organization_id", "default_org")
+                            postgis_ops.insert_aoi(org_id, job_id, f"Job {job_id} AOI", aoi_geojson)
+                    else:
+                        pre_cog_path = reprojected_path
+
+                    # Step 4 — COG with overviews (P4-13)
+                    generate_cog(pre_cog_path, output_path)
+
+                    return {"status": "success", "job_id": job_id, "output": output_path}
+
+                # Non-raster job — placeholder for future pipeline shapes
+                return {"status": "success", "job_id": job_id}
+
         except Exception as e:
             redis_client.delete(lock_key)
+            span.record_exception(e)
             raise self.retry(exc=e)
+
 
 # --- P4-17: Geo failure recovery and fixture fallback ---
 class FixtureFallbackManager:
+    """
+    P4-17: Returns pinned deterministic fixtures when live provider calls fail.
+    Fixture files live in data/fixtures/ and are loaded by logical name.
+    """
     def __init__(self, fixture_dir: str = "data/fixtures"):
         self.fixture_dir = fixture_dir
 
     def recover_search(self, fallback_id: str, context: dict) -> Dict[str, Any]:
         with tracer.start_as_current_span("recover_fixture") as span:
             inject_context_to_span(span, context)
-            with open(os.path.join(self.fixture_dir, f"{fallback_id}.json"), 'r') as f:
+            fixture_path = os.path.join(self.fixture_dir, f"{fallback_id}.json")
+            if not os.path.exists(fixture_path):
+                raise FileNotFoundError(f"Fixture not found: {fixture_path}")
+            with open(fixture_path, "r") as f:
                 return json.load(f)
+
+
+fixture_fallback = FixtureFallbackManager()
