@@ -62,7 +62,8 @@ class Normalisation:
     def apply(self, bands: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
         mean = np.asarray(self.mean, dtype=np.float32).reshape(-1, 1, 1)
         std = np.asarray(self.std, dtype=np.float32).reshape(-1, 1, 1)
-        return (bands - mean) / std
+        result: npt.NDArray[np.float32] = (bands - mean) / std
+        return result
 
     def to_dict(self) -> dict[str, list[float]]:
         return {"mean": list(self.mean), "std": list(self.std)}

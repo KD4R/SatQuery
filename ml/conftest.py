@@ -21,6 +21,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 from ml.contracts.scene import (
@@ -81,7 +82,7 @@ def utm_spec() -> RasterSpec:
 
 
 @pytest.fixture
-def bimodal_change() -> np.ndarray:
+def bimodal_change() -> npt.NDArray[np.float32]:
     """A change image with two well-separated modes and a known separation point.
 
     Half the pixels sit near -8 dB (a strong backscatter decrease -- flooding) and
@@ -95,4 +96,5 @@ def bimodal_change() -> np.ndarray:
     rng = np.random.default_rng(seed=20260911)
     flooded = rng.normal(loc=-8.0, scale=0.5, size=2048)
     unchanged = rng.normal(loc=1.0, scale=0.5, size=2048)
-    return np.concatenate([flooded, unchanged]).astype(np.float32)
+    result: npt.NDArray[np.float32] = np.concatenate([flooded, unchanged]).astype(np.float32)
+    return result
