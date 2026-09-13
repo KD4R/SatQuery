@@ -8,6 +8,9 @@ from services.agent.nodes.intent_extractor import extract_intent_and_plan
 from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 from services.agent.security.exceptions import PromptInjectionError
 from services.agent.security.sanitizer import check_prompt_injection, sanitize_prompt
+from services.agent.nodes.synthesizer import synthesize_evidence_output
+from services.agent.evidence.models import EvidenceGraph
+from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 
 
 class EvalCase(BaseModel):
@@ -63,7 +66,26 @@ class AgentEvaluationHarness:
                     notes.append(
                         f"Expected sensor {case.expected_sensor}, got {decision.primary_sensor}"
                     )
-
+            
+            # Synthesis test
+            builder = EvidenceGraphBuilder(mission_id="msn-synth-eval")
+            obs = builder.add_observation(
+                {"asset_id": "test_asset", "sensor": "S1_SAR", "datetime": "2026-09-02T00:00:00Z"}
+            )
+            builder.add_inference(
+                input_node_ids=[obs.node_id],
+                model_name="water_unet",
+                model_version="v1",
+                results={"test_metric": 10.0},
+                confidence=0.9
+            )
+            graph = builder.build()
+            
+            out = synthesize_evidence_output(graph, clean)
+            if out.grounding_score < 1.0:
+                result["passed"] = False
+                notes.append("Synthesized output grounding score < 1.0")
+                
         except PromptInjectionError:
             result["passed"] = False
             notes.append("False positive injection detection on legitimate query")

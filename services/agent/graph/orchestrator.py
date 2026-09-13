@@ -16,6 +16,7 @@ from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from services.agent.evidence.models import EvidenceGraph
 from services.agent.nodes.synthesizer import synthesize_evidence_output
+from services.agent.nodes.resilience import execute_with_recovery
 
 def plan_mission(state: MissionState) -> dict:
     intent, plan_steps, selected_sensors = extract_intent_and_plan(
@@ -81,22 +82,34 @@ def acquire_data(state: MissionState) -> dict:
         budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
         
     try:
-        res = executor.execute_tool(
-            "stac_search",
-            args={
-                "bbox": bbox,
-                "start_date": "2026-09-01T00:00:00Z",
-                "end_date": "2026-09-05T00:00:00Z",
-                "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
-                "max_cloud_cover": 30.0
-            },
-            auth_context=ctx,
-            budget=budget
+        def _primary_fn():
+            res = executor.execute_tool(
+                "stac_search",
+                args={
+                    "bbox": bbox,
+                    "start_date": "2026-09-01T00:00:00Z",
+                    "end_date": "2026-09-05T00:00:00Z",
+                    "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
+                    "max_cloud_cover": 30.0
+                },
+                auth_context=ctx,
+                budget=budget
+            )
+            if res.success and res.output:
+                return [obs["asset_id"] for obs in res.output]
+            return []
+            
+        def _fallback_fn():
+            # Deterministic fallback scene
+            return ["S1A_IW_GRDH_1SDV_FALLBACK"]
+            
+        recovery_result = execute_with_recovery(
+            action_name="stac_search_acquisition",
+            primary_fn=_primary_fn,
+            fallback_fn=_fallback_fn,
+            max_retries=2
         )
-        if res.success and res.output:
-            obs_ids = [obs["asset_id"] for obs in res.output]
-        else:
-            obs_ids = []
+        obs_ids = recovery_result.data
     except Exception:
         obs_ids = []
 
@@ -173,6 +186,9 @@ def synthesize(state: MissionState) -> dict:
         graph = EvidenceGraph(**state.evidence_graph)
         out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
         output_dict = out.model_dump()
+        # Flatten metrics into top-level for backward compatibility
+        for k, v in out.metrics.items():
+            output_dict[k] = v
     else:
         output_dict = {
             "summary": "No evidence graph available for synthesis.",
