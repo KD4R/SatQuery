@@ -12,7 +12,7 @@ share this module is an access-control decision and moved to
 Design note on the return type
 ------------------------------
 Failures here do not raise past the service boundary -- they become an
-:class:`~ml.contracts.outcome.Abstention` with reason ``INPUT_FAILED_PREFLIGHT``.
+:class:`~packages.contracts.Abstention` with reason ``INPUT_FAILED_PREFLIGHT``.
 Internally a :class:`PreflightError` is raised so the offending check is easy to
 locate, and the caller translates. That keeps "absence of an answer is a value,
 not an exception" true at the API surface while keeping tracebacks useful inside
@@ -26,7 +26,7 @@ import math
 import numpy as np
 import numpy.typing as npt
 
-from ml.contracts.scene import RasterSpec
+from packages.contracts import RasterSpec
 
 
 class PreflightError(ValueError):

@@ -36,7 +36,7 @@ import uuid
 
 from fastapi import APIRouter, Depends
 
-from ml.contracts.outcome import MissionOutcome
+from packages.contracts import MissionOutcome
 from packages.auth import require_role
 from packages.auth.models import AuthContext, Role
 from services.inference.dependencies import get_analysis_service, get_registry

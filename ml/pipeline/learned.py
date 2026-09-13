@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from ml.contracts.scene import Polarization
+from packages.contracts import Polarization
 from ml.io.raster import Raster
 
 #: Band order the models are trained on. Fetched from the raster BY NAME, never by

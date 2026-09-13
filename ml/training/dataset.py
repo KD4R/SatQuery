@@ -32,7 +32,7 @@ import numpy as np
 import numpy.typing as npt
 import rasterio
 
-from ml.contracts.scene import BackscatterScale, Polarization
+from packages.contracts import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE
 from ml.io.raster import read_raster
 from ml.training.splits import Chip

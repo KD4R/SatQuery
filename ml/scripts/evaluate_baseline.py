@@ -46,7 +46,7 @@ import rasterio
 from rasterio.enums import Resampling
 from rasterio.warp import reproject
 
-from ml.contracts.scene import BackscatterScale, Polarization
+from packages.contracts import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE, confusion
 from ml.geo.area import pixel_area_m2
 from ml.io.preflight import PreflightError

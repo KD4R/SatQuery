@@ -18,7 +18,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ml.contracts.scene import BackscatterScale, Polarization, RasterSpec
+from packages.contracts import BackscatterScale, Polarization, RasterSpec
 from ml.io.preflight import validate_finite_fraction
 from services.inference.validation import ALLOWED_SCHEMES
 

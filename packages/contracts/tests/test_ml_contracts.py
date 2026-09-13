@@ -13,11 +13,15 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from ml.contracts.confidence import Confidence, ConfidenceBasis
-from ml.contracts.measurement import Measurement, MeasurementUnit
-from ml.contracts.outcome import Abstention, AbstentionReason, Analysis
-from ml.contracts.scene import (
+from packages.contracts import (
+    Abstention,
+    AbstentionReason,
+    Analysis,
     BackscatterScale,
+    Confidence,
+    ConfidenceBasis,
+    Measurement,
+    MeasurementUnit,
     PassDirection,
     Polarization,
     RasterSpec,

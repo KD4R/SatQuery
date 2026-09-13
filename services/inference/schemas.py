@@ -1,7 +1,7 @@
 """Request shapes for the inference API.
 
 The *response* shapes are not defined here. They are `Analysis | Abstention` from
-`ml.contracts.outcome`, unchanged — the same objects the pipeline produces
+`packages.contracts`, unchanged — the same objects the pipeline produces
 internally. Defining a separate API response model would create a second place
 where a number can lose its provenance in translation, and provenance surviving
 the trip to the caller is the whole point of the contract layer (ADR-0007 D2).
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ml.contracts.scene import SceneRef
+from packages.contracts import SceneRef
 
 
 class AnalysisRequest(BaseModel):

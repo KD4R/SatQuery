@@ -5,11 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ml.contracts.scene import (
-    BackscatterScale,
-    Polarization,
-    RasterSpec,
-)
+from packages.contracts import BackscatterScale, Polarization, RasterSpec
 from ml.io.preflight import (
     PreflightError,
     validate_against_spec,

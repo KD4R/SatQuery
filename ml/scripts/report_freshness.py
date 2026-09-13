@@ -20,7 +20,19 @@ from pathlib import Path
 #: these and nothing else: a docstring fix in an unrelated file should not
 #: invalidate a report, and a change to Otsu absolutely should.
 FINGERPRINTED = (
-    "ml/crs_policy.py",
+    # Moved out of ml/ in the contract convergence (ADR-0007 D17). Fingerprinted
+    # because is_area_safe() decides
+    # whether an area may be computed at all.
+    #
+    # packages/contracts/ml.py is deliberately NOT here, despite Measurement being
+    # where that policy is enforced. Its validators only ever refuse; none of them
+    # can change a number. Listing it would mean every docstring edit to P1's file
+    # forces a 400-chip regeneration, and a gate that expensive to satisfy is one
+    # that gets bypassed -- which is how this gate was disabled the first time. The
+    # invariant that actually matters there (PHYSICAL_UNITS membership, so the
+    # area-safety guard keeps firing) is pinned by a test instead, which costs
+    # nothing to satisfy and runs on every pull request.
+    "packages/contracts/crs_policy.py",
     "ml/geo/area.py",
     "ml/geo/crs.py",
     "ml/sar/units.py",

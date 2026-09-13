@@ -189,7 +189,7 @@ unfalsifiable claim.
 **Decision.** Two predicates, not one. `is_projected` asks whether a CRS measures in
 linear units. `is_area_safe` asks whether multiplying two of those units yields a
 defensible area, and is currently satisfied only by the WGS 84 UTM zones. Both live
-in `ml/crs_policy.py`, which depends on nothing, so `contracts` and `geo` can share
+in `packages/contracts/crs_policy.py`, which depends on nothing, so `contracts` and `geo` can share
 the policy without depending on each other.
 
 **Reason.** Review of the foundation commit found EPSG:3857 passing the area guard.
@@ -495,6 +495,96 @@ honest framing for any external claim.
     PYTHONPATH="$PWD" python ml/scripts/train_unet.py --epochs 20 --val-every 4
 
 ---
+
+### D16 — A gate with an absurd escape hatch is a gate that gets bypassed
+
+The P3-15 staleness gate shipped with one documented remedy for a false positive:
+regenerate the report, which means a 533 MB download and a full re-score. Six days
+later a `stamp_report.py` step ran in CI immediately before the gate, writing the
+current fingerprint into the report so the comparison compared a value against
+itself. The gate could no longer fail at all.
+
+Measured rather than argued. Inverting the water polarity in `ml/pipeline/baseline.py`
+— `np.less` to `np.greater`, one word, which turns every water measurement into a
+measurement of everything that is not water — produced this:
+
+```
+Stamped reports/evaluation.md: 3d9e162ee74c4ba7 -> e4ff223d71ff72cb
+reports/evaluation.md is current (fingerprint e4ff223d71ff72cb)
+exit 0
+```
+
+The report went on publishing IoU 0.259 as a description of that code.
+
+**The bypass was a rational response to a badly designed gate.** It fired on a
+`@` → `*` operator swap that returns identical values, and the only sanctioned
+answer was the 533 MB round trip. Reverting alone would have recreated the
+pressure and, in time, the bypass.
+
+**Decision.** The escape hatch stays and becomes attributable. `waive_report.py`
+requires `--by` and `--reason`, never runs in CI, and appends a row to
+`reports/evaluation-waivers.md` naming the fingerprint, the modules that changed,
+the person and the reason. The gate accepts a waived fingerprint and prints the
+row loudly rather than passing quietly. A waiver is pinned to one fingerprint, so
+it expires the moment anything else moves — otherwise one docstring waiver carries
+every later change in behind it.
+
+Two supporting changes came out of the same analysis. A stale report now names
+*which* modules moved, because "something changed" is what sent someone looking
+for a bypass. And the gate no longer imports the report generator — it needed
+rasterio, the training dataset and the learned pipeline to answer a question about
+file hashes, and a gate that can fail from an unrelated import is a gate that gets
+switched off.
+
+**The test for this is on `ci.yml`, not on Python.** `check_report_fresh.py` was
+correct throughout; it was handed a rewritten report a second earlier. A test that
+only exercised the Python would have passed against the broken CI.
+
+### D17 — One contract module, and the validators are what make it one
+
+`packages/contracts/ml.py` (P1) and `ml/contracts/` (P3) both existed, and the
+canonical one had the strict *configuration* — `frozen=True`, `extra="forbid"`,
+`revalidate_instances="always"` — and none of the strict *behaviour*. The
+validators had not survived transcription. Measured against that file before the
+fix: hectares in EPSG:4326 constructed, a negative area constructed, and a
+`NOT_CALIBRATED` confidence carrying 0.9 constructed.
+
+Each of those is the failure mode D1 and D2 exist to prevent — a wrong number
+arriving with full provenance attached, which makes it read as *more* credible,
+not less. A file that careful-looking which validates nothing is worse than one
+that never claimed to, because reviewers stop reading it.
+
+**Decision.** `ml/contracts/` is deleted; `packages/contracts` is the only
+contract package. Restoring the validators there completes what that module's own
+docstring already promised rather than overriding P1's intent. `crs_policy` moved
+to `packages/contracts/` because `Measurement` enforces it, so it has to be
+importable without `packages/` depending on `ml/` — and it keeps its deliberate
+zero dependencies, since `packages/geo` would drag in rasterio.
+
+No field, type, requiredness or enum member changed. That was checked by
+snapshotting every model's `model_fields` before and after and diffing, not by
+reading — the whole reason this decision exists is that reading a contract file
+is not sufficient to know what it enforces.
+
+**What stops it recurring** is 35 tests in
+`packages/contracts/tests/test_validators_present.py`, and two rules they follow
+that were learned while writing them:
+
+- Every test asserts on the *error message*, not merely that a `ValidationError`
+  was raised. The first draft passed seven of seven while testing nothing — the
+  probe objects were missing required fields, pydantic raised for that reason, and
+  `except ValidationError` swallowed it as a pass.
+- Every builder is exercised unmodified at import time, so a broken happy path
+  fails at collection instead of turning the whole module green for the wrong
+  reason.
+
+Removing the three validators that were originally lost fails 12 of the 35.
+
+`PHYSICAL_UNITS` membership is pinned by a test rather than by adding
+`packages/contracts/ml.py` to `FINGERPRINTED`. Its validators only ever refuse;
+none can change a number. Fingerprinting it would make every docstring edit to
+P1's file cost a 400-chip regeneration — which is precisely the pressure D16 is
+about.
 
 ## Open questions
 

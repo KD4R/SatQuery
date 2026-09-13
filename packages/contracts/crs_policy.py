@@ -1,5 +1,11 @@
 """Which coordinate reference systems may be used for which purpose.
 
+Authority: P1, alongside packages/contracts/ml.py. Moved here from ml/ during the
+P3 contract convergence: Measurement enforces this policy, so the policy has to
+live where the contract can import it without packages/ depending on ml/. It has
+no dependencies of its own, deliberately -- packages/geo would drag in rasterio,
+and a contract module must import anywhere.
+
 Why this is its own module
 --------------------------
 Three separate call sites need the same answer to "is this CRS safe to measure
@@ -12,7 +18,8 @@ A blacklist is the wrong shape for a safety guard -- it fails open. ``EPSG:4258`
 
 Keeping the policy here also removes an odd dependency edge: ``ml.geo`` previously
 imported from ``ml.contracts`` to reach ``GEOGRAPHIC_CRS``. This module depends on
-nothing, so both layers can import it without either depending on the other.
+nothing -- not even ``packages.contracts.ml`` -- so every layer can import it
+without any of them depending on each other.
 
 Two questions, deliberately distinct
 ------------------------------------

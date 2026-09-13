@@ -1,27 +1,21 @@
-"""Shared fixtures.
+"""Fixtures for the contract tests.
 
-Note on test data
------------------
-Everything here is **synthetic**: hand-built arrays with properties we can compute
-by hand. That is deliberate and is *not* the "mock data" this project bans.
+Deliberately self-contained, and deliberately a near-duplicate of two fixtures in
+``ml/conftest.py``. The alternative -- one suite importing the other's conftest --
+would make ``packages/`` depend on ``ml/``, and on ``ml``'s *tests* at that, which
+is the dependency direction the contract convergence (ADR-0007 D17) exists to
+remove. Twelve
+duplicated lines is the cheaper of the two.
 
-The distinction the project draws:
-
-* **Synthetic test data** never reaches a user, exists only under ``tests/``, and
-  is how you verify that Otsu finds a threshold you calculated yourself. Required.
-* **Mock product data** is a fabricated value on a code path a user can reach.
-  Banned.
-
-The package boundary enforces it: nothing under ``src/`` may import from ``tests``,
-and CI fails the build if it does.
+Everything here is synthetic: hand-built values whose properties can be computed
+by hand. That is not the "mock data" this project bans -- see ml/conftest.py for
+the distinction the project draws.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import numpy as np
-import numpy.typing as npt
 import pytest
 
 from packages.contracts import (
@@ -79,22 +73,3 @@ def utm_spec() -> RasterSpec:
         pixel_size_m=(10.0, 10.0),
         nodata=None,
     )
-
-
-@pytest.fixture
-def bimodal_change() -> npt.NDArray[np.float32]:
-    """A change image with two well-separated modes and a known separation point.
-
-    Half the pixels sit near -8 dB (a strong backscatter decrease -- flooding) and
-    half near +1 dB (no change). Otsu should return a threshold comfortably between
-    the two clusters, which is what ``test_otsu_*`` asserts.
-
-    A fixed seed keeps the test deterministic; the assertions are on the interval
-    the threshold must fall in, not on an exact value, so they do not encode
-    floating-point noise.
-    """
-    rng = np.random.default_rng(seed=20260911)
-    flooded = rng.normal(loc=-8.0, scale=0.5, size=2048)
-    unchanged = rng.normal(loc=1.0, scale=0.5, size=2048)
-    result: npt.NDArray[np.float32] = np.concatenate([flooded, unchanged]).astype(np.float32)
-    return result

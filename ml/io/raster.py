@@ -54,8 +54,8 @@ from rasterio.enums import Resampling
 from rasterio.transform import array_bounds
 from rasterio.warp import calculate_default_transform, reproject
 
-from ml.contracts.scene import BackscatterScale, Polarization, RasterSpec
-from ml.crs_policy import is_area_safe
+from packages.contracts import BackscatterScale, Polarization, RasterSpec
+from packages.contracts.crs_policy import is_area_safe
 from ml.geo.crs import utm_epsg_for
 
 

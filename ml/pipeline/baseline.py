@@ -42,10 +42,16 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
-from ml.contracts.confidence import Confidence
-from ml.contracts.outcome import Abstention, AbstentionReason, Analysis, MissionOutcome
-from ml.contracts.scene import Polarization, SceneRef
-from ml.crs_policy import is_area_safe
+from packages.contracts import (
+    Abstention,
+    AbstentionReason,
+    Analysis,
+    Confidence,
+    MissionOutcome,
+    Polarization,
+    SceneRef,
+)
+from packages.contracts.crs_policy import is_area_safe
 from ml.geo.area import area_hectares, pixel_area_m2
 from ml.pipeline.postprocess import DEFAULT_MIN_MAPPING_UNIT_HA, postprocess_water_mask
 from ml.io.raster import Raster

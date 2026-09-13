@@ -20,10 +20,10 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from ml.crs_policy import is_area_safe, is_projected
+from packages.contracts.crs_policy import is_area_safe, is_projected
 from ml.geo.area import area_hectares, pixel_area_m2
 from ml.geo.crs import CRSError, assert_area_safe
-from ml.contracts.measurement import Measurement, MeasurementUnit
+from packages.contracts import Measurement, MeasurementUnit
 
 pytestmark = pytest.mark.unit
 
