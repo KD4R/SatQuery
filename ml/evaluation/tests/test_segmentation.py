@@ -13,8 +13,10 @@ import pytest
 
 from ml.evaluation.segmentation import (
     SEN1FLOODS11_IGNORE_VALUE,
+    SegmentationMetrics,
     confusion,
     mask_agreement_iou,
+    pool,
 )
 
 # CI selects tests by marker (`pytest -m unit`); an unmarked test never runs.
@@ -144,3 +146,99 @@ def test_two_empty_masks_give_nan_not_one() -> None:
     """Unanimous agreement that there is nothing there says nothing about reliability."""
     empty = np.zeros(10, dtype=bool)
     assert np.isnan(mask_agreement_iou(empty, empty))
+
+
+# --------------------------------------------------------------------------- #
+# Pooling, and why the aggregation has to be stated                            #
+# --------------------------------------------------------------------------- #
+
+
+def test_pooling_sums_the_counts() -> None:
+    pooled = pool(
+        [
+            SegmentationMetrics(
+                true_positive=1,
+                false_positive=2,
+                false_negative=3,
+                true_negative=4,
+                ignored_pixels=5,
+            ),
+            SegmentationMetrics(
+                true_positive=10,
+                false_positive=20,
+                false_negative=30,
+                true_negative=40,
+                ignored_pixels=50,
+            ),
+        ]
+    )
+    assert (pooled.true_positive, pooled.false_positive) == (11, 22)
+    assert (pooled.false_negative, pooled.true_negative) == (33, 44)
+    assert pooled.ignored_pixels == 55
+
+
+def test_pooling_nothing_is_an_error_not_a_zero() -> None:
+    """A pooled score over no chips is undefined, not 0.0.
+
+    Returning zero would put a real-looking number into a report generated from an
+    empty split -- which is exactly the class of defect the report gate exists for.
+    """
+    with pytest.raises(ValueError, match="empty"):
+        pool([])
+
+
+def test_pooled_and_mean_per_chip_iou_disagree_and_pooling_is_the_honest_one() -> None:
+    """The reason both aggregations have to appear in the report.
+
+    Two chips: one nearly dry where the model scores badly on nine water pixels,
+    one substantially flooded where it does well. Averaging the two per-chip IoUs
+    gives the dry chip -- nine pixels of ground truth -- the same vote as the wet
+    one. Pooling weights each chip by how much water was there to find.
+
+    The gap here is deliberately large because it is large in the real data: on the
+    held-out split these two numbers are 0.26 and 0.42 for the same model.
+    """
+    dry = SegmentationMetrics(
+        true_positive=1,
+        false_positive=9,
+        false_negative=8,
+        true_negative=262_126,
+        ignored_pixels=0,
+    )
+    wet = SegmentationMetrics(
+        true_positive=90_000,
+        false_positive=10_000,
+        false_negative=10_000,
+        true_negative=152_144,
+        ignored_pixels=0,
+    )
+
+    mean_per_chip = (dry.intersection_over_union + wet.intersection_over_union) / 2
+    pooled = pool([dry, wet]).intersection_over_union
+
+    # The dry chip scores 1/18 = 0.056 on nine pixels of truth; the wet one
+    # scores 0.818 on 100,000. The mean splits the difference as though the two
+    # carried equal evidence.
+    assert mean_per_chip == pytest.approx(0.437, abs=1e-3)
+    assert pooled == pytest.approx(0.818, abs=1e-3)
+    assert pooled > mean_per_chip
+
+
+def test_accuracy_is_high_for_a_model_that_finds_nothing() -> None:
+    """Pinned so the report can quote it as the floor any 'N% accuracy' target clears.
+
+    A model predicting no water at all on a chip that is 10% water scores 0.90
+    accuracy and 0.0 IoU. This is the number to refuse when someone asks for
+    "90+ accuracy".
+    """
+    found_nothing = SegmentationMetrics(
+        true_positive=0,
+        false_positive=0,
+        false_negative=10,
+        true_negative=90,
+        ignored_pixels=0,
+    )
+    assert found_nothing.accuracy == pytest.approx(0.90)
+    assert found_nothing.prevalence == pytest.approx(0.10)
+    assert found_nothing.intersection_over_union == 0.0
+    assert found_nothing.accuracy == pytest.approx(1.0 - found_nothing.prevalence)

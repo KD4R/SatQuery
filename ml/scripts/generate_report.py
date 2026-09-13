@@ -45,6 +45,7 @@ import numpy as np
 from packages.contracts import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE as IGNORE
 from ml.evaluation.segmentation import confusion
+from ml.evaluation.segmentation import SegmentationMetrics, pool
 from ml.geo.area import pixel_area_m2
 from ml.io.preflight import PreflightError
 from ml.io.raster import read_raster, reproject_to_area_safe_crs
@@ -128,8 +129,10 @@ def evaluate_all(chips: tuple[Chip, ...], model_path: Path | None):
             base = confusion(base_mask, truth, ignore_value=IGNORE)
             base_iou, base_f1 = base.intersection_over_union, base.f1
         except (PreflightError, ThresholdError):
+            base = None
             base_iou = base_f1 = float("nan")
 
+        scored = None
         model_iou = model_f1 = float("nan")
         if model is not None:
             # Predicted on the SAME reprojected raster the baseline was scored on.
@@ -150,9 +153,103 @@ def evaluate_all(chips: tuple[Chip, ...], model_path: Path | None):
                 "baseline_f1": base_f1,
                 "model_iou": model_iou,
                 "model_f1": model_f1,
+                # The counts, not just the ratios. Pooling needs them, and a ratio
+                # cannot be un-averaged back into one.
+                "baseline_counts": _counts(base),
+                "model_counts": _counts(scored),
             }
         )
     return rows, model is not None
+
+
+def _counts(metrics) -> dict[str, int] | None:
+    """The four confusion counts, or None when the method produced no mask.
+
+    None rather than zeros: a method that abstained on a chip did not score zero
+    there, and folding zeros into a pooled total would quietly credit it with a
+    perfect true-negative run over a chip it never looked at.
+    """
+    if metrics is None:
+        return None
+    return {
+        "true_positive": metrics.true_positive,
+        "false_positive": metrics.false_positive,
+        "false_negative": metrics.false_negative,
+        "true_negative": metrics.true_negative,
+        "ignored_pixels": metrics.ignored_pixels,
+    }
+
+
+def _pooled(rows, key: str):
+    """Pool the per-chip counts for one method, or None if it never scored."""
+    collected = [SegmentationMetrics(**r[key]) for r in rows if r.get(key) is not None]
+    return pool(collected) if collected else None
+
+
+def _headline(scored, has_model: bool) -> list[str]:
+    """Both aggregations, side by side, with the number that makes them readable.
+
+    Two IoUs for the same model on the same chips is not indecision. Averaging
+    per-chip IoU gives a 512x512 tile holding nine water pixels the same vote as a
+    half-flooded one, and most of this benchmark is nearly dry -- so the mean is
+    dominated by chips where one misplaced pixel swings the score. Pooling weights
+    each chip by how much water was there to find, and is the aggregation the
+    Sen1Floods11 literature reports. They differ by roughly a factor of two here.
+
+    Quoting either alone, without saying which, is how two people end up arguing
+    about the same model.
+
+    Accuracy is printed for one reason: to be refused. See the note under the table.
+    """
+    baseline = _pooled(scored, "baseline_counts")
+    model = _pooled(scored, "model_counts") if has_model else None
+
+    base_iou = fmt(baseline.intersection_over_union) if baseline else "n/a"
+    base_f1 = fmt(baseline.f1) if baseline else "n/a"
+    lines = [
+        "| method | pooled IoU | pooled F1 | mean per-chip IoU | mean per-chip F1 |",
+        "|---|---|---|---|---|",
+        f"| deterministic baseline | {base_iou} | {base_f1} "
+        f"| {fmt(mean([r['baseline_iou'] for r in scored]))} "
+        f"| {fmt(mean([r['baseline_f1'] for r in scored]))} |",
+    ]
+    if has_model and model is not None:
+        lines.append(
+            f"| U-Net | **{fmt(model.intersection_over_union)}** "
+            f"| **{fmt(model.f1)}** "
+            f"| {fmt(mean([r['model_iou'] for r in scored]))} "
+            f"| {fmt(mean([r['model_f1'] for r in scored]))} |"
+        )
+
+    reference = model if model is not None else baseline
+    if reference is not None:
+        floor = 1.0 - reference.prevalence
+        lines += [
+            "",
+            "**Do not quote accuracy for this task.** Water is "
+            f"{reference.prevalence:.1%} of the scorable pixels on this split, so a "
+            f"model that predicts no water anywhere scores {floor:.1%} accuracy and "
+            '0.000 IoU. Every target of the form "N% accurate" below that figure is '
+            "met by a model that does nothing. The scored methods above reach "
+            + ", ".join(
+                f"{name} {m.accuracy:.1%}"
+                for name, m in (("baseline", baseline), ("U-Net", model))
+                if m is not None
+            )
+            + " -- which is why IoU and F1 are the reported metrics.",
+        ]
+
+    missing = sum(1 for r in scored if r.get("baseline_counts") is None)
+    if missing:
+        lines += [
+            "",
+            f"{missing} of {len(scored)} chips "
+            f"{'is' if missing == 1 else 'are'} absent from the pooled baseline: "
+            "Otsu found no separable threshold and the method abstained. An "
+            "abstention is not a zero score, so those chips are excluded rather "
+            "than counted as total failures (ADR-0007 D10).",
+        ]
+    return lines
 
 
 def mean(values) -> float:
@@ -218,17 +315,7 @@ def render(rows, *, has_model, chips, split, code_hash, model_path) -> str:
     held_out = {c.stem for c in split.validation} if split is not None else None
     scored = [r for r in rows if held_out is None or r["stem"] in held_out]
 
-    lines += [
-        "| method | IoU | F1 |",
-        "|---|---|---|",
-        f"| deterministic baseline | {fmt(mean([r['baseline_iou'] for r in scored]))} "
-        f"| {fmt(mean([r['baseline_f1'] for r in scored]))} |",
-    ]
-    if has_model:
-        lines.append(
-            f"| U-Net | **{fmt(mean([r['model_iou'] for r in scored]))}** "
-            f"| **{fmt(mean([r['model_f1'] for r in scored]))}** |"
-        )
+    lines += _headline(scored, has_model)
     lines += ["", "---", "", "## Stratified by water content", ""]
 
     lines += [
