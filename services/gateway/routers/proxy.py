@@ -20,9 +20,9 @@ from typing import Any, Dict, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 
-from packages.auth.dependencies import get_current_user, require_role
+from packages.auth.dependencies import require_role
 from packages.auth.models import AuthContext, Role
 from packages.shared.client import CircuitBreakerOpenError, InternalClient, InternalClientError
 
@@ -64,6 +64,7 @@ def _get_agent_client() -> InternalClient:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _safe_headers(request: Request) -> Dict[str, str]:
     """Pass-through headers that are safe to forward downstream."""
     forwarded: Dict[str, str] = {}
@@ -94,9 +95,7 @@ async def _proxy(
         try:
             return JSONResponse(content=resp.json(), status_code=resp.status_code)
         except Exception:
-            return JSONResponse(
-                content={"raw": resp.text}, status_code=resp.status_code
-            )
+            return JSONResponse(content={"raw": resp.text}, status_code=resp.status_code)
 
     except CircuitBreakerOpenError:
         logger.warning("Circuit breaker open for path=%s", path)
@@ -130,6 +129,7 @@ async def _proxy(
 
 
 # ── Mission proxy routes ──────────────────────────────────────────────────────
+
 
 @router.get("/api/v1/missions")
 async def proxy_list_missions(
@@ -214,12 +214,11 @@ async def proxy_get_job(
     ctx: AuthContext = Depends(require_role(Role.VIEWER)),
 ):
     """Proxy GET /api/v1/jobs/{job_id} → Mission service."""
-    return await _proxy(
-        _get_mission_client(), "GET", f"/api/v1/jobs/{job_id}", ctx, request
-    )
+    return await _proxy(_get_mission_client(), "GET", f"/api/v1/jobs/{job_id}", ctx, request)
 
 
 # ── Agent proxy routes ────────────────────────────────────────────────────────
+
 
 @router.post("/api/v1/agent/plan")
 async def proxy_agent_plan(
@@ -238,9 +237,7 @@ async def proxy_agent_execute(
 ):
     """Proxy POST /api/v1/agent/execute → Agent service (ANALYST+)."""
     body = await request.body()
-    return await _proxy(
-        _get_agent_client(), "POST", "/api/v1/agent/execute", ctx, request, body
-    )
+    return await _proxy(_get_agent_client(), "POST", "/api/v1/agent/execute", ctx, request, body)
 
 
 @router.get("/api/v1/agent/runs/{job_id}")
@@ -250,9 +247,7 @@ async def proxy_agent_run_status(
     ctx: AuthContext = Depends(require_role(Role.VIEWER)),
 ):
     """Proxy GET /api/v1/agent/runs/{job_id} → Agent service."""
-    return await _proxy(
-        _get_agent_client(), "GET", f"/api/v1/agent/runs/{job_id}", ctx, request
-    )
+    return await _proxy(_get_agent_client(), "GET", f"/api/v1/agent/runs/{job_id}", ctx, request)
 
 
 @router.post("/api/v1/agent/sensor-decision")
@@ -274,9 +269,7 @@ async def proxy_agent_confidence(
 ):
     """Proxy POST /api/v1/agent/confidence → Agent service."""
     body = await request.body()
-    return await _proxy(
-        _get_agent_client(), "POST", "/api/v1/agent/confidence", ctx, request, body
-    )
+    return await _proxy(_get_agent_client(), "POST", "/api/v1/agent/confidence", ctx, request, body)
 
 
 @router.get("/api/v1/agent/tools")

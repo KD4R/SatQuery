@@ -9,16 +9,14 @@ Verifies:
   - Outcome field defaults to SUCCESS.
 """
 
-import asyncio
-import logging
 from unittest.mock import patch
 
 import pytest
 
 from services.mission.audit import alog_action, log_action, _build_record
 
-
 # ── _build_record unit tests ──────────────────────────────────────────────────
+
 
 def test_build_record_contains_required_fields():
     record = _build_record(
@@ -67,6 +65,7 @@ def test_build_record_handles_no_extra():
 
 
 # ── log_action integration (with real logger) ─────────────────────────────────
+
 
 def test_log_action_emits_log_record():
     """log_action must write an INFO record to the audit logger."""
@@ -127,20 +126,23 @@ def test_log_action_failure_outcome():
 
 # ── alog_action async tests ───────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_alog_action_calls_sync_log_action():
     """alog_action must delegate to log_action without blocking the loop."""
     called_with = {}
 
     def _fake_log(action, resource_type, resource_id, subject, org, outcome, extra):
-        called_with.update({
-            "action": action,
-            "resource_type": resource_type,
-            "resource_id": resource_id,
-            "subject": subject,
-            "org": org,
-            "outcome": outcome,
-        })
+        called_with.update(
+            {
+                "action": action,
+                "resource_type": resource_type,
+                "resource_id": resource_id,
+                "subject": subject,
+                "org": org,
+                "outcome": outcome,
+            }
+        )
 
     with patch("services.mission.audit.log_action", side_effect=_fake_log):
         await alog_action(

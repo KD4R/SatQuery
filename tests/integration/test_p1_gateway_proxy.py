@@ -12,6 +12,7 @@ OWASP A01, A07 coverage.
 """
 
 import pytest
+import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
@@ -35,12 +36,10 @@ def _operator_token():
     return make_token(roles=["operator", "analyst"], org_id=ORG)
 
 
-import uuid
-
 def _ah(token: str):
     return {
         "Authorization": f"Bearer {token}",
-        "X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}"
+        "X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}",
     }
 
 
@@ -52,17 +51,24 @@ def gw():
 
 # ── Auth gate tests ───────────────────────────────────────────────────────────
 
+
 @pytest.mark.integration
 def test_p1_proxy_missions_no_auth_returns_401(gw):
     """Unauthenticated GET /api/v1/missions must return 401."""
-    resp = gw.get("/api/v1/missions", headers={"X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}"})
+    resp = gw.get(
+        "/api/v1/missions", headers={"X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}"}
+    )
     assert resp.status_code == 401
 
 
 @pytest.mark.integration
 def test_p1_proxy_agent_plan_no_auth_returns_401(gw):
     """Unauthenticated POST /api/v1/agent/plan must return 401."""
-    resp = gw.post("/api/v1/agent/plan", json={"query": "test"}, headers={"X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}"})
+    resp = gw.post(
+        "/api/v1/agent/plan",
+        json={"query": "test"},
+        headers={"X-Forwarded-For": f"10.0.0.{uuid.uuid4().int % 254 + 1}"},
+    )
     assert resp.status_code == 401
 
 
@@ -87,6 +93,7 @@ def test_p1_proxy_missions_delete_analyst_returns_403(gw):
 
 
 # ── Circuit-breaker / error propagation ──────────────────────────────────────
+
 
 @pytest.mark.integration
 @patch("services.gateway.routers.proxy._get_mission_client")

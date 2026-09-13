@@ -18,6 +18,7 @@ OWASP mitigations implemented:
 
 import datetime
 import logging
+import time
 from typing import Any, Dict, List
 
 from jose import ExpiredSignatureError, JWTError, jwt
@@ -58,21 +59,21 @@ def _decode_hs256(token: str, settings: Any) -> Dict[str, Any]:
     return result
 
 
-import time
-
-_jwks_cache: Dict[str, Any] = {}
+_jwks_cache: Dict[str, bytes] = {}
 _jwks_cache_time: float = 0.0
 
+
 def _get_jwks(url: str) -> bytes:
-    global _jwks_cache, _jwks_cache_time
+    global _jwks_cache_time
     now = time.time()
     if url in _jwks_cache and now - _jwks_cache_time < 300:
         return _jwks_cache[url]
-    
+
     import urllib.request
+
     with urllib.request.urlopen(url) as resp:  # nosec B310
-        jwks = resp.read()
-    
+        jwks: bytes = resp.read()
+
     _jwks_cache[url] = jwks
     _jwks_cache_time = now
     return jwks

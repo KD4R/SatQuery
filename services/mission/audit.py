@@ -30,6 +30,7 @@ from typing import Any, Dict, Optional
 # Optional structured JSON logging
 try:
     from pythonjsonlogger import jsonlogger as _jl  # type: ignore
+
     _HAS_JSON_LOGGER = True
 except ImportError:
     _HAS_JSON_LOGGER = False
@@ -66,6 +67,7 @@ def _build_audit_logger() -> logging.Logger:
         # Fallback to stderr if the file cannot be created (e.g. read-only fs in CI)
         handler = logging.StreamHandler()
 
+    formatter: logging.Formatter
     if _HAS_JSON_LOGGER:
         formatter = _jl.JsonFormatter(
             "%(asctime)s %(levelname)s %(name)s %(message)s",
@@ -89,6 +91,7 @@ def _get_audit_logger() -> logging.Logger:
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 
 def _build_record(
     action: str,
