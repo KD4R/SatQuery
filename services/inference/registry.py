@@ -209,7 +209,7 @@ class ModelRegistry:
             ) from error
 
         try:
-            state = torch.load(card.checkpoint, weights_only=False, map_location="cpu")
+            state = torch.load(card.checkpoint, weights_only=True, map_location="cpu")
             model = UNet(**state["architecture"])
             model.load_state_dict(state["state_dict"])
             model.eval()

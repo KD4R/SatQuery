@@ -259,7 +259,7 @@ def main() -> int:
         if not last_path.is_file():
             print(f"--resume given but {last_path} does not exist", file=sys.stderr)
             return 2
-        state = torch.load(last_path, weights_only=False)
+        state = torch.load(last_path, weights_only=True)
         model.load_state_dict(state["state_dict"])
         optimiser.load_state_dict(state["optimiser"])
         scheduler.load_state_dict(state["scheduler"])
@@ -369,7 +369,7 @@ def main() -> int:
             )
 
     print()
-    checkpoint = torch.load(args.out / "best.pt", weights_only=False)
+    checkpoint = torch.load(args.out / "best.pt", weights_only=True)
     model.load_state_dict(checkpoint["state_dict"])
 
     model_iou, model_f1 = evaluate(model, split.validation, normalisation)

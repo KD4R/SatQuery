@@ -129,7 +129,7 @@ def evaluate_all(chips: tuple[Chip, ...], model_path: Path | None):
             from ml.models.unet import UNet
             from ml.training.dataset import Normalisation
 
-            state = torch.load(model_path, weights_only=False, map_location="cpu")
+            state = torch.load(model_path, weights_only=True, map_location="cpu")
             model = UNet(**state["architecture"])
             model.load_state_dict(state["state_dict"])
             model.eval()
