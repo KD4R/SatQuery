@@ -445,6 +445,57 @@ what would have been a failure is reporting 0.234 as an improvement.
 
 ---
 
+### D15 — With enough data the U-Net beats the baseline, and wins where predicted
+
+**Result.** 308 training chips across eight regions, 20 epochs. Held out India and
+Somalia — 92 chips, never seen in training.
+
+| | IoU | F1 |
+|---|---|---|
+| deterministic baseline | 0.189 | 0.262 |
+| U-Net, 486k parameters | **0.261** | **0.361** |
+| difference | **+0.072** | +0.099 |
+
+A 38% relative improvement in IoU. This supersedes D14, which measured the same
+comparison on 41 training chips and found a tie; the diagnosis there — that data
+volume was the binding constraint, not the architecture — holds.
+
+**Where the improvement comes from is the whole point:**
+
+| water in chip | baseline | U-Net | |
+|---|---|---|---|
+| < 1% | 0.003 | **0.016** | 5× |
+| 1–10% | 0.095 | **0.246** | 2.6× |
+| 10–30% | 0.293 | **0.321** | |
+| > 30% | **0.748** | 0.714 | baseline still ahead |
+
+D13 identified the capability gap precisely: Otsu always splits a histogram, so it
+invents a flood on dry ground, and the fix had to be a model that can output
+nothing. The gain is concentrated in exactly the two driest buckets and the model
+is *worse* on the wettest one, where thresholding was already close to adequate.
+That is the predicted shape, and it is a stronger result than the headline number:
+the two methods fail differently, which is what makes their agreement a usable
+confidence signal (D5, `ConfidenceBasis.MODEL_AGREEMENT`).
+
+**On the baseline number moving.** It reads 0.189 here against 0.242 in D14. The
+methods are unchanged; the validation set is not. It went from 19 chips to 92, with
+many more Indian scenes, and it is harder. This is the concrete case for what D13
+insisted on — a single mean says as much about the sample as the method, and only
+numbers measured on the same split may be compared. The pairing in the table above
+is valid because both were scored on the same 92 chips in the same run.
+
+**Still not solved.** 0.016 on the driest bucket is five times better than 0.003
+and still close to useless in absolute terms. The model has begun to learn
+restraint on dry scenes rather than acquired it. That is the next target, and the
+honest framing for any external claim.
+
+**Reproduce:**
+
+    python3 fetch_sen1floods11.py --split all --count 400
+    PYTHONPATH="$PWD" python ml/scripts/train_unet.py --epochs 20 --val-every 4
+
+---
+
 ## Open questions
 
 These do not block this commit. Each blocks something later.

@@ -197,6 +197,15 @@ def main() -> int:
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--val-every",
+        type=int,
+        default=1,
+        help="run validation every N epochs (default 1). Validation is full-chip "
+        "inference over every held-out chip, so at 92 chips it costs more than the "
+        "training epoch it follows. The final epoch is always validated regardless, "
+        "so the reported number is never stale.",
+    )
+    parser.add_argument(
         "--resume",
         action="store_true",
         help="continue from artifacts/<out>/last.pt instead of starting over. "
@@ -297,7 +306,15 @@ def main() -> int:
             losses.append(float(loss.item()))
         scheduler.step()
 
-        iou, f1 = evaluate(model, split.validation, normalisation)
+        # The last epoch is always scored: a run whose reported number came from
+        # five epochs ago would be quietly wrong, and the "best" checkpoint would be
+        # selected on an incomplete picture.
+        should_validate = epoch % args.val_every == 0 or epoch == args.epochs
+        iou, f1 = (
+            evaluate(model, split.validation, normalisation)
+            if should_validate
+            else (float("nan"), float("nan"))
+        )
         result = EpochResult(
             epoch=epoch,
             train_loss=float(np.mean(losses)),
@@ -306,7 +323,8 @@ def main() -> int:
             seconds=time.time() - started,
         )
         history.append(result)
-        print(f"{epoch:5d} {result.train_loss:8.4f} {iou:8.3f} {f1:8.3f} " f"{result.seconds:6.1f}")
+        scores = f"{iou:8.3f} {f1:8.3f}" if should_validate else f"{'-':>8} {'-':>8}"
+        print(f"{epoch:5d} {result.train_loss:8.4f} {scores} {result.seconds:6.1f}")
 
         # Selected on validation IoU, which is held-out by region. Selecting on
         # training loss would pick the most memorised epoch.
@@ -319,13 +337,18 @@ def main() -> int:
                 "scheduler": scheduler.state_dict(),
                 "normalisation": normalisation.to_dict(),
                 "epoch": epoch,
-                "best_iou": best_iou if iou <= best_iou else iou,
+                # max() over the *validated* score only. Writing `iou` here
+                # unconditionally poisoned best_iou with NaN on every unvalidated
+                # epoch, and because every comparison against NaN is False, the
+                # best checkpoint then stopped being written entirely -- silently,
+                # since training carried on looking healthy.
+                "best_iou": max(best_iou, iou) if should_validate else best_iou,
                 "history": [asdict(h) for h in history],
             },
             last_path,
         )
 
-        if iou > best_iou:
+        if should_validate and iou > best_iou:
             best_iou = iou
             torch.save(
                 {
