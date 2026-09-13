@@ -22,7 +22,9 @@ from pathlib import Path
 import pytest
 
 from ml.scripts.report_freshness import (
+    CALIBRATION_REPORT,
     REPORT,
+    REPORTS,
     WAIVERS,
     changed_modules,
     code_fingerprint,
@@ -61,20 +63,25 @@ def repo(tmp_path: Path) -> Path:
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_bytes((REPO_ROOT / relative).read_bytes())
 
-    from ml.scripts.report_freshness import FINGERPRINTED
+    from ml.scripts.report_freshness import REPORTS
 
-    for relative in FINGERPRINTED:
-        destination = tmp_path / relative
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes((REPO_ROOT / relative).read_bytes())
+    for modules in REPORTS.values():
+        for relative in modules:
+            destination = tmp_path / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes((REPO_ROOT / relative).read_bytes())
 
     (tmp_path / "reports").mkdir()
-    (tmp_path / REPORT).write_text(
-        "# Evaluation\n\n"
-        "| field | value |\n| --- | --- |\n"
-        f"| code fingerprint | `{code_fingerprint(tmp_path)}` |\n\n"
-        "| method | IoU |\n| --- | --- |\n| U-Net | 0.259 |\n"
-    )
+    # Every report the gate walks, each stamped with its own module list's
+    # fingerprint. Writing only one of them would make the fixture pass for a
+    # reason the real repository does not enjoy.
+    for report, modules in REPORTS.items():
+        (tmp_path / report).write_text(
+            f"# {report.stem}\n\n"
+            "| field | value |\n| --- | --- |\n"
+            f"| code fingerprint | `{code_fingerprint(tmp_path, modules)}` |\n\n"
+            "| method | IoU |\n| --- | --- |\n| U-Net | 0.259 |\n"
+        )
     write_sidecar(tmp_path)
     return tmp_path
 
@@ -250,3 +257,39 @@ def test_the_report_generator_filters_to_hand_labels() -> None:
         "so there is something to filter, and before the split so held-out "
         "regions are not computed over chips the report then refuses to score"
     )
+
+
+def test_the_calibration_report_is_gated_too(repo: Path) -> None:
+    """Both committed reports, each against its own module list.
+
+    A calibration report rots exactly the way an evaluation report does -- someone
+    changes the temperature search, the committed ECE quietly stops describing the
+    code, and nothing says so. The lists are separate on purpose: a change to Otsu
+    cannot move an ECE and a change to the temperature search cannot move an IoU,
+    so one shared list would fire each report on the other's edits, and a gate that
+    fires for reasons the reader cannot act on is one that gets bypassed (D16).
+    """
+    assert CALIBRATION_REPORT in REPORTS
+    assert REPORTS[CALIBRATION_REPORT] != REPORTS[REPORT]
+
+    calibration = repo / "ml/evaluation/calibration.py"
+    calibration.write_text(
+        calibration.read_text().replace("DEFAULT_BINS = 10", "DEFAULT_BINS = 20")
+    )
+
+    result = run_gate(repo)
+
+    assert result.returncode == 1
+    assert "calibration.md is stale" in result.stderr
+    assert "ml/evaluation/calibration.py" in result.stderr
+    # The evaluation report must be untouched by a calibration-only change.
+    assert "evaluation.md is current" in result.stdout
+
+
+def test_a_missing_committed_report_fails_rather_than_skips(repo: Path) -> None:
+    """Fail closed. A gate that skips when its input is absent reports green while
+    checking nothing, which is worse than no gate because people trust it."""
+    (repo / CALIBRATION_REPORT).unlink()
+    result = run_gate(repo)
+    assert result.returncode == 1
+    assert "calibration.md is missing" in result.stderr

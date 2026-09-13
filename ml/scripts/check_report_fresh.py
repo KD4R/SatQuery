@@ -40,7 +40,8 @@ import sys
 from pathlib import Path
 
 from ml.scripts.report_freshness import (
-    REPORT,
+    REGENERATE,
+    REPORTS,
     WAIVERS,
     changed_modules,
     code_fingerprint,
@@ -51,29 +52,31 @@ from ml.scripts.report_freshness import (
 
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
+    return max(check(repo_root, report, modules) for report, modules in REPORTS.items())
 
-    if not (repo_root / REPORT).is_file():
+
+def check(repo_root: Path, report: Path, modules: tuple[str, ...]) -> int:
+    if not (repo_root / report).is_file():
         print(
-            f"{REPORT} is missing.\n\n"
+            f"{report} is missing.\n\n"
             "Every number quoted about this subsystem must come from that file. "
-            "Generate it with:\n"
-            '    PYTHONPATH="$PWD" python ml/scripts/generate_report.py',
+            f"Generate it with:\n{REGENERATE[report]}",
             file=sys.stderr,
         )
         return 1
 
-    recorded = read_recorded_fingerprint(repo_root)
+    recorded = read_recorded_fingerprint(repo_root, report)
     if recorded is None:
         print(
-            f"{REPORT} carries no code fingerprint, so it cannot be checked for "
+            f"{report} carries no code fingerprint, so it cannot be checked for "
             "staleness. It was probably hand-edited -- regenerate it.",
             file=sys.stderr,
         )
         return 1
 
-    current = code_fingerprint(repo_root)
+    current = code_fingerprint(repo_root, modules)
     if recorded == current:
-        print(f"{REPORT} is current (fingerprint {current})")
+        print(f"{report} is current (fingerprint {current})")
         return 0
 
     waiver = read_waivers(repo_root).get(current)
@@ -82,7 +85,7 @@ def main() -> int:
         # move a number, and the whole value of it is that a human sees it said out
         # loud rather than finding a hash that quietly matched.
         print(
-            f"{REPORT} does not match the code, and the difference is WAIVED.\n\n"
+            f"{report} does not match the code, and the difference is WAIVED.\n\n"
             f"  recorded fingerprint: {recorded}\n"
             f"  current  fingerprint: {current}\n"
             f"  waiver:               {waiver}\n\n"
@@ -92,7 +95,7 @@ def main() -> int:
         )
         return 0
 
-    changed = changed_modules(repo_root)
+    changed = changed_modules(repo_root, modules)
     detail = (
         "  changed since the report was generated:\n"
         + "".join(f"    - {module}\n" for module in changed)
@@ -101,14 +104,13 @@ def main() -> int:
     )
 
     print(
-        f"{REPORT} is stale.\n\n"
+        f"{report} is stale.\n\n"
         f"  recorded fingerprint: {recorded}\n"
         f"  current  fingerprint: {current}\n"
         f"{detail}\n"
         "An analysis module changed since the report was generated, so the numbers "
         "in it were produced by different code. Regenerate:\n"
-        "    python3 fetch_sen1floods11.py --split all --count 400\n"
-        '    PYTHONPATH="$PWD" python ml/scripts/generate_report.py\n\n'
+        f"{REGENERATE[report]}\n\n"
         "If the change provably cannot move a number -- a docstring, a type "
         "annotation, an operator that returns an identical value -- record a waiver "
         "instead. It needs your name and a reason, and it lands in a committed file "
