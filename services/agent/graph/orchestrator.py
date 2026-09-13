@@ -9,7 +9,9 @@ from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 from services.agent.nodes.intent_extractor import extract_intent_and_plan
 from services.agent.schemas import MissionState
 from services.agent.security.sanitizer import sanitize_prompt
-from services.agent.security.validator import validate_aoi_geometry
+from services.agent.tools.executor import get_tool_executor
+from packages.auth.models import AuthContext, Role
+from services.agent.security.tool_budget import ToolBudget
 
 def plan_mission(state: MissionState) -> dict:
     intent, plan_steps, selected_sensors = extract_intent_and_plan(
@@ -22,13 +24,54 @@ def plan_mission(state: MissionState) -> dict:
     }
 
 def acquire_data(state: MissionState) -> dict:
-    obs_ids = [
-        f"S1A_IW_GRDH_1SDV_{uuid.uuid4().hex[:6].upper()}",
-        f"S2A_MSIL2A_{uuid.uuid4().hex[:6].upper()}",
-    ]
+    executor = get_tool_executor()
+    
+    # We create a system context for the background agent run
+    ctx = AuthContext(
+        subject="system_agent",
+        organisation_id=state.organization_id,
+        roles=[Role.SYSTEM]
+    )
+
+    # Use the aoi as bbox (heuristic fallback)
+    bbox = [92.0, 25.5, 94.0, 27.5]
+    if state.aoi and "bbox" in state.aoi:
+        bbox = state.aoi["bbox"]
+        
+    budget = None
+    if state.metadata and "budget" in state.metadata:
+        budget = ToolBudget(**state.metadata["budget"])
+    else:
+        # Default budget if not provided
+        budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
+        
+    try:
+        res = executor.execute_tool(
+            "stac_search",
+            args={
+                "bbox": bbox,
+                "start_date": "2026-09-01T00:00:00Z",
+                "end_date": "2026-09-05T00:00:00Z",
+                "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
+                "max_cloud_cover": 30.0
+            },
+            auth_context=ctx,
+            budget=budget
+        )
+        if res.success and res.output:
+            obs_ids = [obs["asset_id"] for obs in res.output]
+        else:
+            obs_ids = []
+    except Exception:
+        obs_ids = []
+
+    new_meta = dict(state.metadata)
+    new_meta["budget"] = budget.model_dump()
+
     return {
         "status": "ACQUIRING",
-        "observation_ids": obs_ids
+        "observation_ids": obs_ids,
+        "metadata": new_meta
     }
 
 def analyze_data(state: MissionState) -> dict:

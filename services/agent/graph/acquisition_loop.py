@@ -4,10 +4,11 @@ graph/acquisition_loop.py — Autonomous closed-loop evidence acquisition for un
 
 from typing import Any, Dict, List, Tuple
 from pydantic import BaseModel, Field
-from services.agent.nodes.confidence_gate import evaluate_confidence_gate
-from services.agent.schemas import MissionState
 from services.agent.tools.executor import get_tool_executor
 from packages.auth.models import AuthContext, Role
+from services.agent.security.tool_budget import ToolBudget
+from services.agent.nodes.confidence_gate import evaluate_confidence_gate
+from services.agent.schemas import MissionState
 
 
 class AcquisitionLoopResult(BaseModel):
@@ -55,6 +56,12 @@ class AutonomousAcquisitionLoop:
             organisation_id=state.organization_id,
             roles=[Role.SYSTEM]
         )
+        
+        budget = None
+        if state.metadata and "budget" in state.metadata:
+            budget = ToolBudget(**state.metadata["budget"])
+        else:
+            budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
 
         while current_score < target_confidence and iteration < max_iterations:
             iteration += 1
@@ -74,7 +81,8 @@ class AutonomousAcquisitionLoop:
                         "sensors": ["S1_SAR"],
                         "max_cloud_cover": 100.0
                     },
-                    auth_context=ctx
+                    auth_context=ctx,
+                    budget=budget
                 )
                 if res.success and res.output:
                     new_asset_id = res.output[0]["asset_id"]
@@ -111,6 +119,10 @@ class AutonomousAcquisitionLoop:
         resolved = current_score >= target_confidence
         state.confidence_score = current_score
         state.status = "COMPLETED" if resolved else "UNCERTAINTY_UNRESOLVED"
+        
+        new_meta = dict(state.metadata)
+        new_meta["budget"] = budget.model_dump()
+        state.metadata = new_meta
 
         result = AcquisitionLoopResult(
             resolved=resolved,

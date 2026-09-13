@@ -37,6 +37,7 @@ async def execute_agent(
         query=clean_query,
         trace_id=trace_id,
         aoi=payload.aoi,
+        metadata={"budget": payload.budget} if payload.budget else None
     )
 
     # Trigger orchestrator step execution asynchronously via Celery
