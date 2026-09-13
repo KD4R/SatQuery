@@ -52,13 +52,42 @@ def compute_temporal_plan(
     baseline_start = dt - timedelta(days=baseline_days_prior)
     baseline_end = dt - timedelta(days=max(1, baseline_days_prior - 10))
 
-    pairing = {
-        "sensor": "S1_SAR",
-        "mode": "IW_GRDH",
-        "relative_orbit": "descending",
-        "polarization": "VV+VH",
-        "change_detection_method": "log_ratio_thresholding",
-    }
+    if hazard_type == "wildfire":
+        pairing = {
+            "sensor": "S2_OPTICAL",
+            "mode": "MSI",
+            "cloud_cover": "low",
+            "change_detection_method": "nbr_diff",
+        }
+        crisis_label = "crisis_active_fire_window"
+    elif hazard_type == "cyclone":
+        pairing = {
+            "sensor": "S1_SAR",
+            "mode": "IW_GRDH",
+            "relative_orbit": "descending",
+            "polarization": "VV+VH",
+            "change_detection_method": "coherence_loss",
+        }
+        crisis_label = "crisis_cyclone_window"
+    elif hazard_type == "landslide":
+        pairing = {
+            "sensor": "S1_SAR",
+            "mode": "IW_SLC",
+            "relative_orbit": "descending",
+            "polarization": "VV",
+            "change_detection_method": "insar_coherence",
+        }
+        crisis_label = "crisis_landslide_window"
+    else:
+        # Default flood
+        pairing = {
+            "sensor": "S1_SAR",
+            "mode": "IW_GRDH",
+            "relative_orbit": "descending",
+            "polarization": "VV+VH",
+            "change_detection_method": "log_ratio_thresholding",
+        }
+        crisis_label = "crisis_inundation_window"
 
     return TemporalPlan(
         event_date=dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -70,7 +99,7 @@ def compute_temporal_plan(
         crisis_window=TemporalWindow(
             start_date=crisis_start.strftime("%Y-%m-%dT%H:%M:%SZ"),
             end_date=crisis_end.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            label="crisis_inundation_window",
+            label=crisis_label,
         ),
         sensor_match_strategy="SAME_ORBIT_PASS",
         recommended_pairing=pairing,

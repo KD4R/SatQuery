@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from services.agent.schemas import PlanStep
 from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.security.validator import validate_aoi_geometry, validate_intent
+from pydantic import BaseModel, Field
 
 _HAZARD_KEYWORDS = {
     "flood": ["flood", "inundation", "waterlogging", "submerged", "overflow", "river"],
@@ -34,6 +35,18 @@ def extract_intent_and_plan(
     clean_query = sanitize_prompt(query)
     if aoi:
         validate_aoi_geometry(aoi)
+
+    class IntentSchema(BaseModel):
+        disaster_type: str = Field(
+            description="The type of hazard detected (e.g., flood, wildfire)"
+        )
+        objectives: List[str] = Field(description="List of mission objectives")
+
+    # In a real integration, this prompt is passed to an LLM.
+    # llm_chain = prompt_template | llm | parser
+    # intent_parsed = llm_chain.invoke({"query": clean_query})
+
+    # We fallback to structured heuristics for testing if no LLM is provided:
 
     # Detect hazard type
     lower = clean_query.lower()

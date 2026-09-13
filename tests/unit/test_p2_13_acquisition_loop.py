@@ -30,7 +30,7 @@ def test_autonomous_evidence_acquisition_loop_valid():
     assert result.iterations_run >= 1
     assert result.final_confidence >= 0.70
     assert "S1_SAR" in updated_state.selected_sensors
-    assert any("ACQ" in obs for obs in result.acquired_observations)
+    assert any("S1A_IW_GRDH" in obs for obs in result.acquired_observations)
     assert updated_state.status == "COMPLETED"
 
 
