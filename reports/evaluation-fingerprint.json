@@ -1,0 +1,18 @@
+{
+  "fingerprint": "9100543b73b57244",
+  "modules": {
+    "ml/crs_policy.py": "ac7b07c356de03fa",
+    "ml/evaluation/segmentation.py": "6ec38919afc112f7",
+    "ml/geo/area.py": "865052e3c8ed6ac3",
+    "ml/geo/crs.py": "86531a77628bea95",
+    "ml/io/preflight.py": "4d66ab3756b4290e",
+    "ml/io/raster.py": "fbd164e493f8049e",
+    "ml/models/unet.py": "b6dc47892fc1a168",
+    "ml/pipeline/baseline.py": "29451fd71f89a7c2",
+    "ml/pipeline/postprocess.py": "38e2059291c1cfe0",
+    "ml/sar/change.py": "9a389a6e5b6e2083",
+    "ml/sar/units.py": "44cc4b573eedefdd",
+    "ml/training/dataset.py": "0a9baf16b5e191cd",
+    "ml/training/splits.py": "a14204f6ba10689c"
+  }
+}

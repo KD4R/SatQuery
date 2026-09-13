@@ -54,47 +54,14 @@ from ml.pipeline.postprocess import postprocess_water_mask
 from ml.sar.change import ThresholdError
 from ml.scripts.evaluate_baseline import _load_label_onto
 from ml.training.splits import Chip, discover_chips, split_by_region
+from ml.scripts.report_freshness import code_fingerprint, write_sidecar
 
 DEFAULT_ROOT = Path("data/sen1floods11")
 DEFAULT_OUT = Path("reports/evaluation.md")
 DEFAULT_MODEL = Path("artifacts/flood-unet/best.pt")
 
-#: Modules whose contents can change a reported number. The fingerprint covers
-#: these and nothing else: a docstring fix in an unrelated file should not
-#: invalidate a report, and a change to Otsu absolutely should.
-FINGERPRINTED = (
-    "ml/crs_policy.py",
-    "ml/geo/area.py",
-    "ml/geo/crs.py",
-    "ml/sar/units.py",
-    "ml/sar/change.py",
-    "ml/io/raster.py",
-    "ml/io/preflight.py",
-    "ml/pipeline/baseline.py",
-    "ml/pipeline/postprocess.py",
-    "ml/evaluation/segmentation.py",
-    "ml/models/unet.py",
-    "ml/training/dataset.py",
-    "ml/training/splits.py",
-)
 
 WATER_BUCKETS = ("<1%", "1-10%", "10-30%", ">30%")
-
-
-def code_fingerprint(repo_root: Path) -> str:
-    """SHA-256 over the analysis modules, in a fixed order.
-
-    Content, not mtime: a checkout reorders timestamps, and a fingerprint that
-    changes on clone is a gate everyone learns to ignore.
-    """
-    digest = hashlib.sha256()
-    for relative in FINGERPRINTED:
-        path = repo_root / relative
-        if not path.is_file():
-            raise SystemExit(f"fingerprinted module missing: {relative}")
-        digest.update(relative.encode())
-        digest.update(path.read_bytes())
-    return digest.hexdigest()[:16]
 
 
 def dataset_fingerprint(chips: tuple[Chip, ...]) -> str:
@@ -379,6 +346,11 @@ def main() -> int:
     # The per-chip table stays out of the markdown -- 400 rows is not a document --
     # but it is written beside it so a surprising mean can be traced to a chip.
     (args.out.parent / "per_chip.json").write_text(json.dumps(rows, indent=2))
+
+    # Per-module hashes, so a future staleness failure can name what moved
+    # rather than only that something did. Diagnostics only -- the gate's
+    # verdict still comes from the combined fingerprint written into the report.
+    write_sidecar(repo_root)
 
     print(f"wrote {args.out} and {args.out.parent / 'per_chip.json'}", file=sys.stderr)
     subprocess.run(["git", "diff", "--stat", "--", str(args.out)], check=False)

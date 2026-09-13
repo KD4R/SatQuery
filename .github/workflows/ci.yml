@@ -82,16 +82,17 @@ jobs:
       # the committed accuracy figures quietly stop describing the code. That is
       # the specific defect that sank the previous iteration of this project.
       #
-      # stamp_report.py is called first: it updates only the fingerprint line in
-      # reports/evaluation.md when the report is stale due to an annotation or
-      # docstring change (i.e. a change that cannot move a number). The check that
-      # follows then passes. If the report is stale because numerical logic changed,
-      # stamp_report.py cannot help -- check_report_fresh.py will still fail and
-      # the developer must regenerate using generate_report.py with real data.
+      # NOTHING may run before this step. A previous revision stamped the current
+      # fingerprint into the report first, which made the comparison unconditional
+      # -- the recorded value became whatever the code hashed to, so it always
+      # matched and the gate could no longer fail at all.
+      #
+      # The escape hatch that was reaching for is real: a docstring or annotation
+      # change should not cost a 533 MB re-download. It now lives in
+      # ml/scripts/waive_report.py, is run by a person, and leaves a signed row in
+      # reports/evaluation-waivers.md that a reviewer reads.
       - name: Evaluation report is not stale (P3-15)
-        run: |
-          PYTHONPATH="$PWD" python ml/scripts/stamp_report.py
-          PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py
+        run: PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py
 
   # ── 2. Unit tests ───────────────────────────────────────────────────────────
   unit-tests:
