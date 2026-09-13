@@ -586,6 +586,34 @@ none can change a number. Fingerprinting it would make every docstring edit to
 P1's file cost a 400-chip regeneration — which is precisely the pressure D16 is
 about.
 
+### D18 — Report pooled IoU and per-chip mean together, and refuse accuracy outright
+
+The report quoted mean-of-per-chip IoU alone: 0.259 held out. Pooled over every
+scorable pixel — the aggregation the Sen1Floods11 literature uses — the same model
+on the same chips scores **0.421 IoU / 0.593 F1**. Nothing changed but the
+arithmetic of aggregation.
+
+Neither is wrong and neither is sufficient. Averaging per-chip IoU gives a
+512×512 tile holding nine water pixels the same vote as a half-flooded one, and
+most of this benchmark is nearly dry, so the mean is dominated by chips where one
+misplaced pixel swings the score. That is the right question for "how does this do
+on a typical chip" and the wrong one for "how much water did it find in this
+region" — and it is not comparable to any published number.
+
+**Decision.** Both, in the same table, always. Quoting either alone without naming
+the aggregation is how two people end up arguing about the same model, and it is
+also how a headline figure gets quietly picked for being the flattering one.
+
+**Accuracy is printed only to be refused.** Water is 10.8% of scorable pixels on
+the held-out split, so a model predicting no water anywhere scores **89.2%
+accuracy and 0.000 IoU**. The U-Net reaches 90.8% — 1.6 points above doing
+nothing. Any goal of the form "N% accuracy" on this task is met by a model that
+does nothing, so the report states the floor next to the figure rather than
+omitting accuracy and leaving someone to compute a flattering version of it later.
+
+`SegmentationMetrics.accuracy` and `.prevalence` exist for that paragraph and no
+other purpose; the docstrings say so.
+
 ## Open questions
 
 These do not block this commit. Each blocks something later.

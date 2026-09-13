@@ -13,8 +13,8 @@ recollection, not a measurement.
 
 | | |
 |---|---|
-| generated | 2026-09-13 07:26 UTC |
-| code fingerprint | `f1e160067788e963` |
+| generated | 2026-09-13 11:28 UTC |
+| code fingerprint | `b0ec61b738cf30ce` |
 | dataset fingerprint | `0305c0a36ac41cd7` |
 | chips scored | 395 of 400 |
 | regions | Ghana, India, Mekong, Nigeria, Pakistan, Paraguay, Somalia, Spain, Sri-Lanka, USA |
@@ -35,10 +35,14 @@ The split is by **region, not by chip**: Sen1Floods11 tiles come from a small
 number of flood events, so a chip-level split lets a model score well by
 recognising terrain it has already seen.
 
-| method | IoU | F1 |
-|---|---|---|
-| deterministic baseline | 0.209 | 0.289 |
-| U-Net | **0.259** | **0.359** |
+| method | pooled IoU | pooled F1 | mean per-chip IoU | mean per-chip F1 |
+|---|---|---|---|---|
+| deterministic baseline | 0.204 | 0.339 | 0.209 | 0.289 |
+| U-Net | **0.421** | **0.593** | 0.259 | 0.359 |
+
+**Do not quote accuracy for this task.** Water is 10.8% of the scorable pixels on this split, so a model that predicts no water anywhere scores 89.2% accuracy and 0.000 IoU. Every target of the form "N% accurate" below that figure is met by a model that does nothing. The scored methods above reach baseline 68.5%, U-Net 90.8% -- which is why IoU and F1 are the reported metrics.
+
+1 of 92 chips is absent from the pooled baseline: Otsu found no separable threshold and the method abstained. An abstention is not a zero score, so those chips are excluded rather than counted as total failures (ADR-0007 D10).
 
 ---
 
