@@ -12,6 +12,10 @@ from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.tools.executor import get_tool_executor
 from packages.auth.models import AuthContext, Role
 from services.agent.security.tool_budget import ToolBudget
+from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
+from services.agent.nodes.confidence_gate import evaluate_confidence_gate
+from services.agent.evidence.models import EvidenceGraph
+from services.agent.nodes.synthesizer import synthesize_evidence_output
 
 def plan_mission(state: MissionState) -> dict:
     intent, plan_steps, selected_sensors = extract_intent_and_plan(
@@ -21,6 +25,37 @@ def plan_mission(state: MissionState) -> dict:
         "status": "PLANNING",
         "intent": intent,
         "selected_sensors": selected_sensors
+    }
+
+def sensor_arbitration(state: MissionState) -> dict:
+    intent = state.metadata.get("intent", {})
+    hazard_type = intent.get("disaster_type", "flood")
+    
+    # Simple heuristic to get cloud_cover from metadata (if available from previous steps/api)
+    cloud_cover = state.metadata.get("cloud_cover_forecast", 30.0) 
+    is_night = state.metadata.get("is_night_forecast", False)
+    
+    decision = arbitrate_sensors(
+        hazard_type=hazard_type,
+        cloud_cover=cloud_cover,
+        is_night=is_night,
+        trace_id=state.trace_id,
+    )
+    
+    # Map generic sensor strings to specific sensor IDs
+    sensor_map = {
+        "SAR": "S1_SAR",
+        "OPTICAL": "S2_OPTICAL",
+    }
+    
+    # Determine the ordered sensor preference
+    selected = [sensor_map.get(decision.primary_sensor, decision.primary_sensor)]
+    if decision.secondary_sensor:
+        selected.append(sensor_map.get(decision.secondary_sensor, decision.secondary_sensor))
+        
+    return {
+        "status": "ARBITRATING",
+        "selected_sensors": selected
     }
 
 def acquire_data(state: MissionState) -> dict:
@@ -89,9 +124,15 @@ def analyze_data(state: MissionState) -> dict:
 def gate_check(state: MissionState) -> dict:
     ev_builder = EvidenceGraphBuilder(mission_id=state.mission_id)
     obs_id = state.observation_ids[0] if state.observation_ids else f"S1A_IW_GRDH_1SDV_{uuid.uuid4().hex[:6].upper()}"
+    
+    # Heuristically detect sensor from observation_ids or state
+    sensor = "S1_SAR"
+    if "S2" in obs_id or "OPTICAL" in str(state.selected_sensors):
+        sensor = "OPTICAL"
+        
     obs_node = ev_builder.add_observation({
         "asset_id": obs_id,
-        "sensor": "S1_SAR",
+        "sensor": sensor,
         "datetime": "2026-09-02T00:35:12Z",
     })
     inf_node = ev_builder.add_inference(
@@ -107,33 +148,55 @@ def gate_check(state: MissionState) -> dict:
         value=142.5,
         unit="km2",
     )
+    
+    evidence_graph = ev_builder.build().model_dump()
+    
+    # Evaluate confidence using actual nodes
+    nodes_dict = evidence_graph.get("nodes", {})
+    conf = evaluate_confidence_gate(
+        evidence_nodes=list(nodes_dict.values()),
+        sensor_type=sensor,
+        cloud_cover=state.metadata.get("cloud_cover_forecast", 0.0),
+        resolution_meters=10.0,
+        temporal_lag_days=2.0,
+        trace_id=state.trace_id
+    )
+    
     return {
         "status": "GATE_CHECK",
-        "confidence_score": 0.88,
-        "evidence_graph": ev_builder.build().model_dump()
+        "confidence_score": conf.confidence_score,
+        "evidence_graph": evidence_graph
     }
 
 def synthesize(state: MissionState) -> dict:
+    if state.evidence_graph:
+        graph = EvidenceGraph(**state.evidence_graph)
+        out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
+        output_dict = out.model_dump()
+    else:
+        output_dict = {
+            "summary": "No evidence graph available for synthesis.",
+            "inundation_area_sqkm": 0,
+            "affected_structures_count": 0,
+            "primary_sensor": "UNKNOWN",
+        }
     return {
         "status": "COMPLETED",
-        "synthesized_output": {
-            "summary": "Assam Brahmaputra basin inundation delineated successfully.",
-            "inundation_area_sqkm": 142.5,
-            "affected_structures_count": 38,
-            "primary_sensor": "S1_SAR",
-        }
+        "synthesized_output": output_dict
     }
 
 def _build_graph() -> StateGraph:
     graph = StateGraph(MissionState)
     graph.add_node("planning", plan_mission)
+    graph.add_node("sensor_arbitration", sensor_arbitration)
     graph.add_node("acquiring", acquire_data)
     graph.add_node("analyzing", analyze_data)
     graph.add_node("gate_check", gate_check)
     graph.add_node("synthesize", synthesize)
 
     graph.add_edge(START, "planning")
-    graph.add_edge("planning", "acquiring")
+    graph.add_edge("planning", "sensor_arbitration")
+    graph.add_edge("sensor_arbitration", "acquiring")
     graph.add_edge("acquiring", "analyzing")
     graph.add_edge("analyzing", "gate_check")
     graph.add_edge("gate_check", "synthesize")
