@@ -21,6 +21,7 @@ markers = [
     "contract: Contract schema compatibility tests",
     "security: Security-related tests",
     "performance: Performance benchmarks",
+    "e2e: End-to-end smoke tests (require running services)",
 ]
 
 [tool.mypy]

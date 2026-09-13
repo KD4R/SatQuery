@@ -39,6 +39,7 @@ black
 flake8
 mypy
 bandit
+import-linter
 
 # Agent loop (P2)
 langgraph

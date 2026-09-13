@@ -1,0 +1,14 @@
+# ─── Grafana Dashboard Provisioning ──────────────────────────────────────────
+apiVersion: 1
+
+providers:
+  - name: SatQuery
+    orgId: 1
+    folder: SatQuery
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: false
