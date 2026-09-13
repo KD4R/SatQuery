@@ -33,6 +33,31 @@ That last one matters more than it looks: it lets the deterministic baseline in
 than only against ground truth. If ours disagrees with theirs by a lot, ours is
 probably wrong.
 
+THE WEAKLY-LABELLED SET (--dataset weak)
+----------------------------------------
+The hand-labelled set is 446 chips and this project already holds 400 of them, so
+"fetch more hand-labelled data" is worth about 46 chips. The 10x is elsewhere:
+Sen1Floods11 also ships 4,385 **weakly-labelled** chips, whose labels are derived
+automatically rather than drawn by a person.
+
+    S1Weak            the Sentinel-1 scene, same format as S1Hand
+    S2IndexLabelWeak  labels derived from Sentinel-2 spectral indices
+    S1OtsuLabelWeak   labels derived by Otsu on the VH band
+
+Those labels are noisy by construction, which is the point of the name. They are
+training data, never evaluation data -- every reported number in this project comes
+from the hand-labelled held-out regions and that does not change. ADR-0007 D14/D15
+established data volume as the binding constraint on this model, and this is the
+only place more volume exists.
+
+Chip names come from listing the bucket (the GCS JSON API), not from a split CSV.
+The hand-labelled splits are published as CSVs; the weak set's are not documented,
+and inventing a plausible path would mean a 404 halfway through a long download.
+Listing is self-verifying: it either enumerates or it fails immediately.
+
+Expect roughly 5 GB for the full set. Use --count to take it in stages; the script
+caches, so re-running resumes rather than re-downloading.
+
 WHAT IT DELIBERATELY DOES NOT DO
 --------------------------------
 No fallback, no synthetic substitute, no partial success. If a file is missing or
@@ -45,11 +70,13 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import json
 import os
 import re
 import sys
 import tempfile
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -94,13 +121,34 @@ SPLIT_CSVS = {
     "test": "flood_test_data.csv",
 }
 HAND = f"{BUCKET}/v1.1/data/flood_events/HandLabeled"
+WEAK = f"{BUCKET}/v1.1/data/flood_events/WeaklyLabeled"
 
-# suffix in the split CSV -> (subdirectory, required?)
-LAYERS: dict[str, tuple[str, bool]] = {
+#: GCS JSON listing endpoint for the same public bucket. Used only for the weak
+#: set, which publishes no split index.
+LIST_API = "https://storage.googleapis.com/storage/v1/b/sen1floods11/o"
+
+# suffix -> (subdirectory, required?)
+HAND_LAYERS: dict[str, tuple[str, bool]] = {
     "S1Hand": ("S1Hand", True),
     "LabelHand": ("LabelHand", True),
     "JRCWaterHand": ("JRCWaterHand", False),
     "S1OtsuLabelHand": ("S1OtsuLabelHand", False),
+}
+
+#: Both label layers are optional *individually* and one of them is required
+#: jointly -- see ``download_chip``. S2IndexLabelWeak is the better of the two
+#: (spectral indices see water directly; Otsu on VH infers it from darkness), but
+#: it is absent for chips with no usable Sentinel-2 overpass, and a chip with an
+#: Otsu label is still worth training on.
+WEAK_LAYERS: dict[str, tuple[str, bool]] = {
+    "S1Weak": ("S1Weak", True),
+    "S2IndexLabelWeak": ("S2IndexLabelWeak", False),
+    "S1OtsuLabelWeak": ("S1OtsuLabelWeak", False),
+}
+
+DATASETS = {
+    "hand": (HAND, HAND_LAYERS, ("LabelHand",)),
+    "weak": (WEAK, WEAK_LAYERS, ("S2IndexLabelWeak", "S1OtsuLabelWeak")),
 }
 
 TIMEOUT = 120
@@ -195,21 +243,96 @@ def read_split(limit: int, urls: list[str]) -> list[str]:
     return stems
 
 
-def download_chip(stem: str, dest: Path) -> tuple[int, list[str]]:
-    """Download every layer for one chip. Returns (bytes written, missing required)."""
+def list_weak_stems(limit: int) -> list[str]:
+    """Chip stems for the weakly-labelled set, by listing the bucket.
+
+    The hand-labelled splits are published as CSVs; the weak set's are not
+    documented anywhere I could verify. Guessing a plausible CSV path would fail as
+    a 404 partway through a multi-gigabyte run, so this enumerates the S1Weak
+    prefix instead -- which either works on the first call or fails on it.
+
+    Names from a listing are untrusted input exactly as names from a CSV are, and
+    go through the same ``_SAFE_STEM`` check: they become filesystem paths.
+    """
+    stems: list[str] = []
+    token: str | None = None
+    prefix = "v1.1/data/flood_events/WeaklyLabeled/S1Weak/"
+
+    while len(stems) < limit:
+        query = (
+            f"?prefix={urllib.parse.quote(prefix)}&maxResults=1000&fields=items/name,nextPageToken"
+        )
+        if token:
+            query += f"&pageToken={urllib.parse.quote(token)}"
+        try:
+            page = json.loads(fetch(LIST_API + query).decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            sys.exit(
+                f"Could not list the weakly-labelled set (HTTP {exc.code}) from:\n"
+                f"  {LIST_API}{query}\n\n"
+                "403 usually means a proxy is blocking storage.googleapis.com -- run "
+                "this in your own Terminal, not through Claude.\n"
+                "404 means the bucket layout has moved; check\n"
+                "  https://github.com/cloudtostreet/Sen1Floods11"
+            )
+
+        for item in page.get("items", []):
+            name = item["name"].rsplit("/", 1)[-1]
+            if not name.endswith("_S1Weak.tif"):
+                continue
+            stem = name[: -len("_S1Weak.tif")]
+            if not _SAFE_STEM.match(stem):
+                sys.exit(
+                    f"Refusing to use chip name {stem!r} from the bucket listing: it "
+                    "is not a plain <Region>_<id> token, and it would become part of "
+                    "a filesystem path."
+                )
+            stems.append(stem)
+            if len(stems) >= limit:
+                break
+
+        token = page.get("nextPageToken")
+        if not token:
+            break
+
+    if not stems:
+        sys.exit(
+            f"The listing of {prefix} returned no S1Weak chips. The layout has "
+            "probably moved -- do not fall back to a guess."
+        )
+    return stems
+
+
+def download_chip(
+    stem: str,
+    dest: Path,
+    base: str,
+    layers: dict[str, tuple[str, bool]],
+    label_layers: tuple[str, ...],
+) -> tuple[int, list[str]]:
+    """Download every layer for one chip. Returns (bytes written, missing required).
+
+    ``label_layers`` names the layers of which **at least one** must arrive. The
+    weak set has two label sources and chips that carry only one of them; a chip
+    with an Otsu label and no Sentinel-2 label is still trainable, a chip with
+    neither is not, and neither layer can be marked required on its own without
+    discarding usable data or accepting unusable data.
+    """
     written = 0
     missing_required: list[str] = []
+    got_a_label = False
 
-    for suffix, (subdir, required) in LAYERS.items():
+    for suffix, (subdir, required) in layers.items():
         name = f"{stem}_{suffix}.tif"
         out = dest / subdir / name
         out.parent.mkdir(parents=True, exist_ok=True)
 
         if out.exists() and _looks_like_a_tiff(out):
             print(f"    {subdir:<16} cached")
+            got_a_label = got_a_label or suffix in label_layers
             continue
 
-        url = f"{HAND}/{subdir}/{name}"
+        url = f"{base}/{subdir}/{name}"
         try:
             body = fetch(url)
         except urllib.error.HTTPError as exc:
@@ -227,7 +350,12 @@ def download_chip(stem: str, dest: Path) -> tuple[int, list[str]]:
 
         _write_atomically(out, body)
         written += len(body)
+        got_a_label = got_a_label or suffix in label_layers
         print(f"    {subdir:<16} {len(body) / 1024:>8.0f} KiB")
+
+    if label_layers and not got_a_label:
+        print(f"    {'labels':<16} NONE of {', '.join(label_layers)} present")
+        missing_required.append(f"{stem}/labels")
 
     return written, missing_required
 
@@ -243,6 +371,13 @@ def main() -> int:
         "The dataset's own splits -- this project divides by region separately.",
     )
     ap.add_argument(
+        "--dataset",
+        default="hand",
+        choices=sorted(DATASETS),
+        help="hand (446 chips, human-drawn labels, the evaluation set) or weak "
+        "(4,385 chips, automatically derived labels, training only). Default hand.",
+    )
+    ap.add_argument(
         "--dest",
         type=Path,
         default=Path("data/sen1floods11"),
@@ -250,20 +385,31 @@ def main() -> int:
     )
     args = ap.parse_args()
 
-    names = list(SPLIT_CSVS.values()) if args.split == "all" else [SPLIT_CSVS[args.split]]
-    urls = [f"{BUCKET}/v1.1/splits/flood_handlabeled/{n}" for n in names]
-    print("Reading hand-labelled chip names from:")
-    for url in urls:
-        print(f"  {url}")
-    print()
-    stems = read_split(args.count, urls)
-    print(f"{len(stems)} chips selected.\n")
+    base, layers, label_layers = DATASETS[args.dataset]
+
+    if args.dataset == "weak":
+        print(f"Listing weakly-labelled chips from {LIST_API}\n")
+        stems = list_weak_stems(args.count)
+        print(
+            f"{len(stems)} chips selected. These labels are derived automatically and "
+            "are TRAINING DATA ONLY -- every reported score still comes from the "
+            "hand-labelled held-out regions.\n"
+        )
+    else:
+        names = list(SPLIT_CSVS.values()) if args.split == "all" else [SPLIT_CSVS[args.split]]
+        urls = [f"{BUCKET}/v1.1/splits/flood_handlabeled/{n}" for n in names]
+        print("Reading hand-labelled chip names from:")
+        for url in urls:
+            print(f"  {url}")
+        print()
+        stems = read_split(args.count, urls)
+        print(f"{len(stems)} chips selected.\n")
 
     total = 0
     all_missing: list[str] = []
     for i, stem in enumerate(stems, 1):
         print(f"[{i}/{len(stems)}] {stem}")
-        written, missing = download_chip(stem, args.dest)
+        written, missing = download_chip(stem, args.dest, base, layers, label_layers)
         total += written
         all_missing.extend(missing)
 
