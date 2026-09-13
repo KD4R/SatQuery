@@ -11,6 +11,7 @@ from packages.auth.models import AuthContext, Role
 from services.agent.schemas import ExecuteRequest, ExecuteResponse, MissionState
 from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.security.validator import validate_aoi_geometry
+from services.agent.worker import process_agent_run
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-execute"])
 
@@ -38,8 +39,9 @@ async def execute_agent(
         aoi=payload.aoi,
     )
 
-    # Trigger orchestrator step execution
-    orchestrator.step_execution(state)
+    # Trigger orchestrator step execution asynchronously via Celery
+    if state.job_id:
+        process_agent_run.delay(state.job_id)
 
     response_data = ExecuteResponse(
         job_id=state.job_id or "job_unknown",
