@@ -5,9 +5,8 @@ services/agent/demo_profile.py — Runner for the pinned flagship flood demo mis
 import json
 from pathlib import Path
 from typing import Any, Dict, Optional
-import uuid
 
-from services.agent.schemas import ConfidenceResponse, MissionState
+from services.agent.schemas import MissionState
 from services.agent.graph.orchestrator import get_orchestrator
 
 _DEFAULT_FIXTURE_PATH = Path(__file__).parent / "fixtures" / "pinned_flood_mission.json"
@@ -54,14 +53,18 @@ def run_pinned_demo_profile(
     Executes the pinned demo profile and returns a structured dictionary summary
     conforming to service integration expectations.
     """
-    profile = load_pinned_demo_profile(path=fixture_path)
+
+    # Validate profile exists
+    _ = load_pinned_demo_profile(path=fixture_path)
     state = run_pinned_demo_mission(org_id=org_id)
 
     return {
         "mission_id": "mission-pinned-flood-2026",
         "trace_id": state.trace_id,
         "status": state.status,
-        "synthesis": state.synthesized_output.get("summary", ""),
+        "synthesis": (
+            state.synthesized_output.get("summary", "") if state.synthesized_output else ""
+        ),
         "confidence": {
             "confidence_score": state.confidence_score,
             "overall_score": state.confidence_score,

@@ -45,11 +45,6 @@ def extract_intent_and_plan(
         objectives: List[str] = Field(description="List of mission objectives")
 
     parser = PydanticOutputParser(pydantic_object=IntentSchema)
-    prompt_template = PromptTemplate(
-        template="Extract intent from the user query.\n{format_instructions}\nQuery: {query}\n",
-        input_variables=["query"],
-        partial_variables={"format_instructions": parser.get_format_instructions()},
-    )
     # In a real integration, this prompt is passed to an LLM.
     # llm_chain = prompt_template | llm | parser
     # intent_parsed = llm_chain.invoke({"query": clean_query})

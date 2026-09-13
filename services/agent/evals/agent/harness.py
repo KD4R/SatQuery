@@ -9,7 +9,6 @@ from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 from services.agent.security.exceptions import PromptInjectionError
 from services.agent.security.sanitizer import check_prompt_injection, sanitize_prompt
 from services.agent.nodes.synthesizer import synthesize_evidence_output
-from services.agent.evidence.models import EvidenceGraph
 from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 
 

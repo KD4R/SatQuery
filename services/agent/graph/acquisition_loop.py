@@ -52,14 +52,13 @@ class AutonomousAcquisitionLoop:
 
         executor = get_tool_executor()
         ctx = AuthContext(
-            subject="system_agent", organisation_id=state.organization_id, roles=[Role.SYSTEM]
+            subject="system",
+            roles=[Role.ADMIN],
+            organisation_id=state.organization_id,
+            email="system@satquery.com",
+            trace_id=state.trace_id,
         )
-
-        budget = None
-        if state.metadata and "budget" in state.metadata:
-            budget = ToolBudget(**state.metadata["budget"])
-        else:
-            budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
+        budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
 
         while current_score < target_confidence and iteration < max_iterations:
             iteration += 1

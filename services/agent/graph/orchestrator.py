@@ -59,9 +59,12 @@ def sensor_arbitration(state: MissionState) -> dict:
 def acquire_data(state: MissionState) -> dict:
     executor = get_tool_executor()
 
-    # We create a system context for the background agent run
     ctx = AuthContext(
-        subject="system_agent", organisation_id=state.organization_id, roles=[Role.SYSTEM]
+        subject="system_agent",
+        organisation_id=state.organization_id,
+        roles=[Role.SYSTEM],
+        email="system@satquery.com",
+        trace_id=state.trace_id,
     )
 
     # Use the aoi as bbox (heuristic fallback)
@@ -199,7 +202,7 @@ def synthesize(state: MissionState) -> dict:
     return {"status": "COMPLETED", "synthesized_output": output_dict}
 
 
-def _build_graph() -> StateGraph:
+def _build_graph():
     graph = StateGraph(MissionState)
     graph.add_node("planning", plan_mission)
     graph.add_node("sensor_arbitration", sensor_arbitration)
