@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
+
 async def get_redis_client():
     try:
         client = redis.from_url(REDIS_URL, decode_responses=True)
@@ -29,7 +30,8 @@ async def get_redis_client():
     except Exception:
         return None
 
-_IDEMPOTENCY_STORE = {}
+
+_IDEMPOTENCY_STORE: dict[str, Any] = {}
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
@@ -53,7 +55,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 if state_json:
                     state = json.loads(state_json)
                     if state["status"] == "in-progress":
-                        logger.warning("Concurrent duplicate request for idempotency key: %s", idem_key)
+                        logger.warning(
+                            "Concurrent duplicate request for idempotency key: %s", idem_key
+                        )
                         return JSONResponse(
                             status_code=409,
                             content={
@@ -70,10 +74,12 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                         )
 
                 # Mark as in-progress (TTL 24 hours)
-                await redis_client.set(store_key, json.dumps({"status": "in-progress"}), ex=86400, nx=True)
+                await redis_client.set(
+                    store_key, json.dumps({"status": "in-progress"}), ex=86400, nx=True
+                )
             except Exception as e:
                 logger.warning("Redis idempotency error: %s", e)
-                redis_client = None # Force fallback below
+                redis_client = None  # Force fallback below
 
         if not redis_client:
             # Fallback to memory

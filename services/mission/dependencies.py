@@ -15,11 +15,14 @@ from services.mission.repositories.postgres import (
     PostgresMissionRepository,
 )
 
+
 def get_mission_repo(session: AsyncSession = Depends(get_db_session)) -> PostgresMissionRepository:
     return PostgresMissionRepository(session)
 
+
 def get_aoi_repo(session: AsyncSession = Depends(get_db_session)) -> PostgresAOIRepository:
     return PostgresAOIRepository(session)
+
 
 def get_job_repo(session: AsyncSession = Depends(get_db_session)) -> PostgresJobRepository:
     return PostgresJobRepository(session)

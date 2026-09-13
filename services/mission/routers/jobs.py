@@ -37,6 +37,7 @@ from packages.shared.client import InternalClient
 
 AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
 
+
 async def _run_job_background(job: Job, job_repo: JobRepository) -> None:
     """
     Simulate async job execution — in production this hands off to Celery/Redis.
@@ -52,17 +53,16 @@ async def _run_job_background(job: Job, job_repo: JobRepository) -> None:
 
     # Initialize InternalClient to talk to Agent
     client = InternalClient(
-        base_url=AGENT_SERVICE_URL,
-        caller_service="mission",
-        scopes=["agent:write"]
+        base_url=AGENT_SERVICE_URL, caller_service="mission", scopes=["agent:write"]
     )
-    
+
     # We construct a mock auth context representing the system for the internal call.
     system_ctx = AuthContext(
         subject=f"system:mission:{job.mission_id}",
+        email=None,
         organisation_id=job.organisation_id,
-        roles=["system"],
-        trace_id=job.trace_id or ""
+        roles=[Role.SYSTEM],
+        trace_id=job.trace_id or "",
     )
 
     try:
@@ -70,7 +70,7 @@ async def _run_job_background(job: Job, job_repo: JobRepository) -> None:
         await client.post(
             "/api/v1/agent/run",
             auth_context=system_ctx,
-            json={"mission_id": job.mission_id, "job_id": job.id}
+            json={"mission_id": job.mission_id, "job_id": job.id},
         )
         logger.info("Successfully dispatched job_id=%s to Agent service.", job.id)
     except Exception as exc:

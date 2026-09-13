@@ -6,6 +6,7 @@ from services.mission.domain.models import Mission, AOI, Job
 from services.mission.domain.db_models import MissionModel, AOIModel, JobModel
 from services.mission.repositories.base import MissionRepository, AOIRepository, JobRepository
 
+
 class PostgresMissionRepository(MissionRepository):
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -20,7 +21,7 @@ class PostgresMissionRepository(MissionRepository):
             organisation_id=model.organisation_id,
             created_by=model.created_by,
             created_at=model.created_at,
-            updated_at=model.updated_at
+            updated_at=model.updated_at,
         )
 
     async def create(self, mission: Mission) -> Mission:
@@ -33,7 +34,7 @@ class PostgresMissionRepository(MissionRepository):
             organisation_id=mission.organisation_id,
             created_by=mission.created_by,
             created_at=mission.created_at,
-            updated_at=mission.updated_at
+            updated_at=mission.updated_at,
         )
         self.session.add(model)
         await self.session.commit()
@@ -42,8 +43,7 @@ class PostgresMissionRepository(MissionRepository):
 
     async def get_by_id(self, mission_id: str, organisation_id: str) -> Optional[Mission]:
         stmt = select(MissionModel).where(
-            MissionModel.id == mission_id,
-            MissionModel.organisation_id == organisation_id
+            MissionModel.id == mission_id, MissionModel.organisation_id == organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -51,24 +51,31 @@ class PostgresMissionRepository(MissionRepository):
             return None
         return self._to_domain(model)
 
-    async def list_by_org(self, organisation_id: str, limit: int = 50, offset: int = 0) -> List[Mission]:
-        stmt = select(MissionModel).where(
-            MissionModel.organisation_id == organisation_id
-        ).order_by(MissionModel.created_at.desc()).limit(limit).offset(offset)
+    async def list_by_org(
+        self, organisation_id: str, limit: int = 50, offset: int = 0
+    ) -> List[Mission]:
+        stmt = (
+            select(MissionModel)
+            .where(MissionModel.organisation_id == organisation_id)
+            .order_by(MissionModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         result = await self.session.execute(stmt)
         return [self._to_domain(m) for m in result.scalars().all()]
 
     async def count_by_org(self, organisation_id: str) -> int:
-        stmt = select(func.count()).select_from(MissionModel).where(
-            MissionModel.organisation_id == organisation_id
+        stmt = (
+            select(func.count())
+            .select_from(MissionModel)
+            .where(MissionModel.organisation_id == organisation_id)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
     async def update(self, mission: Mission) -> Mission:
         stmt = select(MissionModel).where(
-            MissionModel.id == mission.id,
-            MissionModel.organisation_id == mission.organisation_id
+            MissionModel.id == mission.id, MissionModel.organisation_id == mission.organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one()
@@ -83,8 +90,7 @@ class PostgresMissionRepository(MissionRepository):
 
     async def delete(self, mission_id: str, organisation_id: str) -> bool:
         stmt = select(MissionModel).where(
-            MissionModel.id == mission_id,
-            MissionModel.organisation_id == organisation_id
+            MissionModel.id == mission_id, MissionModel.organisation_id == organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -108,7 +114,7 @@ class PostgresAOIRepository(AOIRepository):
             organisation_id=model.organisation_id,
             created_by=model.created_by,
             created_at=model.created_at,
-            updated_at=model.updated_at
+            updated_at=model.updated_at,
         )
 
     async def create(self, aoi: AOI) -> AOI:
@@ -120,7 +126,7 @@ class PostgresAOIRepository(AOIRepository):
             organisation_id=aoi.organisation_id,
             created_by=aoi.created_by,
             created_at=aoi.created_at,
-            updated_at=aoi.updated_at
+            updated_at=aoi.updated_at,
         )
         self.session.add(model)
         await self.session.commit()
@@ -129,8 +135,7 @@ class PostgresAOIRepository(AOIRepository):
 
     async def get_by_id(self, aoi_id: str, organisation_id: str) -> Optional[AOI]:
         stmt = select(AOIModel).where(
-            AOIModel.id == aoi_id,
-            AOIModel.organisation_id == organisation_id
+            AOIModel.id == aoi_id, AOIModel.organisation_id == organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -138,24 +143,31 @@ class PostgresAOIRepository(AOIRepository):
             return None
         return self._to_domain(model)
 
-    async def list_by_org(self, organisation_id: str, limit: int = 50, offset: int = 0) -> List[AOI]:
-        stmt = select(AOIModel).where(
-            AOIModel.organisation_id == organisation_id
-        ).order_by(AOIModel.created_at.desc()).limit(limit).offset(offset)
+    async def list_by_org(
+        self, organisation_id: str, limit: int = 50, offset: int = 0
+    ) -> List[AOI]:
+        stmt = (
+            select(AOIModel)
+            .where(AOIModel.organisation_id == organisation_id)
+            .order_by(AOIModel.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         result = await self.session.execute(stmt)
         return [self._to_domain(a) for a in result.scalars().all()]
 
     async def count_by_org(self, organisation_id: str) -> int:
-        stmt = select(func.count()).select_from(AOIModel).where(
-            AOIModel.organisation_id == organisation_id
+        stmt = (
+            select(func.count())
+            .select_from(AOIModel)
+            .where(AOIModel.organisation_id == organisation_id)
         )
         result = await self.session.execute(stmt)
         return result.scalar_one()
 
     async def delete(self, aoi_id: str, organisation_id: str) -> bool:
         stmt = select(AOIModel).where(
-            AOIModel.id == aoi_id,
-            AOIModel.organisation_id == organisation_id
+            AOIModel.id == aoi_id, AOIModel.organisation_id == organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -181,7 +193,7 @@ class PostgresJobRepository(JobRepository):
             started_at=model.started_at,
             completed_at=model.completed_at,
             trace_id=model.trace_id,
-            error_message=model.error_message
+            error_message=model.error_message,
         )
 
     async def create(self, job: Job) -> Job:
@@ -195,7 +207,7 @@ class PostgresJobRepository(JobRepository):
             started_at=job.started_at,
             completed_at=job.completed_at,
             trace_id=job.trace_id,
-            error_message=job.error_message
+            error_message=job.error_message,
         )
         self.session.add(model)
         await self.session.commit()
@@ -204,8 +216,7 @@ class PostgresJobRepository(JobRepository):
 
     async def get_by_id(self, job_id: str, organisation_id: str) -> Optional[Job]:
         stmt = select(JobModel).where(
-            JobModel.id == job_id,
-            JobModel.organisation_id == organisation_id
+            JobModel.id == job_id, JobModel.organisation_id == organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one_or_none()
@@ -215,8 +226,7 @@ class PostgresJobRepository(JobRepository):
 
     async def update(self, job: Job) -> Job:
         stmt = select(JobModel).where(
-            JobModel.id == job.id,
-            JobModel.organisation_id == job.organisation_id
+            JobModel.id == job.id, JobModel.organisation_id == job.organisation_id
         )
         result = await self.session.execute(stmt)
         model = result.scalar_one()

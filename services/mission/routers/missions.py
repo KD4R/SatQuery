@@ -69,7 +69,7 @@ async def create_mission(
         status=MissionStatus.DRAFT,
     )
     created = await repo.create(mission)
-    
+
     AuditLogger.log_event(
         actor_id=ctx.subject,
         organisation_id=org_id,
@@ -77,7 +77,7 @@ async def create_mission(
         resource_type="mission",
         resource_id=created.id,
         trace_id=ctx.trace_id,
-        details={"name": created.name, "status": created.status.value}
+        details={"name": created.name, "status": created.status.value},
     )
 
     logger.info(
@@ -169,7 +169,7 @@ async def update_mission(
         resource_type="mission",
         resource_id=mission_id,
         trace_id=ctx.trace_id,
-        details={"status": updated.status.value}
+        details={"status": updated.status.value},
     )
 
     logger.info(

@@ -3,6 +3,7 @@ Integration tests for P1-05 & P1-08: Gateway CORS, rate limiting, WebSocket.
 """
 
 import pytest
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from packages.auth.tests.conftest import make_expired_token, make_token
@@ -96,8 +97,10 @@ def test_p1_05_rate_limit_429_when_exceeded():
 
 # ── P1-08: WebSocket ──────────────────────────────────────────────────────────
 @pytest.mark.integration
-def test_p1_08_websocket_valid_token_connects_and_streams(gateway_client):
+@patch("services.gateway.routers.missions_ws.redis.from_url")
+def test_p1_08_websocket_valid_token_connects_and_streams(mock_redis, gateway_client):
     """A valid JWT connects and receives status stream messages."""
+    mock_redis.side_effect = Exception("Mock Redis Failure")
     token = _token(roles=["viewer"])
     with gateway_client.websocket_connect(f"/ws/v1/missions/m-001?token={token}") as ws:
         connected = ws.receive_json()
@@ -141,8 +144,10 @@ def test_p1_08_websocket_invalid_token_closes_4001(gateway_client):
 
 
 @pytest.mark.integration
-def test_p1_08_websocket_tenant_org_id_in_messages(gateway_client):
+@patch("services.gateway.routers.missions_ws.redis.from_url")
+def test_p1_08_websocket_tenant_org_id_in_messages(mock_redis, gateway_client):
     """Messages must include the org_id from the token (tenant scoping)."""
+    mock_redis.side_effect = Exception("Mock Redis Failure")
     token = make_token(org_id="org-ws-test", roles=["viewer"])
     with gateway_client.websocket_connect(f"/ws/v1/missions/m-ws?token={token}") as ws:
         msg = ws.receive_json()

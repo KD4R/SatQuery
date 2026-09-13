@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger("satquery.audit")
 
+
 class AuditEvent(BaseModel):
     timestamp: str
     actor_id: str
@@ -17,11 +18,12 @@ class AuditEvent(BaseModel):
     trace_id: Optional[str] = None
     details: Dict[str, Any] = {}
 
+
 class AuditLogger:
     """
     Structured audit logger for compliance and traceability (P1-09).
     Logs are emitted to stdout as JSON for OpenTelemetry/FluentBit scraping.
-    In a high-compliance production environment, this could also write directly 
+    In a high-compliance production environment, this could also write directly
     to a Kafka topic or an immutable Postgres table.
     """
 

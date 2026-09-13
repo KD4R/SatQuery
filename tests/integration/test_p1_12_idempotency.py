@@ -51,5 +51,5 @@ def test_p1_12_idempotency_key_caches_response():
     assert resp3.status_code == 201
     assert resp3.status_code == 201
     assert resp3.json()["id"] != mission_id  # Different mission ID
-    
+
     app.dependency_overrides.clear()
