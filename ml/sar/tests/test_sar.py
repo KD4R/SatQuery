@@ -9,7 +9,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from ml.contracts.scene import BackscatterScale
+from packages.contracts import BackscatterScale
 from ml.sar.change import (
     ThresholdError,
     log_ratio_db,

@@ -19,8 +19,7 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from ml.contracts.confidence import Confidence, ConfidenceBasis
-from ml.contracts.measurement import Measurement, MeasurementUnit
+from packages.contracts import Confidence, ConfidenceBasis, Measurement, MeasurementUnit
 
 pytestmark = pytest.mark.unit
 

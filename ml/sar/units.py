@@ -25,7 +25,7 @@ from __future__ import annotations
 import numpy as np
 import numpy.typing as npt
 
-from ml.contracts.scene import BackscatterScale
+from packages.contracts import BackscatterScale
 
 #: Power values at or below this are treated as invalid rather than converted.
 #: log10 of zero is -inf and of a negative number is undefined; RTC products
@@ -100,7 +100,7 @@ def ensure_decibel(
     array
         Raster values.
     declared_scale
-        What :class:`~ml.contracts.scene.RasterSpec` says these values are
+        What :class:`~packages.contracts.RasterSpec` says these values are
         in. This comes from provider metadata or from the dataset documentation --
         never from inspecting the values.
 

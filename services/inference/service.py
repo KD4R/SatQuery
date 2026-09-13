@@ -26,9 +26,16 @@ import numpy as np
 import numpy.typing as npt
 import rasterio
 
-from ml.contracts.confidence import Confidence
-from ml.contracts.outcome import Abstention, AbstentionReason, Analysis, MissionOutcome
-from ml.contracts.scene import BackscatterScale, Polarization, SceneRef
+from packages.contracts import (
+    Abstention,
+    AbstentionReason,
+    Analysis,
+    BackscatterScale,
+    Confidence,
+    MissionOutcome,
+    Polarization,
+    SceneRef,
+)
 from ml.geo.area import area_hectares, pixel_area_m2
 from ml.io.preflight import PreflightError
 from ml.io.raster import Raster, RasterReadError, read_raster, reproject_to_area_safe_crs

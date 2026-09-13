@@ -27,7 +27,7 @@ import pytest
 import rasterio
 from rasterio.transform import from_origin
 
-from ml.contracts.scene import BackscatterScale, Polarization, Provider, SceneRef
+from packages.contracts import BackscatterScale, Polarization, Provider, SceneRef
 from ml.io.raster import Raster, read_raster
 from ml.pipeline.baseline import (
     detect_water_single_date,

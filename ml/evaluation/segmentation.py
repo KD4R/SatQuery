@@ -197,7 +197,7 @@ def mask_agreement_iou(
     """IoU between two predicted masks, with no ground truth involved.
 
     This is the number behind
-    :attr:`~ml.contracts.confidence.ConfidenceBasis.MODEL_AGREEMENT`:
+    :attr:`~packages.contracts.ConfidenceBasis.MODEL_AGREEMENT`:
     the deterministic Otsu baseline and the learned model are run on the same input
     and their outputs compared. Because the two methods are independent, their
     agreement is a genuine uncertainty signal rather than a model's opinion of

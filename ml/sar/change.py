@@ -47,7 +47,7 @@ def log_ratio_db(
     Both inputs must already be in decibels -- pass them through
     :func:`ml.sar.units.ensure_decibel` first. This function cannot check
     that for you, which is precisely why the scale is carried as declared metadata
-    on :class:`~ml.contracts.scene.RasterSpec` rather than inferred.
+    on :class:`~packages.contracts.RasterSpec` rather than inferred.
 
     Returns
     -------
@@ -108,7 +108,7 @@ def otsu_threshold(
         **Not** raised for a unimodal distribution. An earlier version of this
         docstring promised that and could not deliver it; see the note below. The
         caller is expected to translate a raised error into a
-        :attr:`~ml.contracts.outcome.AbstentionReason.NO_SEPARABLE_THRESHOLD`
+        :attr:`~packages.contracts.AbstentionReason.NO_SEPARABLE_THRESHOLD`
         abstention rather than fabricating a mask.
     """
     finite = values[np.isfinite(values)]

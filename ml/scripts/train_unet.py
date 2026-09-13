@@ -36,7 +36,7 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from ml.contracts.scene import Polarization
+from packages.contracts import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE, confusion
 from ml.io.preflight import PreflightError
 from ml.models.unet import UNet, masked_bce_dice_loss
@@ -135,7 +135,6 @@ def baseline_scores(chips: tuple[Chip, ...]) -> tuple[float, float, dict[str, fl
     Stratified because ADR-0007 D13 established that a single mean over a mixed
     set says more about the sample's dry/wet balance than about the method.
     """
-    from ml.contracts.scene import BackscatterScale
     from ml.io.raster import read_raster
 
     ious, f1s = [], []

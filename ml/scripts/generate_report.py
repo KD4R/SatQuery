@@ -42,7 +42,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ml.contracts.scene import BackscatterScale, Polarization
+from packages.contracts import BackscatterScale, Polarization
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE as IGNORE
 from ml.evaluation.segmentation import confusion
 from ml.geo.area import pixel_area_m2
