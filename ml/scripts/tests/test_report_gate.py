@@ -212,3 +212,41 @@ def test_nothing_runs_before_the_gate_in_ci() -> None:
         "replaced by waive_report.py, which requires a name and a reason and never "
         "runs in CI"
     )
+
+
+# --------------------------------------------------------------------------- #
+# The report is measured against hand labels, and only hand labels             #
+# --------------------------------------------------------------------------- #
+
+
+def test_the_report_generator_filters_to_hand_labels() -> None:
+    """A source assertion, because the behavioural version needs 400 chips and torch.
+
+    This nearly went wrong for real. `discover_chips` gained weakly-labelled chips
+    so they could be trained on; `generate_report.py` scored everything it
+    returned; and the next regeneration -- run while the weak fetch was still
+    downloading -- silently grew from 400 chips to 859 and added two whole regions
+    of Otsu-scored rows to the per-region table. Nothing raised. The column header
+    still said IoU. The numbers had simply stopped being a measurement of the model
+    and started being a measurement of how well it imitates Otsu.
+
+    Caught only because the regeneration was diffed against the previous report.
+    That is too thin a thread for the property to hang on.
+    """
+    source = (REPO_ROOT / "ml/scripts/generate_report.py").read_text()
+
+    assert "Labelling.HAND" in source, (
+        "generate_report.py must filter discovered chips to hand labels. Without "
+        "it, every weakly-labelled chip on disk enters the reported accuracy "
+        "figures scored against automatically derived labels, in the same columns "
+        "as the ground-truth ones."
+    )
+
+    discovery = source.index("discover_chips(args.root)")
+    filtering = source.index("c.labelling is Labelling.HAND")
+    split = source.index("split_by_region(chips)")
+    assert discovery < filtering < split, (
+        "the filter must sit between discovery and the split: after discovery "
+        "so there is something to filter, and before the split so held-out "
+        "regions are not computed over chips the report then refuses to score"
+    )

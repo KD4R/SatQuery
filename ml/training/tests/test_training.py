@@ -31,6 +31,7 @@ from ml.training.dataset import (
     random_crop,
 )
 from ml.training.splits import (
+    Labelling,
     SplitError,
     discover_chips,
     region_of,
@@ -450,6 +451,7 @@ def test_prepare_emits_the_channel_only_when_asked(tmp_path: Path) -> None:
     bands, labels = load_chip(chip)
     normalisation = fit_normalisation((chip,))
     prior = load_permanent_water_prior(chip, bands.shape[1:])
+    assert prior is not None
 
     two, _, _ = prepare(bands, labels, normalisation, prior)
     assert two.shape[0] == 2, "a prior was available and must still be ignored"
@@ -513,3 +515,151 @@ def test_prior_dropout_must_be_a_probability(tmp_path: Path) -> None:
     chips = discover_chips(tmp_path)
     with pytest.raises(ValueError, match="probability"):
         Sen1Floods11Dataset(chips, fit_normalisation(chips), include_prior=True, prior_dropout=1.5)
+
+
+# --------------------------------------------------------------------------- #
+# Weakly-labelled chips: discovery, and the leak they would otherwise cause     #
+# --------------------------------------------------------------------------- #
+
+
+def make_weak_chip(
+    root: Path,
+    stem: str,
+    *,
+    s2_label: bool = True,
+    otsu_label: bool = True,
+    size: int = 64,
+) -> None:
+    """Write an S1Weak scene plus whichever weak label layers are requested."""
+    rng = np.random.default_rng(abs(hash(stem)) % 2**32)
+    vv = rng.normal(-8.0, 1.0, (size, size)).astype(np.float32)
+    vv[:20, :] = rng.normal(-20.0, 1.0, (20, size))
+    transform = from_origin(500000.0, 1000000.0, 10.0, 10.0)
+
+    (root / "S1Weak").mkdir(parents=True, exist_ok=True)
+    with rasterio.open(
+        root / "S1Weak" / f"{stem}_S1Weak.tif",
+        "w",
+        driver="GTiff",
+        height=size,
+        width=size,
+        count=2,
+        dtype="float32",
+        crs="EPSG:32643",
+        transform=transform,
+    ) as sink:
+        sink.write(np.stack([vv, vv - 6.0]))
+        sink.set_band_description(1, "VV")
+        sink.set_band_description(2, "VH")
+
+    labels = np.zeros((size, size), dtype=np.int16)
+    labels[:20, :] = 1
+    for wanted, subdir in ((s2_label, "S2IndexLabelWeak"), (otsu_label, "S1OtsuLabelWeak")):
+        if not wanted:
+            continue
+        (root / subdir).mkdir(parents=True, exist_ok=True)
+        with rasterio.open(
+            root / subdir / f"{stem}_{subdir}.tif",
+            "w",
+            driver="GTiff",
+            height=size,
+            width=size,
+            count=1,
+            dtype="int16",
+            crs="EPSG:32643",
+            transform=transform,
+        ) as sink:
+            sink.write(labels, 1)
+
+
+def test_weak_chips_are_discovered_and_marked_as_weak(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900")
+    by_stem = {c.stem: c for c in discover_chips(tmp_path)}
+
+    assert by_stem["Ghana_1"].labelling is Labelling.HAND
+    assert by_stem["Ghana_900"].labelling is Labelling.WEAK
+
+
+def test_the_sentinel2_label_is_preferred_over_the_otsu_one(tmp_path: Path) -> None:
+    """Otsu labels inherit every failure of the deterministic baseline, including
+    inventing a flood on dry ground (ADR-0007 D13). Training on them alone would
+    teach the model to imitate the method it exists to beat."""
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900", s2_label=True, otsu_label=True)
+    (weak,) = [c for c in discover_chips(tmp_path) if c.labelling is Labelling.WEAK]
+    assert weak.label.name.endswith("_S2IndexLabelWeak.tif")
+
+
+def test_an_otsu_only_weak_chip_is_still_taken(tmp_path: Path) -> None:
+    """Preference, not exclusivity: S2 labels are absent wherever there was no
+    usable optical overpass, and the SAR imagery is real either way."""
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900", s2_label=False, otsu_label=True)
+    (weak,) = [c for c in discover_chips(tmp_path) if c.labelling is Labelling.WEAK]
+    assert weak.label.name.endswith("_S1OtsuLabelWeak.tif")
+
+
+def test_a_weak_chip_with_no_label_at_all_is_skipped(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900", s2_label=False, otsu_label=False)
+    assert all(c.labelling is Labelling.HAND for c in discover_chips(tmp_path))
+
+
+def test_validation_never_contains_a_weakly_labelled_chip(tmp_path: Path) -> None:
+    """Scoring against automatically derived labels measures the label generator."""
+    for stem in ("Ghana_1", "India_1", "Somalia_1"):
+        make_chip(tmp_path, stem)
+    make_weak_chip(tmp_path, "India_900")
+
+    split = split_by_region(discover_chips(tmp_path))
+    assert all(c.labelling is Labelling.HAND for c in split.validation)
+
+
+def test_a_weak_chip_from_a_held_out_region_is_discarded_not_trained_on(
+    tmp_path: Path,
+) -> None:
+    """The trap this whole enum exists for.
+
+    A weakly-labelled Indian chip has no hand label, so it cannot be validated on
+    -- which makes "put it in training, then" look obviously right. It destroys the
+    region holdout: the model trains on Indian terrain and is then scored on Indian
+    terrain, so the held-out number measures memorisation while looking like
+    generalisation. That is the exact defect region-based splitting exists to
+    prevent, reintroduced through the back door.
+    """
+    for stem in ("Ghana_1", "India_1", "Somalia_1"):
+        make_chip(tmp_path, stem)
+    make_weak_chip(tmp_path, "India_900")
+    make_weak_chip(tmp_path, "Ghana_900")
+
+    split = split_by_region(discover_chips(tmp_path))
+
+    assert "India_900" not in {c.stem for c in split.train}
+    assert "India_900" not in {c.stem for c in split.validation}
+    assert {c.stem for c in split.discarded} == {"India_900"}
+    # The non-held-out weak chip is kept, or the rule would just be "drop all weak".
+    assert "Ghana_900" in {c.stem for c in split.train}
+    assert not {c.region for c in split.train} & {c.region for c in split.validation}
+
+
+def test_the_summary_reports_what_was_discarded(tmp_path: Path) -> None:
+    """A run that quietly threw away part of its training set must not look
+    identical to one that did not."""
+    for stem in ("Ghana_1", "India_1", "Somalia_1"):
+        make_chip(tmp_path, stem)
+    make_weak_chip(tmp_path, "India_900")
+
+    summary = split_by_region(discover_chips(tmp_path)).summary()
+    assert "discarded" in summary
+    assert "India" in summary
+
+
+def test_held_out_regions_with_only_weak_chips_are_an_error(tmp_path: Path) -> None:
+    """Not an empty validation set that reports nan for every epoch."""
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "India_900")
+    make_weak_chip(tmp_path, "Somalia_900")
+
+    with pytest.raises(SplitError, match="measures the label generator"):
+        split_by_region(discover_chips(tmp_path))

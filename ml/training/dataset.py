@@ -327,6 +327,18 @@ class Sen1Floods11Dataset:
     def __len__(self) -> int:
         return len(self.chips)
 
+    def clear_cache(self) -> None:
+        """Drop cached samples.
+
+        Needed whenever ``normalisation`` is replaced after construction -- the
+        cache holds already-standardised arrays, so a new normalisation that does
+        not clear it would apply to new chips only, and the model would train on a
+        set standardised two different ways with nothing to show for it but a
+        worse score.
+        """
+        if self._cache is not None:
+            self._cache.clear()
+
     def _prepared(self, index: int):
         if self._cache is not None and index in self._cache:
             return self._cache[index]

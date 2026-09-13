@@ -51,7 +51,7 @@ from ml.training.dataset import (
     load_permanent_water_prior,
     prepare,
 )
-from ml.training.splits import Chip, discover_chips, split_by_region
+from ml.training.splits import Chip, Labelling, Split, discover_chips, split_by_region
 
 DEFAULT_ROOT = Path("data/sen1floods11")
 DEFAULT_OUT = Path("artifacts/unet")
@@ -203,6 +203,23 @@ def main() -> int:
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--labelling",
+        default="hand",
+        choices=("hand", "weak", "all"),
+        help="which labellings to TRAIN on. Validation is hand-labelled whatever "
+        "this says -- scoring against automatically derived labels measures the "
+        "label generator, not the model. Default hand.",
+    )
+    parser.add_argument(
+        "--init-from",
+        type=Path,
+        default=None,
+        help="start from another checkpoint's weights. Distinct from --resume, "
+        "which continues one run: this begins a new one from a pretrained "
+        "initialisation, which is how the two-stage recipe works -- pretrain on "
+        "--labelling all, then fine-tune on hand labels from that checkpoint.",
+    )
+    parser.add_argument(
         "--prior",
         action="store_true",
         help="feed the JRC permanent-water layer as a third input channel. "
@@ -240,6 +257,18 @@ def main() -> int:
         print(error, file=sys.stderr)
         return 2
 
+    if args.labelling != "all":
+        wanted = Labelling(args.labelling)
+        kept = tuple(c for c in split.train if c.labelling is wanted)
+        if not kept:
+            print(
+                f"no {args.labelling}-labelled chips in the training split; "
+                f"it holds {sorted({c.labelling.value for c in split.train})}",
+                file=sys.stderr,
+            )
+            return 2
+        split = Split(train=kept, validation=split.validation, discarded=split.discarded)
+
     print(split.summary())
     print()
 
@@ -267,6 +296,49 @@ def main() -> int:
         + (" (VV, VH, JRC permanent-water prior)" if args.prior else " (VV, VH)")
         + "\n"
     )
+
+    if args.init_from is not None:
+        if not args.init_from.is_file():
+            print(f"--init-from given but {args.init_from} does not exist", file=sys.stderr)
+            return 2
+        pretrained = torch.load(args.init_from, weights_only=True, map_location="cpu")
+        if pretrained["architecture"] != {
+            "in_channels": in_channels,
+            "base_channels": args.base_channels,
+            "depth": args.depth,
+        }:
+            print(
+                "REFUSING to initialise from a different architecture:\n"
+                f"  checkpoint {pretrained['architecture']}\n"
+                f"  this run   in_channels={in_channels}, "
+                f"base_channels={args.base_channels}, depth={args.depth}\n"
+                "load_state_dict would either raise or, worse, load the subset of "
+                "layers whose shapes happen to match and leave the rest random.",
+                file=sys.stderr,
+            )
+            return 2
+        model.load_state_dict(pretrained["state_dict"])
+
+        # The pretrained weights encode the scaling they were trained under, so
+        # the fine-tune adopts it rather than refitting on its own smaller split.
+        # Refitting would shift every input distribution the moment stage two
+        # begins -- the features would be reading a different unit than the one
+        # they learned, which looks like catastrophic forgetting and is not.
+        adopted = Normalisation.from_dict(pretrained["normalisation"])
+        if adopted != normalisation:
+            print(
+                f"adopting the pretrained normalisation from {args.init_from}:\n"
+                f"  fitted here  mean {tuple(round(v, 2) for v in normalisation.mean)}\n"
+                f"  adopted      mean {tuple(round(v, 2) for v in adopted.mean)}"
+            )
+            normalisation = adopted
+            dataset.inner.normalisation = normalisation
+            dataset.inner.clear_cache()
+        print(
+            f"initialised from {args.init_from} "
+            f"(epoch {pretrained.get('epoch', '?')}, "
+            f"validation IoU {pretrained.get('validation_iou', float('nan')):.3f})\n"
+        )
 
     optimiser = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=args.epochs)

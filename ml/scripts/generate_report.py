@@ -54,7 +54,7 @@ from ml.pipeline.learned import predict_water_mask
 from ml.pipeline.postprocess import postprocess_water_mask
 from ml.sar.change import ThresholdError
 from ml.scripts.evaluate_baseline import _load_label_onto
-from ml.training.splits import Chip, discover_chips, split_by_region
+from ml.training.splits import Chip, Labelling, discover_chips, split_by_region
 from ml.scripts.report_freshness import code_fingerprint, write_sidecar
 
 DEFAULT_ROOT = Path("data/sen1floods11")
@@ -403,9 +403,38 @@ def main() -> int:
     repo_root = Path(__file__).resolve().parents[2]
 
     try:
-        chips = discover_chips(args.root)
+        discovered = discover_chips(args.root)
     except ValueError as error:
         print(error, file=sys.stderr)
+        return 2
+
+    # HAND-LABELLED ONLY, and this filter is the whole safety property of the file.
+    #
+    # It is not a preference. Every figure in this report is quoted as accuracy, so
+    # a chip scored against automatically derived labels would be reporting how
+    # well the model imitates Otsu -- presented in the same table, in the same
+    # column, indistinguishable from a measurement against ground truth.
+    #
+    # This is not hypothetical. The weakly-labelled fetch landed while this script
+    # still scored everything `discover_chips` returned, and one run silently grew
+    # from 400 chips to 859 and added two whole regions of Otsu-scored rows to the
+    # per-region table. Nothing failed; the numbers merely stopped meaning what the
+    # column header said.
+    chips = tuple(c for c in discovered if c.labelling is Labelling.HAND)
+    weak = len(discovered) - len(chips)
+    if weak:
+        print(
+            f"ignoring {weak} weakly-labelled chips: this report is measured "
+            "against hand-drawn ground truth only",
+            file=sys.stderr,
+        )
+    if not chips:
+        print(
+            f"no hand-labelled chips under {args.root}. The weakly-labelled set "
+            "cannot be reported against -- fetch the hand-labelled set:\n"
+            "    python3 fetch_sen1floods11.py --count 400",
+            file=sys.stderr,
+        )
         return 2
 
     try:
