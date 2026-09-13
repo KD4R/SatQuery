@@ -46,7 +46,9 @@ from ml.training.dataset import (
     Normalisation,
     Sen1Floods11Dataset,
     fit_normalisation,
+    MODEL_BANDS,
     load_chip,
+    load_permanent_water_prior,
     prepare,
 )
 from ml.training.splits import Chip, discover_chips, split_by_region
@@ -101,7 +103,12 @@ def predict_chip(
     """Full-chip inference. Returns (predicted mask, labels)."""
     model.eval()
     bands, labels = load_chip(chip)
-    x, _, _ = prepare(bands, labels, normalisation)
+    # Channel count from the model, not from the flag or the filesystem: this
+    # function is also called on a resumed run, where the architecture is the
+    # checkpoint's rather than this invocation's.
+    include_prior = model.in_channels > len(MODEL_BANDS)
+    prior = load_permanent_water_prior(chip, bands.shape[1:]) if include_prior else None
+    x, _, _ = prepare(bands, labels, normalisation, prior, include_prior=include_prior)
 
     tensor = torch.from_numpy(x).unsqueeze(0)
     tensor, pad_h, pad_w = _pad_to_multiple(tensor, 2**model.depth)
@@ -196,6 +203,16 @@ def main() -> int:
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--prior",
+        action="store_true",
+        help="feed the JRC permanent-water layer as a third input channel. "
+        "Postprocessing already subtracts permanent water, but only after the "
+        "model has decided; as an input the model is told, and spends its "
+        "capacity on boundary cases instead of relearning that certain dark "
+        "regions are never floods. Trained with the channel blanked a quarter "
+        "of the time so inference without JRC still works.",
+    )
+    parser.add_argument(
         "--val-every",
         type=int,
         default=1,
@@ -232,12 +249,24 @@ def main() -> int:
     print(f"  std  {tuple(round(v, 2) for v in normalisation.std)} dB\n")
 
     dataset = _TorchDataset(
-        Sen1Floods11Dataset(split.train, normalisation, crop_size=args.crop, seed=args.seed)
+        Sen1Floods11Dataset(
+            split.train,
+            normalisation,
+            crop_size=args.crop,
+            seed=args.seed,
+            include_prior=args.prior,
+        )
     )
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
-    model = UNet(in_channels=2, base_channels=args.base_channels, depth=args.depth)
-    print(f"UNet: {model.parameter_count:,} parameters, depth {args.depth}\n")
+    in_channels = len(MODEL_BANDS) + (1 if args.prior else 0)
+    model = UNet(in_channels=in_channels, base_channels=args.base_channels, depth=args.depth)
+    print(
+        f"UNet: {model.parameter_count:,} parameters, depth {args.depth}, "
+        f"{in_channels} input channels"
+        + (" (VV, VH, JRC permanent-water prior)" if args.prior else " (VV, VH)")
+        + "\n"
+    )
 
     optimiser = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=args.epochs)
@@ -354,7 +383,7 @@ def main() -> int:
                     "state_dict": model.state_dict(),
                     "normalisation": normalisation.to_dict(),
                     "architecture": {
-                        "in_channels": 2,
+                        "in_channels": model.in_channels,
                         "base_channels": args.base_channels,
                         "depth": args.depth,
                     },

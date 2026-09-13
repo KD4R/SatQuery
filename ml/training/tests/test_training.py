@@ -18,11 +18,15 @@ from rasterio.transform import from_origin
 
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE
 from ml.training.dataset import (
+    PRIOR_PERMANENT,
+    PRIOR_SEASONAL_OR_DRY,
+    PRIOR_UNKNOWN,
     Normalisation,
     Sen1Floods11Dataset,
     augment,
     fit_normalisation,
     load_chip,
+    load_permanent_water_prior,
     prepare,
     random_crop,
 )
@@ -367,3 +371,145 @@ def test_samples_are_reproducible_for_a_given_seed(tmp_path: Path) -> None:
 
     assert np.array_equal(first[0], second[0])
     assert np.array_equal(first[1], second[1])
+
+
+# --------------------------------------------------------------------------- #
+# The permanent-water prior channel                                            #
+# --------------------------------------------------------------------------- #
+
+
+def write_permanent_water(root: Path, stem: str, *, rows: int = 10, size: int = 64) -> None:
+    """Write a JRCWaterHand layer whose top ``rows`` are permanent water."""
+    layer = np.zeros((size, size), dtype=np.uint8)
+    layer[:rows, :] = 1
+    (root / "JRCWaterHand").mkdir(parents=True, exist_ok=True)
+    with rasterio.open(
+        root / "JRCWaterHand" / f"{stem}_JRCWaterHand.tif",
+        "w",
+        driver="GTiff",
+        height=size,
+        width=size,
+        count=1,
+        dtype="uint8",
+        crs="EPSG:32643",
+        transform=from_origin(500000.0, 1000000.0, 10.0, 10.0),
+    ) as sink:
+        sink.write(layer, 1)
+
+
+def test_the_prior_distinguishes_absent_from_dry(tmp_path: Path) -> None:
+    """Three states, not two, and this is the reason for the third.
+
+    A binary channel cannot separate "this pixel is not permanent water" from
+    "there is no JRC layer for this chip". Encoding both as 0 would teach the model
+    that a missing layer means dry ground everywhere -- and a missing layer is an
+    ordinary production condition, because `permanent_water_href` is optional on
+    the inference request. The model would then confidently report a flood over a
+    lake on exactly the requests where it has least information.
+    """
+    make_chip(tmp_path, "Ghana_1")
+    (chip_without,) = discover_chips(tmp_path)
+    assert chip_without.permanent_water is None
+    bands, _ = load_chip(chip_without)
+    assert load_permanent_water_prior(chip_without, bands.shape[1:]) is None
+
+    write_permanent_water(tmp_path, "Ghana_1", rows=10)
+    (chip_with,) = discover_chips(tmp_path)
+    prior = load_permanent_water_prior(chip_with, bands.shape[1:])
+
+    assert prior is not None
+    assert np.all(prior[:10] == PRIOR_PERMANENT)
+    assert np.all(prior[10:] == PRIOR_SEASONAL_OR_DRY)
+    # The value used for "no layer" is distinct from both.
+    assert PRIOR_UNKNOWN not in (PRIOR_PERMANENT, PRIOR_SEASONAL_OR_DRY)
+
+
+def test_a_mismatched_prior_grid_is_refused_not_resampled(tmp_path: Path) -> None:
+    """Sen1Floods11 ships every layer co-registered, so a shape mismatch is the
+    wrong file. Resampling it away would hide that and silently shift the prior
+    relative to the scene it is meant to describe."""
+    make_chip(tmp_path, "Ghana_1", size=64)
+    write_permanent_water(tmp_path, "Ghana_1", size=32)
+    (chip,) = discover_chips(tmp_path)
+
+    with pytest.raises(ValueError, match="co-registered"):
+        load_permanent_water_prior(chip, (64, 64))
+
+
+def test_prepare_emits_the_channel_only_when_asked(tmp_path: Path) -> None:
+    """The channel count follows the architecture, never the filesystem.
+
+    If it followed the data, the input shape would depend on whether a file
+    happened to be downloaded -- a two-channel checkpoint would be handed three
+    inputs the day someone fetched the JRC layer, and fail at matrix
+    multiplication with an error that says nothing about the cause.
+    """
+    make_chip(tmp_path, "Ghana_1")
+    write_permanent_water(tmp_path, "Ghana_1")
+    (chip,) = discover_chips(tmp_path)
+    bands, labels = load_chip(chip)
+    normalisation = fit_normalisation((chip,))
+    prior = load_permanent_water_prior(chip, bands.shape[1:])
+
+    two, _, _ = prepare(bands, labels, normalisation, prior)
+    assert two.shape[0] == 2, "a prior was available and must still be ignored"
+
+    three, _, _ = prepare(bands, labels, normalisation, prior, include_prior=True)
+    assert three.shape[0] == 3
+    assert np.array_equal(three[:2], two)
+    assert np.array_equal(three[2], prior)
+
+
+def test_asking_for_the_channel_without_a_prior_yields_unknown(tmp_path: Path) -> None:
+    """A three-channel model must still run on a chip with no JRC layer."""
+    make_chip(tmp_path, "Ghana_1")
+    (chip,) = discover_chips(tmp_path)
+    bands, labels = load_chip(chip)
+    normalisation = fit_normalisation((chip,))
+
+    x, _, _ = prepare(bands, labels, normalisation, None, include_prior=True)
+    assert x.shape[0] == 3
+    assert np.all(x[2] == PRIOR_UNKNOWN)
+
+
+def test_prior_dropout_blanks_the_channel_without_poisoning_the_cache(tmp_path: Path) -> None:
+    """Dropout must be per-sample, not per-chip-forever.
+
+    ``_prepared`` caches, so blanking the cached array in place would make the
+    first dropped sample the last time that chip ever shows its prior -- turning a
+    25% dropout into a one-way ratchet that ends with every chip blanked. The bug
+    is invisible: training still runs and the loss still falls.
+    """
+    make_chip(tmp_path, "Ghana_1")
+    write_permanent_water(tmp_path, "Ghana_1")
+    chips = discover_chips(tmp_path)
+    normalisation = fit_normalisation(chips)
+
+    always = Sen1Floods11Dataset(
+        chips,
+        normalisation,
+        crop_size=None,
+        augment_samples=False,
+        include_prior=True,
+        prior_dropout=1.0,
+    )
+    assert np.all(always[0][0][2] == PRIOR_UNKNOWN)
+    # The cached array must be untouched, so a run with dropout off still sees it.
+    assert not np.all(always._prepared(0)[0][2] == PRIOR_UNKNOWN)
+
+    never = Sen1Floods11Dataset(
+        chips,
+        normalisation,
+        crop_size=None,
+        augment_samples=False,
+        include_prior=True,
+        prior_dropout=0.0,
+    )
+    assert np.any(never[0][0][2] == PRIOR_PERMANENT)
+
+
+def test_prior_dropout_must_be_a_probability(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    chips = discover_chips(tmp_path)
+    with pytest.raises(ValueError, match="probability"):
+        Sen1Floods11Dataset(chips, fit_normalisation(chips), include_prior=True, prior_dropout=1.5)

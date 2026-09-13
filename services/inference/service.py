@@ -138,7 +138,7 @@ class AnalysisService:
             )
 
         try:
-            mask = self._predict(model, normalisation, raster)
+            mask = self._predict(model, normalisation, raster, permanent_water)
         except Exception as error:  # noqa: BLE001 -- see comment
             # Deliberately broad. Anything the model does wrong at inference time
             # is a reason to fall back to a working method, not a reason to fail
@@ -214,12 +214,22 @@ class AnalysisService:
 
     # -- inference ----------------------------------------------------------- #
 
-    def _predict(self, model, normalisation, raster: Raster) -> npt.NDArray[np.bool_]:
+    def _predict(
+        self, model, normalisation, raster: Raster, permanent_water=None
+    ) -> npt.NDArray[np.bool_]:
         """Delegates to ml.pipeline.learned so the service and the evaluation
         report cannot drift apart. They did once: the report scored the model on
         the native grid and the baseline on the reprojected one, and only a shape
-        mismatch stopped it reporting a wrong comparison."""
-        return predict_water_mask(model, normalisation, raster)
+        mismatch stopped it reporting a wrong comparison.
+
+        The permanent-water layer is passed in rather than re-read. The same array
+        already feeds the postprocessing subtraction, and reading it twice is how
+        the model ends up conditioned on one grid while the measurement is
+        corrected on another. A three-channel model uses it as a prior; a
+        two-channel one ignores it, and neither the service nor this method has to
+        know which -- ml.pipeline.learned reads the channel count off the
+        checkpoint."""
+        return predict_water_mask(model, normalisation, raster, permanent_water)
 
     # -- outcomes ------------------------------------------------------------ #
 

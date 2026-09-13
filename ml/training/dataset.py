@@ -95,6 +95,58 @@ def load_chip(chip: Chip) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.int16
     return bands, labels
 
 
+#: Encoding of the permanent-water prior channel. Three states, not two, because
+#: "this chip has no JRC layer" and "this pixel is not permanent water" are
+#: different claims and a binary channel cannot tell them apart. Feeding 0 for both
+#: would teach the model that a missing layer means dry ground everywhere -- which
+#: is exactly the input it will see in production the first time the JRC fetch
+#: fails, and it would confidently report a flood over a lake.
+PRIOR_UNKNOWN = 0.0
+PRIOR_PERMANENT = 1.0
+PRIOR_SEASONAL_OR_DRY = -1.0
+
+#: Fraction of training samples whose prior channel is blanked to PRIOR_UNKNOWN.
+#:
+#: Without this the model comes to depend on the layer, and the service degrades
+#: to nonsense rather than to the SAR-only answer whenever JRC is unavailable --
+#: which the inference service already treats as an ordinary, non-fatal condition
+#: (permanent_water_href is optional). Dropout makes "no prior" a case the model
+#: has trained on rather than one it meets for the first time in production.
+PRIOR_DROPOUT = 0.25
+
+
+def load_permanent_water_prior(
+    chip: Chip, shape: tuple[int, ...]
+) -> npt.NDArray[np.float32] | None:
+    """The JRC permanent-water layer as a prior channel, or None if absent.
+
+    Why this helps, given that postprocessing already subtracts permanent water:
+    subtraction happens *after* the model has already decided, so the model still
+    spends capacity learning that certain dark regions are not floods. As an input
+    it is told, and can spend that capacity on the boundary cases instead. The
+    subtraction stays -- it is a measurement rule, not a modelling one.
+
+    Read on the chip's own grid with no resampling. Sen1Floods11 ships every layer
+    co-registered, so a shape mismatch means the wrong file, and guessing a
+    reprojection here would hide that.
+    """
+    if chip.permanent_water is None:
+        return None
+
+    with rasterio.open(chip.permanent_water) as source:
+        layer = source.read(1)
+
+    if layer.shape != shape:
+        raise ValueError(
+            f"{chip.stem}: permanent-water grid {layer.shape} does not match the "
+            f"scene grid {shape}; they are meant to be co-registered, so this is a "
+            "mismatched file rather than something to resample away"
+        )
+
+    prior = np.where(layer == 1, PRIOR_PERMANENT, PRIOR_SEASONAL_OR_DRY)
+    return prior.astype(np.float32)
+
+
 def fit_normalisation(chips: tuple[Chip, ...]) -> Normalisation:
     """Compute per-band mean and standard deviation over the training chips.
 
@@ -132,14 +184,34 @@ def prepare(
     bands: npt.NDArray[np.float32],
     labels: npt.NDArray[np.int16],
     normalisation: Normalisation,
+    prior: npt.NDArray[np.float32] | None = None,
+    *,
+    include_prior: bool = False,
 ) -> tuple[npt.NDArray[np.float32], npt.NDArray[np.float32], npt.NDArray[np.float32]]:
     """Standardise and split labels into a target and a validity mask.
 
     Returns ``(x, y, weight)`` where ``weight`` is 1 on scorable pixels and 0 on
     no-data. The loss multiplies by it, so no-data contributes no gradient. Coming
     out of here, ``y`` is only ever 0 or 1 -- the ``-1`` never reaches the model.
+
+    ``include_prior`` appends the permanent-water channel, giving three channels
+    instead of two. It is a flag rather than "append it whenever a prior was
+    passed" because the channel count has to match the checkpoint's architecture
+    exactly, and inferring it from whether a file happened to be on disk would make
+    the input shape depend on the filesystem. Callers read it off the model
+    (``model.in_channels``), never off the data.
+
+    With ``include_prior`` and no prior, the channel is PRIOR_UNKNOWN throughout --
+    a state the model has seen in training, because of PRIOR_DROPOUT.
     """
     standardised = normalisation.apply(bands)
+
+    if include_prior:
+        if prior is None:
+            prior = np.full(bands.shape[1:], PRIOR_UNKNOWN, dtype=np.float32)
+        elif prior.shape != bands.shape[1:]:
+            raise ValueError(f"prior is {prior.shape} but the bands are {bands.shape[1:]}")
+        standardised = np.concatenate([standardised, prior[np.newaxis]], axis=0)
 
     # NaN must not reach the network: a single NaN propagates through the
     # convolutions and makes the whole loss NaN, which looks like a diverged model
@@ -234,13 +306,19 @@ class Sen1Floods11Dataset:
         augment_samples: bool = True,
         seed: int = 0,
         cache: bool = True,
+        include_prior: bool = False,
+        prior_dropout: float = PRIOR_DROPOUT,
     ) -> None:
         if not chips:
             raise ValueError("dataset is empty")
+        if not 0.0 <= prior_dropout <= 1.0:
+            raise ValueError(f"prior_dropout must be a probability, got {prior_dropout}")
         self.chips = chips
         self.normalisation = normalisation
         self.crop_size = crop_size
         self.augment_samples = augment_samples
+        self.include_prior = include_prior
+        self.prior_dropout = prior_dropout
         self._rng = np.random.default_rng(seed)
         self._cache: dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]] | None = (
             {} if cache else None
@@ -252,14 +330,29 @@ class Sen1Floods11Dataset:
     def _prepared(self, index: int):
         if self._cache is not None and index in self._cache:
             return self._cache[index]
-        bands, labels = load_chip(self.chips[index])
-        prepared = prepare(bands, labels, self.normalisation)
+        chip = self.chips[index]
+        bands, labels = load_chip(chip)
+        prior = load_permanent_water_prior(chip, bands.shape[1:]) if self.include_prior else None
+        prepared = prepare(
+            bands, labels, self.normalisation, prior, include_prior=self.include_prior
+        )
         if self._cache is not None:
             self._cache[index] = prepared
         return prepared
 
     def __getitem__(self, index: int):
         x, y, weight = self._prepared(index)
+        if self.include_prior and self._rng.random() < self.prior_dropout:
+            # Blank the prior, do not remove it: the channel count is fixed by the
+            # architecture. The model sees PRIOR_UNKNOWN often enough in training
+            # that a missing JRC layer at inference is a case it has met, not a
+            # distribution it has never been shown.
+            #
+            # Copied first because _prepared() caches, and writing into the cached
+            # array would blank that chip's prior permanently -- silently turning a
+            # 25% dropout into a one-way ratchet over the run.
+            x = x.copy()
+            x[-1] = PRIOR_UNKNOWN
         if self.crop_size is not None:
             x, y, weight = random_crop(x, y, weight, size=self.crop_size, rng=self._rng)
         if self.augment_samples:

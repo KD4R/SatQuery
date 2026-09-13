@@ -55,8 +55,10 @@ The hand-labelled splits are published as CSVs; the weak set's are not documente
 and inventing a plausible path would mean a 404 halfway through a long download.
 Listing is self-verifying: it either enumerates or it fails immediately.
 
-Expect roughly 5 GB for the full set. Use --count to take it in stages; the script
-caches, so re-running resumes rather than re-downloading.
+Size, measured from the hand-labelled chips already on disk rather than guessed: a
+scene is 1.57 MB and a label is about 7 KB, so the full weak set is 4,385 chips x 3
+layers = 13,155 files and roughly 7 GB, essentially all of it scenes. Use --count to
+take it in stages; the script caches, so re-running resumes rather than restarting.
 
 WHAT IT DELIBERATELY DOES NOT DO
 --------------------------------
