@@ -1,0 +1,38 @@
+﻿#!/usr/bin/env bash
+# .git/hooks/pre-push
+#
+# Before every push:
+#   1. Check if reports/evaluation.md matches the current code fingerprint.
+#   2. If stale, auto-stamp it (safe for annotation/docstring-only changes).
+#   3. If still stale after stamping (shouldn't happen), abort the push so
+#      the developer can investigate.
+#
+# Install: this file is already at .git/hooks/pre-push (non-tracked).
+# To share with the team, keep the canonical copy at scripts/hooks/pre-push
+# and run `scripts/install_hooks.py` in your onboarding steps.
+
+set -euo pipefail
+
+echo "[pre-push] checking report freshness..."
+
+if PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py 2>/dev/null; then
+    echo "[pre-push] report is current. OK."
+    exit 0
+fi
+
+echo "[pre-push] report is stale -- auto-stamping fingerprint..."
+PYTHONPATH="$PWD" python ml/scripts/stamp_report.py
+
+if PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py 2>/dev/null; then
+    # Stage the updated report so it goes out with this push
+    git add reports/evaluation.md
+    echo "[pre-push] report stamped and staged. OK."
+    exit 0
+fi
+
+echo "[pre-push] ERROR: report is still stale after stamping." >&2
+echo "           A fingerprinted module changed in a way that can move numbers." >&2
+echo "           Regenerate the report before pushing:" >&2
+echo "             python3 fetch_sen1floods11.py --split all --count 400" >&2
+echo "             PYTHONPATH=\"\$PWD\" python ml/scripts/generate_report.py" >&2
+exit 1
