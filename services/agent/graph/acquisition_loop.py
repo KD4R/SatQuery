@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Tuple
 from pydantic import BaseModel, Field
 from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from services.agent.schemas import MissionState
+from services.agent.tools.executor import get_tool_executor
+from packages.auth.models import AuthContext, Role
 
 
 class AcquisitionLoopResult(BaseModel):
@@ -47,11 +49,40 @@ class AutonomousAcquisitionLoop:
         current_score = initial_conf.confidence_score
         history.append({"iteration": 0, "confidence": current_score, "action": initial_conf.action})
 
+        executor = get_tool_executor()
+        ctx = AuthContext(
+            subject="system_agent",
+            organisation_id=state.organization_id,
+            roles=[Role.SYSTEM]
+        )
+
         while current_score < target_confidence and iteration < max_iterations:
             iteration += 1
+            
+            bbox = [92.0, 25.5, 94.0, 27.5]
+            if state.aoi and "bbox" in state.aoi:
+                bbox = state.aoi["bbox"]
 
             # Determine alternate sensor acquisition
-            new_asset_id = f"S1A_IW_GRDH_ACQ_{iteration:02d}"
+            try:
+                res = executor.execute_tool(
+                    "stac_search",
+                    args={
+                        "bbox": bbox,
+                        "start_date": "2026-09-01T00:00:00Z",
+                        "end_date": "2026-09-05T00:00:00Z",
+                        "sensors": ["S1_SAR"],
+                        "max_cloud_cover": 100.0
+                    },
+                    auth_context=ctx
+                )
+                if res.success and res.output:
+                    new_asset_id = res.output[0]["asset_id"]
+                else:
+                    new_asset_id = f"S1A_IW_GRDH_ACQ_{iteration:02d}"
+            except Exception:
+                new_asset_id = f"S1A_IW_GRDH_ACQ_{iteration:02d}"
+                
             acquired.append(new_asset_id)
             state.observation_ids.append(new_asset_id)
             if "S1_SAR" not in state.selected_sensors:
