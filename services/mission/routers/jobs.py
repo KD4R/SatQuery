@@ -17,8 +17,11 @@ OWASP:
 """
 
 import logging
+import os
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+
+from packages.shared.client import InternalClient
 
 from packages.auth import get_tenant_id, require_role
 from packages.auth.models import AuthContext, Role
@@ -31,9 +34,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["jobs"])
 
-
-import os
-from packages.shared.client import InternalClient
 
 AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
 

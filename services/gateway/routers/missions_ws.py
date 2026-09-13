@@ -77,7 +77,6 @@ async def mission_status_stream(
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
 
-
     await websocket.accept()
     logger.info("WebSocket connected: mission=%s org=%s subject=%s", mission_id, org_id, subject)
 

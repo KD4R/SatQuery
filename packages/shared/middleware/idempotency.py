@@ -62,7 +62,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                             status_code=409,
                             content={
                                 "code": "CONCURRENT_REQUEST",
-                                "message": "A request with this Idempotency-Key is currently being processed.",
+                                "message": (
+                                    "A request with this Idempotency-Key "
+                                    "is currently being processed."
+                                ),
                                 "retryable": True,
                             },
                         )
@@ -90,7 +93,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                         status_code=409,
                         content={
                             "code": "CONCURRENT_REQUEST",
-                            "message": "A request with this Idempotency-Key is currently being processed.",
+                            "message": (
+                                "A request with this Idempotency-Key "
+                                "is currently being processed."
+                            ),
                             "retryable": True,
                         },
                     )
