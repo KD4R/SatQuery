@@ -31,7 +31,7 @@ def run_pinned_demo_mission(org_id: str = "org-isro") -> MissionState:
     profile = load_pinned_demo_profile()
 
     mission_id = "mission-pinned-flood-2026"
-    
+
     orch = get_orchestrator()
     state = orch.create_run(
         mission_id=mission_id,
@@ -39,9 +39,9 @@ def run_pinned_demo_mission(org_id: str = "org-isro") -> MissionState:
         query=profile["query"],
         trace_id="tr-pinned-demo-assam-001",
         aoi=profile["aoi"],
-        metadata={"fixture_type": "pinned_backup"} # Instructs nodes to use fallback if needed
+        metadata={"fixture_type": "pinned_backup"},  # Instructs nodes to use fallback if needed
     )
-    
+
     # Use real graph execution instead of manually fabricating state
     completed_state = orch.step_execution(state)
     return completed_state
@@ -67,8 +67,16 @@ def run_pinned_demo_profile(
             "overall_score": state.confidence_score,
             "passed_gate": state.confidence_score >= 0.70,
             "uncertainty_factors": [],
-            "action": "PROCEED" if state.confidence_score >= 0.70 else "TRIGGER_ALTERNATIVE_SENSOR_ACQUISITION",
-            "decision": "PROCEED" if state.confidence_score >= 0.70 else "TRIGGER_ALTERNATIVE_SENSOR_ACQUISITION",
+            "action": (
+                "PROCEED"
+                if state.confidence_score >= 0.70
+                else "TRIGGER_ALTERNATIVE_SENSOR_ACQUISITION"
+            ),
+            "decision": (
+                "PROCEED"
+                if state.confidence_score >= 0.70
+                else "TRIGGER_ALTERNATIVE_SENSOR_ACQUISITION"
+            ),
             "trace_id": state.trace_id,
         },
         "evidence_nodes": state.evidence_graph.get("nodes", []) if state.evidence_graph else [],

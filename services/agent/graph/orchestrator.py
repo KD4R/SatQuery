@@ -19,70 +19,65 @@ from services.agent.evidence.models import EvidenceGraph
 from services.agent.nodes.synthesizer import synthesize_evidence_output
 from services.agent.nodes.resilience import execute_with_recovery
 
+
 def plan_mission(state: MissionState) -> dict:
     intent, plan_steps, selected_sensors = extract_intent_and_plan(
         state.sanitized_query or state.query, aoi=state.aoi
     )
-    return {
-        "status": "PLANNING",
-        "intent": intent,
-        "selected_sensors": selected_sensors
-    }
+    return {"status": "PLANNING", "intent": intent, "selected_sensors": selected_sensors}
+
 
 def sensor_arbitration(state: MissionState) -> dict:
     intent = state.metadata.get("intent", {})
     hazard_type = intent.get("disaster_type", "flood")
-    
+
     # Simple heuristic to get cloud_cover from metadata (if available from previous steps/api)
-    cloud_cover = state.metadata.get("cloud_cover_forecast", 30.0) 
+    cloud_cover = state.metadata.get("cloud_cover_forecast", 30.0)
     is_night = state.metadata.get("is_night_forecast", False)
-    
+
     decision = arbitrate_sensors(
         hazard_type=hazard_type,
         cloud_cover=cloud_cover,
         is_night=is_night,
         trace_id=state.trace_id,
     )
-    
+
     # Map generic sensor strings to specific sensor IDs
     sensor_map = {
         "SAR": "S1_SAR",
         "OPTICAL": "S2_OPTICAL",
     }
-    
+
     # Determine the ordered sensor preference
     selected = [sensor_map.get(decision.primary_sensor, decision.primary_sensor)]
     if decision.secondary_sensor:
         selected.append(sensor_map.get(decision.secondary_sensor, decision.secondary_sensor))
-        
-    return {
-        "status": "ARBITRATING",
-        "selected_sensors": selected
-    }
+
+    return {"status": "ARBITRATING", "selected_sensors": selected}
+
 
 def acquire_data(state: MissionState) -> dict:
     executor = get_tool_executor()
-    
+
     # We create a system context for the background agent run
     ctx = AuthContext(
-        subject="system_agent",
-        organisation_id=state.organization_id,
-        roles=[Role.SYSTEM]
+        subject="system_agent", organisation_id=state.organization_id, roles=[Role.SYSTEM]
     )
 
     # Use the aoi as bbox (heuristic fallback)
     bbox = [92.0, 25.5, 94.0, 27.5]
     if state.aoi and "bbox" in state.aoi:
         bbox = state.aoi["bbox"]
-        
+
     budget = None
     if state.metadata and "budget" in state.metadata:
         budget = ToolBudget(**state.metadata["budget"])
     else:
         # Default budget if not provided
         budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
-        
+
     try:
+
         def _primary_fn():
             res = executor.execute_tool(
                 "stac_search",
@@ -91,24 +86,24 @@ def acquire_data(state: MissionState) -> dict:
                     "start_date": "2026-09-01T00:00:00Z",
                     "end_date": "2026-09-05T00:00:00Z",
                     "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
-                    "max_cloud_cover": 30.0
+                    "max_cloud_cover": 30.0,
                 },
                 auth_context=ctx,
-                budget=budget
+                budget=budget,
             )
             if res.success and res.output:
                 return [obs["asset_id"] for obs in res.output]
             return []
-            
+
         def _fallback_fn():
             # Deterministic fallback scene
             return ["S1A_IW_GRDH_1SDV_FALLBACK"]
-            
+
         recovery_result = execute_with_recovery(
             action_name="stac_search_acquisition",
             primary_fn=_primary_fn,
             fallback_fn=_fallback_fn,
-            max_retries=2
+            max_retries=2,
         )
         obs_ids = recovery_result.data
     except Exception:
@@ -117,38 +112,41 @@ def acquire_data(state: MissionState) -> dict:
     new_meta = dict(state.metadata)
     new_meta["budget"] = budget.model_dump()
 
-    return {
-        "status": "ACQUIRING",
-        "observation_ids": obs_ids,
-        "metadata": new_meta
-    }
+    return {"status": "ACQUIRING", "observation_ids": obs_ids, "metadata": new_meta}
+
 
 def analyze_data(state: MissionState) -> dict:
     new_meta = dict(state.metadata)
-    new_meta.update({
-        "dataset_id": "bhoonidhi-sentinel-collection",
-        "model_version": "water-segmentation-v2.1",
-        "processing_version": "1.0",
-    })
-    return {
-        "status": "ANALYZING",
-        "metadata": new_meta
-    }
+    new_meta.update(
+        {
+            "dataset_id": "bhoonidhi-sentinel-collection",
+            "model_version": "water-segmentation-v2.1",
+            "processing_version": "1.0",
+        }
+    )
+    return {"status": "ANALYZING", "metadata": new_meta}
+
 
 def gate_check(state: MissionState) -> dict:
     ev_builder = EvidenceGraphBuilder(mission_id=state.mission_id)
-    obs_id = state.observation_ids[0] if state.observation_ids else f"S1A_IW_GRDH_1SDV_{uuid.uuid4().hex[:6].upper()}"
-    
+    obs_id = (
+        state.observation_ids[0]
+        if state.observation_ids
+        else f"S1A_IW_GRDH_1SDV_{uuid.uuid4().hex[:6].upper()}"
+    )
+
     # Heuristically detect sensor from observation_ids or state
     sensor = "S1_SAR"
     if "S2" in obs_id or "OPTICAL" in str(state.selected_sensors):
         sensor = "OPTICAL"
-        
-    obs_node = ev_builder.add_observation({
-        "asset_id": obs_id,
-        "sensor": sensor,
-        "datetime": "2026-09-02T00:35:12Z",
-    })
+
+    obs_node = ev_builder.add_observation(
+        {
+            "asset_id": obs_id,
+            "sensor": sensor,
+            "datetime": "2026-09-02T00:35:12Z",
+        }
+    )
     inf_node = ev_builder.add_inference(
         input_node_ids=[obs_node.node_id],
         model_name="water_segmentation",
@@ -162,9 +160,9 @@ def gate_check(state: MissionState) -> dict:
         value=142.5,
         unit="km2",
     )
-    
+
     evidence_graph = ev_builder.build().model_dump()
-    
+
     # Evaluate confidence using actual nodes
     nodes_dict = evidence_graph.get("nodes", {})
     conf = evaluate_confidence_gate(
@@ -173,14 +171,15 @@ def gate_check(state: MissionState) -> dict:
         cloud_cover=state.metadata.get("cloud_cover_forecast", 0.0),
         resolution_meters=10.0,
         temporal_lag_days=2.0,
-        trace_id=state.trace_id
+        trace_id=state.trace_id,
     )
-    
+
     return {
         "status": "GATE_CHECK",
         "confidence_score": conf.confidence_score,
-        "evidence_graph": evidence_graph
+        "evidence_graph": evidence_graph,
     }
+
 
 def synthesize(state: MissionState) -> dict:
     if state.evidence_graph:
@@ -197,10 +196,8 @@ def synthesize(state: MissionState) -> dict:
             "affected_structures_count": 0,
             "primary_sensor": "UNKNOWN",
         }
-    return {
-        "status": "COMPLETED",
-        "synthesized_output": output_dict
-    }
+    return {"status": "COMPLETED", "synthesized_output": output_dict}
+
 
 def _build_graph() -> StateGraph:
     graph = StateGraph(MissionState)
@@ -219,6 +216,7 @@ def _build_graph() -> StateGraph:
     graph.add_edge("gate_check", "synthesize")
     graph.add_edge("synthesize", END)
     return graph.compile()
+
 
 class AgentOrchestrator:
     """
@@ -275,7 +273,7 @@ class AgentOrchestrator:
             final_state = MissionState(**result_state)
         else:
             final_state = result_state
-            
+
         if final_state.job_id:
             self._runs[final_state.job_id] = final_state
         return final_state

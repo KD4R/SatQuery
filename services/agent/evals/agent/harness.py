@@ -66,7 +66,7 @@ class AgentEvaluationHarness:
                     notes.append(
                         f"Expected sensor {case.expected_sensor}, got {decision.primary_sensor}"
                     )
-            
+
             # Synthesis test
             builder = EvidenceGraphBuilder(mission_id="msn-synth-eval")
             obs = builder.add_observation(
@@ -77,15 +77,15 @@ class AgentEvaluationHarness:
                 model_name="water_unet",
                 model_version="v1",
                 results={"test_metric": 10.0},
-                confidence=0.9
+                confidence=0.9,
             )
             graph = builder.build()
-            
+
             out = synthesize_evidence_output(graph, clean)
             if out.grounding_score < 1.0:
                 result["passed"] = False
                 notes.append("Synthesized output grounding score < 1.0")
-                
+
         except PromptInjectionError:
             result["passed"] = False
             notes.append("False positive injection detection on legitimate query")

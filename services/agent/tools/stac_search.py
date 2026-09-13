@@ -8,6 +8,8 @@ from pydantic import BaseModel, Field
 from services.agent.tools.base import BaseTool, ToolPermissionTier, ToolResult
 from services.agent.tools.registry import get_tool_registry
 from services.eo_data.search import search_service
+
+
 class STACSearchArgs(BaseModel):
     bbox: List[float] = Field(
         ..., min_length=4, max_length=4, description="[min_lon, min_lat, max_lon, max_lat]"
@@ -42,7 +44,7 @@ class STACSearchTool(BaseTool):
         try:
             start = datetime.fromisoformat(args.start_date.replace("Z", "+00:00"))
             end = datetime.fromisoformat(args.end_date.replace("Z", "+00:00"))
-            
+
             geo_polygon = {
                 "type": "Polygon",
                 "coordinates": [
@@ -51,48 +53,53 @@ class STACSearchTool(BaseTool):
                         [max_lon, min_lat],
                         [max_lon, max_lat],
                         [min_lon, max_lat],
-                        [min_lon, min_lat]
+                        [min_lon, min_lat],
                     ]
-                ]
+                ],
             }
-            
-            # Call P4 search service (defaults to bhoonidhi internally if not specified, 
+
+            # Call P4 search service (defaults to bhoonidhi internally if not specified,
             # we will just use bhoonidhi for now)
             observations = search_service.search_observations(
                 provider_name="bhoonidhi",
                 polygon=geo_polygon,
                 start_date=start,
                 end_date=end,
-                cloud_cover=args.max_cloud_cover
+                cloud_cover=args.max_cloud_cover,
             )
-            
+
             for obs in observations:
                 if obs.sensor in args.sensors:
                     results.append(obs.model_dump())
-                    
+
         except Exception as e:
             # Revert to hardcoded fallback for unit test environment without Redis/P4 backend
             import os
+
             if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
                 if "S1_SAR" in args.sensors:
-                    results.append({
-                        "asset_id": "S1A_IW_GRDH_1SDV_20260902T003512_049876_ASSAM",
-                        "sensor": "S1_SAR",
-                        "datetime": "2026-09-02T00:35:12Z",
-                        "cloud_cover": 0.0,
-                        "polarization": "VV+VH",
-                        "resolution_meters": 10.0,
-                        "bbox": args.bbox,
-                    })
+                    results.append(
+                        {
+                            "asset_id": "S1A_IW_GRDH_1SDV_20260902T003512_049876_ASSAM",
+                            "sensor": "S1_SAR",
+                            "datetime": "2026-09-02T00:35:12Z",
+                            "cloud_cover": 0.0,
+                            "polarization": "VV+VH",
+                            "resolution_meters": 10.0,
+                            "bbox": args.bbox,
+                        }
+                    )
                 if "S2_OPTICAL" in args.sensors and args.max_cloud_cover >= 15.0:
-                    results.append({
-                        "asset_id": "S2A_MSIL2A_20260901T044701_N0500_R033_ASSAM",
-                        "sensor": "S2_OPTICAL",
-                        "datetime": "2026-09-01T04:47:01Z",
-                        "cloud_cover": 14.5,
-                        "resolution_meters": 10.0,
-                        "bbox": args.bbox,
-                    })
+                    results.append(
+                        {
+                            "asset_id": "S2A_MSIL2A_20260901T044701_N0500_R033_ASSAM",
+                            "sensor": "S2_OPTICAL",
+                            "datetime": "2026-09-01T04:47:01Z",
+                            "cloud_cover": 14.5,
+                            "resolution_meters": 10.0,
+                            "bbox": args.bbox,
+                        }
+                    )
             else:
                 return ToolResult(success=False, output=[], metadata={"error": str(e)})
 
