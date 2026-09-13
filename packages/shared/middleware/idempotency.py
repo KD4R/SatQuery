@@ -9,17 +9,29 @@ of re-executing state-mutating operations.
 import hashlib
 import json
 import logging
-from typing import Dict, Any
+import os
+from typing import Any
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import JSONResponse
+import redis.asyncio as redis
 
 logger = logging.getLogger(__name__)
 
-# In-memory store: key -> {"status": "in-progress" | "done", "response": dict, "status_code": int}
-# In production, this must be a distributed cache like Redis with TTL.
-_IDEMPOTENCY_STORE: Dict[str, Dict[str, Any]] = {}
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
+
+async def get_redis_client():
+    try:
+        client = redis.from_url(REDIS_URL, decode_responses=True)
+        await client.ping()
+        return client
+    except Exception:
+        return None
+
+
+_IDEMPOTENCY_STORE: dict[str, Any] = {}
 
 
 class IdempotencyMiddleware(BaseHTTPMiddleware):
@@ -33,42 +45,76 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         # To prevent key collision across tenants/users, mix the key with the authorization token
         auth_header = request.headers.get("Authorization", "")
-        store_key = hashlib.sha256(f"{idem_key}:{auth_header}".encode()).hexdigest()
+        store_key = f"idem:{hashlib.sha256(f'{idem_key}:{auth_header}'.encode()).hexdigest()}"
 
-        if store_key in _IDEMPOTENCY_STORE:
-            state = _IDEMPOTENCY_STORE[store_key]
-            if state["status"] == "in-progress":
-                logger.warning("Concurrent duplicate request for idempotency key: %s", idem_key)
-                return JSONResponse(
-                    status_code=409,
-                    content={
-                        "code": "CONCURRENT_REQUEST",
-                        "message": "A request with this Idempotency-Key "
-                        "is currently being processed.",
-                        "retryable": True,
-                    },
-                )
-            elif state["status"] == "done":
-                logger.info("Idempotent cache hit for key: %s", idem_key)
-                return JSONResponse(
-                    status_code=state["status_code"],
-                    content=state["response"],
-                )
+        redis_client = await get_redis_client()
 
-        # Mark as in-progress
-        _IDEMPOTENCY_STORE[store_key] = {"status": "in-progress"}
+        if redis_client:
+            try:
+                state_json = await redis_client.get(store_key)
+                if state_json:
+                    state = json.loads(state_json)
+                    if state["status"] == "in-progress":
+                        logger.warning(
+                            "Concurrent duplicate request for idempotency key: %s", idem_key
+                        )
+                        return JSONResponse(
+                            status_code=409,
+                            content={
+                                "code": "CONCURRENT_REQUEST",
+                                "message": (
+                                    "A request with this Idempotency-Key "
+                                    "is currently being processed."
+                                ),
+                                "retryable": True,
+                            },
+                        )
+                    elif state["status"] == "done":
+                        logger.info("Idempotent cache hit for key: %s", idem_key)
+                        return JSONResponse(
+                            status_code=state["status_code"],
+                            content=state["response"],
+                        )
+
+                # Mark as in-progress (TTL 24 hours)
+                await redis_client.set(
+                    store_key, json.dumps({"status": "in-progress"}), ex=86400, nx=True
+                )
+            except Exception as e:
+                logger.warning("Redis idempotency error: %s", e)
+                redis_client = None  # Force fallback below
+
+        if not redis_client:
+            # Fallback to memory
+            if store_key in _IDEMPOTENCY_STORE:
+                state = _IDEMPOTENCY_STORE[store_key]
+                if state["status"] == "in-progress":
+                    return JSONResponse(
+                        status_code=409,
+                        content={
+                            "code": "CONCURRENT_REQUEST",
+                            "message": (
+                                "A request with this Idempotency-Key "
+                                "is currently being processed."
+                            ),
+                            "retryable": True,
+                        },
+                    )
+                elif state["status"] == "done":
+                    return JSONResponse(status_code=state["status_code"], content=state["response"])
+            _IDEMPOTENCY_STORE[store_key] = {"status": "in-progress"}
 
         try:
             response = await call_next(request)
         except Exception:
-            # If the handler fails unhandled, clear the lock so it can be retried
-            _IDEMPOTENCY_STORE.pop(store_key, None)
+            if redis_client:
+                try:
+                    await redis_client.delete(store_key)
+                except Exception:
+                    pass
+            else:
+                _IDEMPOTENCY_STORE.pop(store_key, None)
             raise
-
-        # We can only cache JSON responses. If it's a streaming/binary response, skip.
-        # But wait, to read the response body in Starlette middleware without consuming it forever,
-        # we have to iterate it. Since we enforce JSON everywhere, we can just intercept
-        # JSONResponses. But `call_next` returns a StreamingResponse.
 
         body = b""
         if hasattr(response, "body_iterator"):
@@ -78,7 +124,6 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 else:
                     body += chunk.encode()
 
-        # Reconstruct the response
         new_response = Response(
             content=body,
             status_code=response.status_code,
@@ -86,17 +131,27 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             media_type=response.media_type,
         )
 
-        # Try to cache the parsed JSON
         try:
             json_body = json.loads(body.decode("utf-8"))
-            _IDEMPOTENCY_STORE[store_key] = {
+            done_state = {
                 "status": "done",
                 "status_code": response.status_code,
                 "response": json_body,
             }
+            if redis_client:
+                try:
+                    await redis_client.set(store_key, json.dumps(done_state), ex=86400)
+                except Exception:
+                    pass
+            else:
+                _IDEMPOTENCY_STORE[store_key] = done_state
         except Exception:
-            # If not JSON, we can't easily safely cache it in this simple dict for JSONResponse.
-            # We'll just remove the lock.
-            _IDEMPOTENCY_STORE.pop(store_key, None)
+            if redis_client:
+                try:
+                    await redis_client.delete(store_key)
+                except Exception:
+                    pass
+            else:
+                _IDEMPOTENCY_STORE.pop(store_key, None)
 
         return new_response

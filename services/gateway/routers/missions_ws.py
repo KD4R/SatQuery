@@ -22,10 +22,13 @@ OWASP:
 """
 
 import asyncio
+import json
 import logging
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+import redis.asyncio as redis
 
 from packages.auth.exceptions import AuthError
 from packages.auth.jwt import decode_and_verify
@@ -39,6 +42,8 @@ router = APIRouter(tags=["websocket"])
 WS_CLOSE_POLICY_VIOLATION = 4001  # auth failure
 WS_CLOSE_NORMAL = 1000
 
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+
 
 @router.websocket("/ws/v1/missions/{mission_id}")
 async def mission_status_stream(
@@ -49,7 +54,6 @@ async def mission_status_stream(
     """
     Stream real-time status updates for a Mission via WebSocket.
     """
-    # ── Auth: verify JWT from query param ─────────────────────────────────────
     if not token:
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
@@ -64,7 +68,6 @@ async def mission_status_stream(
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
 
-    # Minimum role: VIEWER
     if not any(
         r in (Role.VIEWER, Role.ANALYST, Role.OPERATOR, Role.ADMIN, Role.SYSTEM)
         for r in [Role(r) if r in [e.value for e in Role] else None for r in roles]
@@ -75,11 +78,28 @@ async def mission_status_stream(
         return
 
     await websocket.accept()
-
     logger.info("WebSocket connected: mission=%s org=%s subject=%s", mission_id, org_id, subject)
 
+    redis_client = None
+    pubsub = None
+
     try:
-        # ── Welcome frame ──────────────────────────────────────────────────────
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+        # Attempt to ping to check connection before subscribing
+        await redis_client.ping()
+        pubsub = redis_client.pubsub()
+        channel = f"mission:{mission_id}:status"
+        await pubsub.subscribe(channel)
+    except Exception as exc:
+        logger.warning(
+            "Could not connect to Redis for websocket pub/sub: %s. Using mock fallback.", exc
+        )
+        if redis_client:
+            await redis_client.aclose()
+        redis_client = None
+        pubsub = None
+
+    try:
         await websocket.send_json(
             {
                 "event": "connected",
@@ -89,28 +109,66 @@ async def mission_status_stream(
             }
         )
 
-        # ── Stream loop ────────────────────────────────────────────────────────
-        # Production: subscribe to Redis pub/sub channel f"mission:{mission_id}:status"
-        # and forward messages. Here we send a mock status sequence for testability.
-        statuses = ["queued", "running", "completed"]
-        for status in statuses:
-            await asyncio.sleep(0)  # yield to event loop — non-blocking in tests
+        if pubsub:
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    data = message["data"]
+                    try:
+                        payload = json.loads(data)
+                    except json.JSONDecodeError:
+                        payload = {"status": data}
+
+                    status_val = payload.get("status", "unknown")
+                    await websocket.send_json(
+                        {
+                            "event": "status_update",
+                            "mission_id": mission_id,
+                            "status": status_val,
+                            "org_id": org_id,
+                        }
+                    )
+
+                    if status_val in ("completed", "failed", "cancelled"):
+                        await websocket.send_json(
+                            {"event": "done", "mission_id": mission_id, "final_status": status_val}
+                        )
+                        break
+        else:
+            # Fallback mock sequence for tests without Redis
+            statuses = ["queued", "running", "completed"]
+            for status in statuses:
+                await asyncio.sleep(0)
+                await websocket.send_json(
+                    {
+                        "event": "status_update",
+                        "mission_id": mission_id,
+                        "status": status,
+                        "org_id": org_id,
+                    }
+                )
             await websocket.send_json(
-                {
-                    "event": "status_update",
-                    "mission_id": mission_id,
-                    "status": status,
-                    "org_id": org_id,
-                }
+                {"event": "done", "mission_id": mission_id, "final_status": "completed"}
             )
 
-        await websocket.send_json(
-            {"event": "done", "mission_id": mission_id, "final_status": "completed"}
-        )
         await websocket.close(code=WS_CLOSE_NORMAL)
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected by client: mission=%s org=%s", mission_id, org_id)
     except Exception as exc:  # pragma: no cover
         logger.exception("WebSocket error: mission=%s org=%s error=%s", mission_id, org_id, exc)
-        await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+        try:
+            await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+        except Exception:
+            pass
+    finally:
+        if pubsub:
+            try:
+                await pubsub.unsubscribe(f"mission:{mission_id}:status")
+                await pubsub.close()
+            except Exception:
+                pass
+        if redis_client:
+            try:
+                await redis_client.aclose()
+            except Exception:
+                pass

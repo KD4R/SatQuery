@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 
 from services.mission.implementation import app
 from packages.shared.middleware.idempotency import _IDEMPOTENCY_STORE
+from services.mission.dependencies import get_mission_repo
+from services.mission.repositories.memory import InMemoryMissionRepository
 
 
 @pytest.fixture(autouse=True)
@@ -22,6 +24,7 @@ def test_p1_12_idempotency_key_caches_response():
     Verify that making two requests with the same Idempotency-Key
     returns the exact same cached response without creating duplicate state.
     """
+    app.dependency_overrides[get_mission_repo] = InMemoryMissionRepository
     client = TestClient(app)
 
     # Generate a valid token so the endpoint doesn't fail auth
@@ -46,4 +49,7 @@ def test_p1_12_idempotency_key_caches_response():
     headers["Idempotency-Key"] = "idemp-key-456"
     resp3 = client.post("/api/v1/missions", json=payload, headers=headers)
     assert resp3.status_code == 201
+    assert resp3.status_code == 201
     assert resp3.json()["id"] != mission_id  # Different mission ID
+
+    app.dependency_overrides.clear()
