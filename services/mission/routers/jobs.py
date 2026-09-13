@@ -32,22 +32,55 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["jobs"])
 
 
+import os
+from packages.shared.client import InternalClient
+
+AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
+
 async def _run_job_background(job: Job, job_repo: JobRepository) -> None:
     """
     Simulate async job execution — in production this hands off to Celery/Redis.
     Marked RUNNING → COMPLETED in background.
+    Now we actually call the Agent service via InternalClient.
     """
     from datetime import datetime, timezone
+    from packages.auth.models import AuthContext
 
     job.status = JobStatus.RUNNING
     job.started_at = datetime.now(timezone.utc)
     await job_repo.update(job)
-    # Real impl: producer.send(topic="mission.run", value=job.id)
-    # For now mark completed synchronously so tests can assert on it
-    job.status = JobStatus.COMPLETED
-    job.completed_at = datetime.now(timezone.utc)
-    await job_repo.update(job)
-    logger.info("Job completed (background): job_id=%s mission_id=%s", job.id, job.mission_id)
+
+    # Initialize InternalClient to talk to Agent
+    client = InternalClient(
+        base_url=AGENT_SERVICE_URL,
+        caller_service="mission",
+        scopes=["agent:write"]
+    )
+    
+    # We construct a mock auth context representing the system for the internal call.
+    system_ctx = AuthContext(
+        subject=f"system:mission:{job.mission_id}",
+        organisation_id=job.organisation_id,
+        roles=["system"],
+        trace_id=job.trace_id or ""
+    )
+
+    try:
+        # Trigger the LangGraph agent run
+        await client.post(
+            "/api/v1/agent/run",
+            auth_context=system_ctx,
+            json={"mission_id": job.mission_id, "job_id": job.id}
+        )
+        logger.info("Successfully dispatched job_id=%s to Agent service.", job.id)
+    except Exception as exc:
+        logger.error("Failed to dispatch job_id=%s to Agent: %s", job.id, exc)
+        job.status = JobStatus.FAILED
+        job.completed_at = datetime.now(timezone.utc)
+        job.error_message = f"Agent invocation failed: {str(exc)}"
+        await job_repo.update(job)
+    finally:
+        await client.aclose()
 
 
 @router.post(

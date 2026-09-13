@@ -5,26 +5,21 @@ Overriding these in tests injects in-memory repositories without touching
 the router code. Production wires up SQLAlchemy session-based repositories.
 """
 
-from services.mission.repositories.memory import (
-    InMemoryAOIRepository,
-    InMemoryJobRepository,
-    InMemoryMissionRepository,
+from fastapi import Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.mission.database import get_db_session
+from services.mission.repositories.postgres import (
+    PostgresAOIRepository,
+    PostgresJobRepository,
+    PostgresMissionRepository,
 )
 
+def get_mission_repo(session: AsyncSession = Depends(get_db_session)) -> PostgresMissionRepository:
+    return PostgresMissionRepository(session)
 
-def get_mission_repo() -> InMemoryMissionRepository:
-    """
-    Default: in-memory repository.
-    Production override: returns SQLAlchemy-backed repository.
-    """
-    return InMemoryMissionRepository()
+def get_aoi_repo(session: AsyncSession = Depends(get_db_session)) -> PostgresAOIRepository:
+    return PostgresAOIRepository(session)
 
-
-def get_aoi_repo() -> InMemoryAOIRepository:
-    """Default: in-memory AOI repository."""
-    return InMemoryAOIRepository()
-
-
-def get_job_repo() -> InMemoryJobRepository:
-    """Default: in-memory job repository."""
-    return InMemoryJobRepository()
+def get_job_repo(session: AsyncSession = Depends(get_db_session)) -> PostgresJobRepository:
+    return PostgresJobRepository(session)

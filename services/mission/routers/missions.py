@@ -22,6 +22,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from packages.auth import get_tenant_id, require_role
 from packages.auth.models import AuthContext, Role
+from packages.shared.audit import AuditLogger
 from services.mission.domain.models import Mission, MissionStatus
 from services.mission.domain.schemas import (
     MissionCreate,
@@ -68,6 +69,17 @@ async def create_mission(
         status=MissionStatus.DRAFT,
     )
     created = await repo.create(mission)
+    
+    AuditLogger.log_event(
+        actor_id=ctx.subject,
+        organisation_id=org_id,
+        action="CREATE_MISSION",
+        resource_type="mission",
+        resource_id=created.id,
+        trace_id=ctx.trace_id,
+        details={"name": created.name, "status": created.status.value}
+    )
+
     logger.info(
         "Mission created: id=%s org=%s subject=%s",
         created.id,
@@ -149,6 +161,17 @@ async def update_mission(
     mission.updated_at = datetime.now(timezone.utc)
 
     updated = await repo.update(mission)
+
+    AuditLogger.log_event(
+        actor_id=ctx.subject,
+        organisation_id=org_id,
+        action="UPDATE_MISSION",
+        resource_type="mission",
+        resource_id=mission_id,
+        trace_id=ctx.trace_id,
+        details={"status": updated.status.value}
+    )
+
     logger.info(
         "Mission updated: id=%s org=%s subject=%s",
         mission_id,
@@ -176,6 +199,15 @@ async def delete_mission(
                 "retryable": False,
             },
         )
+    AuditLogger.log_event(
+        actor_id=ctx.subject,
+        organisation_id=org_id,
+        action="DELETE_MISSION",
+        resource_type="mission",
+        resource_id=mission_id,
+        trace_id=ctx.trace_id,
+    )
+
     logger.info(
         "Mission deleted: id=%s org=%s subject=%s",
         mission_id,
