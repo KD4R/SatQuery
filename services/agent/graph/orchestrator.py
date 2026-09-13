@@ -9,6 +9,7 @@ from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 from services.agent.nodes.intent_extractor import extract_intent_and_plan
 from services.agent.schemas import MissionState
 from services.agent.security.sanitizer import sanitize_prompt
+from services.agent.security.validator import validate_aoi_geometry
 from services.agent.tools.executor import get_tool_executor
 from packages.auth.models import AuthContext, Role
 from services.agent.security.tool_budget import ToolBudget
