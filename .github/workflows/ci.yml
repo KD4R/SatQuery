@@ -46,6 +46,17 @@ jobs:
       - name: Mypy type check
         run: mypy services packages ml --ignore-missing-imports
 
+      # P3-15. Verifies that reports/evaluation.md was produced by the code on
+      # this branch -- NOT that the numbers in it are right, which would need the
+      # 533 MB benchmark set that is deliberately gitignored. A gate that skipped
+      # when the data is absent would report green while checking nothing.
+      #
+      # What it catches: someone changes Otsu, the postprocessing or the loss, and
+      # the committed accuracy figures quietly stop describing the code. That is
+      # the specific defect that sank the previous iteration of this project.
+      - name: Evaluation report is not stale (P3-15)
+        run: PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py
+
   # ── 2. Unit tests ───────────────────────────────────────────────────────────
   unit-tests:
     name: Unit Tests

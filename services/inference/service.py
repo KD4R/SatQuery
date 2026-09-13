@@ -33,6 +33,7 @@ from ml.geo.area import area_hectares, pixel_area_m2
 from ml.io.preflight import PreflightError
 from ml.io.raster import Raster, RasterReadError, read_raster, reproject_to_area_safe_crs
 from ml.pipeline.baseline import detect_water_single_date, water_mask_single_date
+from ml.pipeline.learned import predict_water_mask
 from ml.pipeline.postprocess import postprocess_water_mask
 from ml.sar.change import ThresholdError
 from services.inference.registry import BASELINE_METHOD, ModelRegistry, ModelUnavailable
@@ -207,33 +208,11 @@ class AnalysisService:
     # -- inference ----------------------------------------------------------- #
 
     def _predict(self, model, normalisation, raster: Raster) -> npt.NDArray[np.bool_]:
-        import torch
-
-        from ml.training.dataset import prepare
-
-        bands = np.stack([raster.band(p) for p in MODEL_BANDS]).astype(np.float32)
-        # A label array of zeros: prepare() wants labels to build its validity mask,
-        # and at inference there are none. The mask it returns is discarded here --
-        # only the standardised bands are used.
-        x, _, _ = prepare(bands, np.zeros(bands.shape[1:], dtype=np.int16), normalisation)
-
-        tensor = torch.from_numpy(x).unsqueeze(0)
-        height, width = tensor.shape[-2:]
-        multiple = 2**model.depth
-        pad_h, pad_w = (-height) % multiple, (-width) % multiple
-        if pad_h or pad_w:
-            tensor = torch.nn.functional.pad(tensor, (0, pad_w, 0, pad_h), mode="reflect")
-
-        with torch.no_grad():
-            logits = model(tensor)
-        if pad_h:
-            logits = logits[..., :-pad_h, :]
-        if pad_w:
-            logits = logits[..., :, :-pad_w]
-
-        probabilities = np.asarray(torch.sigmoid(logits).squeeze(0).numpy())
-        mask: npt.NDArray[np.bool_] = probabilities >= WATER_THRESHOLD
-        return mask
+        """Delegates to ml.pipeline.learned so the service and the evaluation
+        report cannot drift apart. They did once: the report scored the model on
+        the native grid and the baseline on the reprojected one, and only a shape
+        mismatch stopped it reporting a wrong comparison."""
+        return predict_water_mask(model, normalisation, raster)
 
     # -- outcomes ------------------------------------------------------------ #
 
