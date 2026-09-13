@@ -7,8 +7,6 @@ from services.agent.schemas import PlanStep
 from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.security.validator import validate_aoi_geometry, validate_intent
 from pydantic import BaseModel, Field
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
 
 _HAZARD_KEYWORDS = {
     "flood": ["flood", "inundation", "waterlogging", "submerged", "overflow", "river"],
@@ -44,7 +42,6 @@ def extract_intent_and_plan(
         )
         objectives: List[str] = Field(description="List of mission objectives")
 
-    parser = PydanticOutputParser(pydantic_object=IntentSchema)
     # In a real integration, this prompt is passed to an LLM.
     # llm_chain = prompt_template | llm | parser
     # intent_parsed = llm_chain.invoke({"query": clean_query})
