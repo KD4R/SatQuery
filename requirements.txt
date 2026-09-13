@@ -3,14 +3,14 @@ pydantic>=2.0
 pydantic-settings
 
 # Geo / Raster  (P4: services/geo, services/eo-data)
-rasterio>=1.3
+rasterio>=1.3        # packages/geo (P4), ml/io (P3) -- GeoTIFF read + reproject
 shapely
 pyproj
 boto3
 
 # ML  (P3: ml/)
-numpy>=1.24
-scipy>=1.10
+numpy>=1.24          # ml/ (P3) -- raster maths
+scipy>=1.10          # ml/pipeline (P3) -- connected components, morphology
 pystac-client
 prometheus-client
 

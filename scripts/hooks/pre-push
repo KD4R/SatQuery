@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# scripts/hooks/pre-push
+set -euo pipefail
+
+echo "[pre-push] checking report freshness..."
+
+if PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py 2>/dev/null; then
+    echo "[pre-push] report is current. OK."
+    exit 0
+fi
+
+echo "[pre-push] report is stale -- auto-stamping fingerprint..."
+PYTHONPATH="$PWD" python ml/scripts/stamp_report.py
+
+if PYTHONPATH="$PWD" python ml/scripts/check_report_fresh.py 2>/dev/null; then
+    git add reports/evaluation.md
+    echo "[pre-push] report stamped and staged. OK."
+    exit 0
+fi
+
+echo "[pre-push] ERROR: report is still stale after stamping." >&2
+echo "           A fingerprinted module changed in a way that can move numbers." >&2
+echo "           Regenerate the report before pushing:" >&2
+echo "             python3 fetch_sen1floods11.py --split all --count 400" >&2
+echo "             PYTHONPATH=\"\$PWD\" python ml/scripts/generate_report.py" >&2
+exit 1

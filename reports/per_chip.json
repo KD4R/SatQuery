@@ -1,0 +1,3952 @@
+[
+  {
+    "stem": "Ghana_103272",
+    "region": "Ghana",
+    "water_percent": 0.600936504385525,
+    "bucket": "<1%",
+    "baseline_iou": 0.029302705889064255,
+    "baseline_f1": 0.056937003510068356,
+    "model_iou": 0.29578267477203646,
+    "model_f1": 0.4565313003958364
+  },
+  {
+    "stem": "Ghana_1033830",
+    "region": "Ghana",
+    "water_percent": 41.48110675732451,
+    "bucket": ">30%",
+    "baseline_iou": 0.6681002790004331,
+    "baseline_f1": 0.8010313137778207,
+    "model_iou": 0.6582152846702156,
+    "model_f1": 0.7938839917292415
+  },
+  {
+    "stem": "Ghana_1078550",
+    "region": "Ghana",
+    "water_percent": 0.5390455117689696,
+    "bucket": "<1%",
+    "baseline_iou": 0.0026295649443670403,
+    "baseline_f1": 0.005245336934609437,
+    "model_iou": 0.04913456169737577,
+    "model_f1": 0.09366684406599254
+  },
+  {
+    "stem": "Ghana_1089161",
+    "region": "Ghana",
+    "water_percent": 1.2354041947857306,
+    "bucket": "1-10%",
+    "baseline_iou": 0.040142583841588045,
+    "baseline_f1": 0.07718669433440231,
+    "model_iou": 0.5610431571659359,
+    "model_f1": 0.7188054405677115
+  },
+  {
+    "stem": "Ghana_11745",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_124834",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_128663",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_132163",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_134751",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_135389",
+    "region": "Ghana",
+    "water_percent": 1.009077646295996,
+    "bucket": "1-10%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_141271",
+    "region": "Ghana",
+    "water_percent": 0.6328944908804444,
+    "bucket": "<1%",
+    "baseline_iou": 0.010371548638801414,
+    "baseline_f1": 0.020530167645306782,
+    "model_iou": 0.03597944031981725,
+    "model_f1": 0.06945975744211687
+  },
+  {
+    "stem": "Ghana_141910",
+    "region": "Ghana",
+    "water_percent": 26.921213554640858,
+    "bucket": "10-30%",
+    "baseline_iou": 0.3809546103607294,
+    "baseline_f1": 0.551726476022579,
+    "model_iou": 0.42749532139473334,
+    "model_f1": 0.5989446199754257
+  },
+  {
+    "stem": "Ghana_142312",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_144050",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": NaN,
+    "model_f1": NaN
+  },
+  {
+    "stem": "Ghana_146222",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_147015",
+    "region": "Ghana",
+    "water_percent": 1.3478148080327168,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03240978907915044,
+    "baseline_f1": 0.06278473804100228,
+    "model_iou": 0.18612784146104527,
+    "model_f1": 0.31384111384111385
+  },
+  {
+    "stem": "Ghana_154838",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_156478",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_161233",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_167233",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_168875",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_187318",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_194723",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_247288",
+    "region": "Ghana",
+    "water_percent": 66.22995649471721,
+    "bucket": ">30%",
+    "baseline_iou": 0.5870714236038668,
+    "baseline_f1": 0.7398172695602638,
+    "model_iou": 0.6761437908496732,
+    "model_f1": 0.8067849483330084
+  },
+  {
+    "stem": "Ghana_24858",
+    "region": "Ghana",
+    "water_percent": 0.18536670951205836,
+    "bucket": "<1%",
+    "baseline_iou": 0.0012333978162367084,
+    "baseline_f1": 0.002463756840167017,
+    "model_iou": 0.03003003003003003,
+    "model_f1": 0.05830903790087463
+  },
+  {
+    "stem": "Ghana_264787",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_308249",
+    "region": "Ghana",
+    "water_percent": 3.05650704526209,
+    "bucket": "1-10%",
+    "baseline_iou": 0.10189325934388771,
+    "baseline_f1": 0.18494215928784086,
+    "model_iou": 0.5518617021276596,
+    "model_f1": 0.7112253641816624
+  },
+  {
+    "stem": "Ghana_313799",
+    "region": "Ghana",
+    "water_percent": 6.127509144620017,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13403427789887593,
+    "baseline_f1": 0.23638487920702522,
+    "model_iou": 0.2869160665349563,
+    "model_f1": 0.4458970930520477
+  },
+  {
+    "stem": "Ghana_319168",
+    "region": "Ghana",
+    "water_percent": 23.018993202984397,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5484995490114819,
+    "baseline_f1": 0.7084271343335274,
+    "model_iou": 0.7254680958733956,
+    "model_f1": 0.8408942449975337
+  },
+  {
+    "stem": "Ghana_359826",
+    "region": "Ghana",
+    "water_percent": 1.3433160301616784,
+    "bucket": "1-10%",
+    "baseline_iou": 0.028002760323974866,
+    "baseline_f1": 0.054479932165065005,
+    "model_iou": 0.4176848208738869,
+    "model_f1": 0.5892491966111598
+  },
+  {
+    "stem": "Ghana_362274",
+    "region": "Ghana",
+    "water_percent": 7.089464492924028,
+    "bucket": "1-10%",
+    "baseline_iou": 0.3996966036463747,
+    "baseline_f1": 0.5711189162067235,
+    "model_iou": 0.7192125170323732,
+    "model_f1": 0.8366766876195681
+  },
+  {
+    "stem": "Ghana_406026",
+    "region": "Ghana",
+    "water_percent": 1.6488190838791883,
+    "bucket": "1-10%",
+    "baseline_iou": 0.09593777009507347,
+    "baseline_f1": 0.1750788643533123,
+    "model_iou": 0.5742118793126776,
+    "model_f1": 0.729522990975505
+  },
+  {
+    "stem": "Ghana_45911",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": NaN,
+    "model_f1": NaN
+  },
+  {
+    "stem": "Ghana_495107",
+    "region": "Ghana",
+    "water_percent": 1.52215711408167,
+    "bucket": "1-10%",
+    "baseline_iou": 0.018653180329714667,
+    "baseline_f1": 0.036623221111776356,
+    "model_iou": 0.1510229909301835,
+    "model_f1": 0.26241524647242076
+  },
+  {
+    "stem": "Ghana_49890",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_53713",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_597288",
+    "region": "Ghana",
+    "water_percent": 2.1778764369788925,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08190930943698592,
+    "baseline_f1": 0.15141622079139083,
+    "model_iou": 0.6173554783056521,
+    "model_f1": 0.7634134691928037
+  },
+  {
+    "stem": "Ghana_61925",
+    "region": "Ghana",
+    "water_percent": 0.24834626565039256,
+    "bucket": "<1%",
+    "baseline_iou": 0.008165466240419058,
+    "baseline_f1": 0.016198662846227316,
+    "model_iou": 0.7286549707602339,
+    "model_f1": 0.8430311231393776
+  },
+  {
+    "stem": "Ghana_7496",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_8090",
+    "region": "Ghana",
+    "water_percent": 0.00205456936226167,
+    "bucket": "<1%",
+    "baseline_iou": 6.049789769805499e-05,
+    "baseline_f1": 0.00012098847584767551,
+    "model_iou": 0.008620689655172414,
+    "model_f1": 0.017094017094017096
+  },
+  {
+    "stem": "Ghana_83200",
+    "region": "Ghana",
+    "water_percent": 0.5427809120348683,
+    "bucket": "<1%",
+    "baseline_iou": 0.008741830065359477,
+    "baseline_f1": 0.017332145460435735,
+    "model_iou": 0.2,
+    "model_f1": 0.3333333333333333
+  },
+  {
+    "stem": "Ghana_866994",
+    "region": "Ghana",
+    "water_percent": 90.20629528407108,
+    "bucket": ">30%",
+    "baseline_iou": 0.5560586663458977,
+    "baseline_f1": 0.7147014163054581,
+    "model_iou": 0.5540597536517555,
+    "model_f1": 0.7130481982431071
+  },
+  {
+    "stem": "Ghana_868803",
+    "region": "Ghana",
+    "water_percent": 54.954185136300175,
+    "bucket": ">30%",
+    "baseline_iou": 0.5382894854925893,
+    "baseline_f1": 0.6998545989803978,
+    "model_iou": 0.7030290791599354,
+    "model_f1": 0.825621931842436
+  },
+  {
+    "stem": "Ghana_887131",
+    "region": "Ghana",
+    "water_percent": 3.834096109839817,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13147933698601724,
+    "baseline_f1": 0.23240254185506537,
+    "model_iou": 0.45662290177829484,
+    "model_f1": 0.6269610359974899
+  },
+  {
+    "stem": "Ghana_895194",
+    "region": "Ghana",
+    "water_percent": 3.433909410312411,
+    "bucket": "1-10%",
+    "baseline_iou": 0.33264911857039364,
+    "baseline_f1": 0.4992298631874604,
+    "model_iou": 0.8067895247332687,
+    "model_f1": 0.8930642044234486
+  },
+  {
+    "stem": "Ghana_953791",
+    "region": "Ghana",
+    "water_percent": 1.0551653893545028,
+    "bucket": "1-10%",
+    "baseline_iou": 0.009620862661496334,
+    "baseline_f1": 0.01905836738780228,
+    "model_iou": 0.2042188224385721,
+    "model_f1": 0.339172281039461
+  },
+  {
+    "stem": "Ghana_97059",
+    "region": "Ghana",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Ghana_97516",
+    "region": "Ghana",
+    "water_percent": 0.41127677166404397,
+    "bucket": "<1%",
+    "baseline_iou": 0.01539326068195958,
+    "baseline_f1": 0.030319800766889355,
+    "model_iou": 0.2852589641434263,
+    "model_f1": 0.44389336639801613
+  },
+  {
+    "stem": "India_1017769",
+    "region": "India",
+    "water_percent": 56.721412429050304,
+    "bucket": ">30%",
+    "baseline_iou": 0.7128225787708112,
+    "baseline_f1": 0.832336737740065,
+    "model_iou": 0.6904018698635301,
+    "model_f1": 0.8168493920552369
+  },
+  {
+    "stem": "India_1018317",
+    "region": "India",
+    "water_percent": 76.51436651064026,
+    "bucket": ">30%",
+    "baseline_iou": 0.8985687197993761,
+    "baseline_f1": 0.946574870246813,
+    "model_iou": 0.8755411319855897,
+    "model_f1": 0.9336410884880735
+  },
+  {
+    "stem": "India_1018327",
+    "region": "India",
+    "water_percent": 13.997928335763064,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5528758855272243,
+    "baseline_f1": 0.7120670630280472,
+    "model_iou": 0.5433723805479931,
+    "model_f1": 0.7041364577938892
+  },
+  {
+    "stem": "India_103447",
+    "region": "India",
+    "water_percent": 16.45827829217791,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5692230782803035,
+    "baseline_f1": 0.7254839495530611,
+    "model_iou": 0.5912765716870194,
+    "model_f1": 0.7431474606078908
+  },
+  {
+    "stem": "India_1050276",
+    "region": "India",
+    "water_percent": 19.237708792940435,
+    "bucket": "10-30%",
+    "baseline_iou": 0.3279315896434321,
+    "baseline_f1": 0.49389831855944666,
+    "model_iou": 0.2809030008259154,
+    "model_f1": 0.438601518842241
+  },
+  {
+    "stem": "India_1068117",
+    "region": "India",
+    "water_percent": 20.861101137567758,
+    "bucket": "10-30%",
+    "baseline_iou": 0.45341246290801185,
+    "baseline_f1": 0.6239281339322172,
+    "model_iou": 0.5004884342456917,
+    "model_f1": 0.6671006891129974
+  },
+  {
+    "stem": "India_1072277",
+    "region": "India",
+    "water_percent": 8.586276674025019,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13816697406265718,
+    "baseline_f1": 0.24278858412043675,
+    "model_iou": 0.18061755952380953,
+    "model_f1": 0.3059713250354498
+  },
+  {
+    "stem": "India_118868",
+    "region": "India",
+    "water_percent": 6.612641212286554,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1620829040183879,
+    "baseline_f1": 0.2789523939435275,
+    "model_iou": 0.07994233667518512,
+    "model_f1": 0.1480492688550452
+  },
+  {
+    "stem": "India_135434",
+    "region": "India",
+    "water_percent": 8.829819212436123,
+    "bucket": "1-10%",
+    "baseline_iou": 0.3864668675977416,
+    "baseline_f1": 0.5574844615902759,
+    "model_iou": 0.6302554286845753,
+    "model_f1": 0.7731983805668016
+  },
+  {
+    "stem": "India_136196",
+    "region": "India",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "India_164336",
+    "region": "India",
+    "water_percent": 0.7067946108364834,
+    "bucket": "<1%",
+    "baseline_iou": 0.010137907914966418,
+    "baseline_f1": 0.020072324452989107,
+    "model_iou": 0.03190578158458244,
+    "model_f1": 0.06183855571695372
+  },
+  {
+    "stem": "India_166709",
+    "region": "India",
+    "water_percent": 3.4466144915274155,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06511110621710309,
+    "baseline_f1": 0.12226162291810973,
+    "model_iou": 0.13229207340882468,
+    "model_f1": 0.23367128767501208
+  },
+  {
+    "stem": "India_177319",
+    "region": "India",
+    "water_percent": 0.6148821801362585,
+    "bucket": "<1%",
+    "baseline_iou": 0.009731516568572119,
+    "baseline_f1": 0.01927545373970951,
+    "model_iou": 0.032298395499062306,
+    "model_f1": 0.06257569640694388
+  },
+  {
+    "stem": "India_179238",
+    "region": "India",
+    "water_percent": 6.071006906351545,
+    "bucket": "1-10%",
+    "baseline_iou": 0.10729085300464697,
+    "baseline_f1": 0.1937898298599902,
+    "model_iou": 0.10250922509225092,
+    "model_f1": 0.185956221969342
+  },
+  {
+    "stem": "India_180633",
+    "region": "India",
+    "water_percent": 45.99207949836823,
+    "bucket": ">30%",
+    "baseline_iou": 0.877500642838776,
+    "baseline_f1": 0.9347540265147365,
+    "model_iou": 0.8397428321554353,
+    "model_f1": 0.9128915384022407
+  },
+  {
+    "stem": "India_207862",
+    "region": "India",
+    "water_percent": 10.496459607338268,
+    "bucket": "10-30%",
+    "baseline_iou": 0.23666855860969216,
+    "baseline_f1": 0.382751800330015,
+    "model_iou": 0.25736177396837767,
+    "model_f1": 0.4093678991943813
+  },
+  {
+    "stem": "India_244057",
+    "region": "India",
+    "water_percent": 0.003135366304845395,
+    "bucket": "<1%",
+    "baseline_iou": 5.207858658716002e-05,
+    "baseline_f1": 0.00010415174909843642,
+    "model_iou": 0.00011381311885883379,
+    "model_f1": 0.0002276003338138229
+  },
+  {
+    "stem": "India_25540",
+    "region": "India",
+    "water_percent": 6.098633202781552,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08959320789645872,
+    "baseline_f1": 0.1644525814719883,
+    "model_iou": 0.34009890789202557,
+    "model_f1": 0.5075728453909434
+  },
+  {
+    "stem": "India_265762",
+    "region": "India",
+    "water_percent": 5.77967098335772,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08276358402302987,
+    "baseline_f1": 0.1528747092057162,
+    "model_iou": 0.10220673635307782,
+    "model_f1": 0.18545837723919917
+  },
+  {
+    "stem": "India_273873",
+    "region": "India",
+    "water_percent": 3.4934949160863553,
+    "bucket": "1-10%",
+    "baseline_iou": 0.029302244649382286,
+    "baseline_f1": 0.056936132805896475,
+    "model_iou": 0.03302759364883613,
+    "model_f1": 0.06394329416153703
+  },
+  {
+    "stem": "India_285297",
+    "region": "India",
+    "water_percent": 14.701441712002232,
+    "bucket": "10-30%",
+    "baseline_iou": 0.2843153073762862,
+    "baseline_f1": 0.4427500096640767,
+    "model_iou": 0.26265674122791166,
+    "model_f1": 0.4160382353362048
+  },
+  {
+    "stem": "India_287642",
+    "region": "India",
+    "water_percent": 15.456296799951184,
+    "bucket": "10-30%",
+    "baseline_iou": 0.3829697734511147,
+    "baseline_f1": 0.5538367949943512,
+    "model_iou": 0.33166463520807943,
+    "model_f1": 0.4981203621980321
+  },
+  {
+    "stem": "India_324254",
+    "region": "India",
+    "water_percent": 1.4756794681572984,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03242151391694341,
+    "baseline_f1": 0.06280673829420348,
+    "model_iou": 0.20345855694692905,
+    "model_f1": 0.3381230799722525
+  },
+  {
+    "stem": "India_373039",
+    "region": "India",
+    "water_percent": 0.6148762794395309,
+    "bucket": "<1%",
+    "baseline_iou": 0.009050195311200283,
+    "baseline_f1": 0.017938047786431714,
+    "model_iou": 0.006626626992095511,
+    "model_f1": 0.01316600776177868
+  },
+  {
+    "stem": "India_383430",
+    "region": "India",
+    "water_percent": 15.688911301619319,
+    "bucket": "10-30%",
+    "baseline_iou": 0.2921665993489985,
+    "baseline_f1": 0.45221196631486044,
+    "model_iou": 0.3292248879514896,
+    "model_f1": 0.4953637129964794
+  },
+  {
+    "stem": "India_391908",
+    "region": "India",
+    "water_percent": 12.273568344641077,
+    "bucket": "10-30%",
+    "baseline_iou": 0.3597782404493294,
+    "baseline_f1": 0.5291719336977229,
+    "model_iou": 0.3727741891383848,
+    "model_f1": 0.5430961509734601
+  },
+  {
+    "stem": "India_399883",
+    "region": "India",
+    "water_percent": 51.99384679123973,
+    "bucket": ">30%",
+    "baseline_iou": 0.7421792268304533,
+    "baseline_f1": 0.8520124857425835,
+    "model_iou": 0.6970420913325198,
+    "model_f1": 0.8214788482767701
+  },
+  {
+    "stem": "India_44475",
+    "region": "India",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "India_500266",
+    "region": "India",
+    "water_percent": 14.533793859565055,
+    "bucket": "10-30%",
+    "baseline_iou": 0.27820021230042674,
+    "baseline_f1": 0.4352999000050845,
+    "model_iou": 0.18745520599065812,
+    "model_f1": 0.31572594072594073
+  },
+  {
+    "stem": "India_533192",
+    "region": "India",
+    "water_percent": 36.27690111099543,
+    "bucket": ">30%",
+    "baseline_iou": 0.6160975766742831,
+    "baseline_f1": 0.7624509628213553,
+    "model_iou": 0.6070130867625771,
+    "model_f1": 0.7554550635121969
+  },
+  {
+    "stem": "India_534470",
+    "region": "India",
+    "water_percent": 2.9668761623805553,
+    "bucket": "1-10%",
+    "baseline_iou": 0.07388190425508326,
+    "baseline_f1": 0.13759781957836922,
+    "model_iou": 0.2693382140448897,
+    "model_f1": 0.42437580632921
+  },
+  {
+    "stem": "India_56450",
+    "region": "India",
+    "water_percent": 0.04435327382602428,
+    "bucket": "<1%",
+    "baseline_iou": 0.0008104495363597132,
+    "baseline_f1": 0.0016195864796079338,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "India_566697",
+    "region": "India",
+    "water_percent": 6.836092329214269,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13748734615589536,
+    "baseline_f1": 0.24173868240474017,
+    "model_iou": 0.16289273286600434,
+    "model_f1": 0.2801509172123683
+  },
+  {
+    "stem": "India_570384",
+    "region": "India",
+    "water_percent": 5.99411014608333,
+    "bucket": "1-10%",
+    "baseline_iou": 0.3647746573448671,
+    "baseline_f1": 0.5345566103264645,
+    "model_iou": 0.4284829131118631,
+    "model_f1": 0.599913249474492
+  },
+  {
+    "stem": "India_591317",
+    "region": "India",
+    "water_percent": 46.39817356073972,
+    "bucket": ">30%",
+    "baseline_iou": 0.8918858994584915,
+    "baseline_f1": 0.9428537944215062,
+    "model_iou": 0.8716420810596369,
+    "model_f1": 0.9314196233140405
+  },
+  {
+    "stem": "India_591549",
+    "region": "India",
+    "water_percent": 4.5038661904917925,
+    "bucket": "1-10%",
+    "baseline_iou": 0.07234455585624862,
+    "baseline_f1": 0.13492781860300998,
+    "model_iou": 0.1033047735618115,
+    "model_f1": 0.18726425560239626
+  },
+  {
+    "stem": "India_592446",
+    "region": "India",
+    "water_percent": 4.06453086580106,
+    "bucket": "1-10%",
+    "baseline_iou": 0.5217353877937505,
+    "baseline_f1": 0.6857110532865709,
+    "model_iou": 0.5226220399523747,
+    "model_f1": 0.6864763890698988
+  },
+  {
+    "stem": "India_59460",
+    "region": "India",
+    "water_percent": 0.14264787108859056,
+    "bucket": "<1%",
+    "baseline_iou": 0.0027330938622520695,
+    "baseline_f1": 0.005451288840432988,
+    "model_iou": 0.005705767451423872,
+    "model_f1": 0.011346792742141579
+  },
+  {
+    "stem": "India_624341",
+    "region": "India",
+    "water_percent": 1.2399671897398943,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0178737282427594,
+    "baseline_f1": 0.035119735870610035,
+    "model_iou": 0.05077430820005077,
+    "model_f1": 0.09664170089393573
+  },
+  {
+    "stem": "India_631692",
+    "region": "India",
+    "water_percent": 0.30860174657087874,
+    "bucket": "<1%",
+    "baseline_iou": 0.007666502315419047,
+    "baseline_f1": 0.015216348460136237,
+    "model_iou": 0.25198807157057657,
+    "model_f1": 0.40254069075029775
+  },
+  {
+    "stem": "India_652725",
+    "region": "India",
+    "water_percent": 8.341512414311348,
+    "bucket": "1-10%",
+    "baseline_iou": 0.22738484483450927,
+    "baseline_f1": 0.37051923166799083,
+    "model_iou": 0.27085177629806395,
+    "model_f1": 0.42625234720455507
+  },
+  {
+    "stem": "India_664410",
+    "region": "India",
+    "water_percent": 5.139392175038879,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13099278744166312,
+    "baseline_f1": 0.23164212698114978,
+    "model_iou": 0.22201328820358532,
+    "model_f1": 0.36335658596635206
+  },
+  {
+    "stem": "India_691027",
+    "region": "India",
+    "water_percent": 3.322554983436697,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06881607587064677,
+    "baseline_f1": 0.12877066021783007,
+    "model_iou": 0.3160210508152877,
+    "model_f1": 0.48026747082732396
+  },
+  {
+    "stem": "India_698338",
+    "region": "India",
+    "water_percent": 4.346329516118356,
+    "bucket": "1-10%",
+    "baseline_iou": 0.09266678840349313,
+    "baseline_f1": 0.16961582320789587,
+    "model_iou": 0.5362452815653648,
+    "model_f1": 0.69812456122756
+  },
+  {
+    "stem": "India_70352",
+    "region": "India",
+    "water_percent": 5.513259285699288,
+    "bucket": "1-10%",
+    "baseline_iou": 0.7128366561734872,
+    "baseline_f1": 0.8323463344905044,
+    "model_iou": 0.6384289967096674,
+    "model_f1": 0.7793184788498932
+  },
+  {
+    "stem": "India_707886",
+    "region": "India",
+    "water_percent": 2.2315196778040627,
+    "bucket": "1-10%",
+    "baseline_iou": 0.10323307298879227,
+    "baseline_f1": 0.18714644351464435,
+    "model_iou": 0.6273062730627307,
+    "model_f1": 0.7709750566893424
+  },
+  {
+    "stem": "India_73419",
+    "region": "India",
+    "water_percent": 3.496810341917845,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0542144518405646,
+    "baseline_f1": 0.10285279573982503,
+    "model_iou": 0.1053935057787562,
+    "model_f1": 0.19068956933034603
+  },
+  {
+    "stem": "India_747970",
+    "region": "India",
+    "water_percent": 2.0368242169352273,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08243393136961459,
+    "baseline_f1": 0.15231217163584312,
+    "model_iou": 0.47632786885245904,
+    "model_f1": 0.6452873767433597
+  },
+  {
+    "stem": "India_747992",
+    "region": "India",
+    "water_percent": 44.73505812060744,
+    "bucket": ">30%",
+    "baseline_iou": 0.498943439044244,
+    "baseline_f1": 0.6657268393827858,
+    "model_iou": 0.4334827344627046,
+    "model_f1": 0.6047965895106254
+  },
+  {
+    "stem": "India_764946",
+    "region": "India",
+    "water_percent": 1.3025686903075635,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03096523881927332,
+    "baseline_f1": 0.06007038385646575,
+    "model_iou": 0.5115020297699594,
+    "model_f1": 0.6768128916741272
+  },
+  {
+    "stem": "India_769408",
+    "region": "India",
+    "water_percent": 4.936492413974529,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1434071418386262,
+    "baseline_f1": 0.2508417808341202,
+    "model_iou": 0.24691249890514144,
+    "model_f1": 0.3960382129811745
+  },
+  {
+    "stem": "India_772630",
+    "region": "India",
+    "water_percent": 0.8886443804407624,
+    "bucket": "<1%",
+    "baseline_iou": 0.013355795968904134,
+    "baseline_f1": 0.026359539308963446,
+    "model_iou": 0.015426048403349027,
+    "model_f1": 0.030383400992331982
+  },
+  {
+    "stem": "India_773682",
+    "region": "India",
+    "water_percent": 12.230353089884291,
+    "bucket": "10-30%",
+    "baseline_iou": 0.27235597592433364,
+    "baseline_f1": 0.42811285690150364,
+    "model_iou": 0.197067077034489,
+    "model_f1": 0.3292498487598306
+  },
+  {
+    "stem": "India_774689",
+    "region": "India",
+    "water_percent": 7.9806381640860735,
+    "bucket": "1-10%",
+    "baseline_iou": 0.32144287507008784,
+    "baseline_f1": 0.4865028691505698,
+    "model_iou": 0.3343777976723366,
+    "model_f1": 0.5011741026501174
+  },
+  {
+    "stem": "India_79637",
+    "region": "India",
+    "water_percent": 1.9533556763887079,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02515461801011112,
+    "baseline_f1": 0.04907477870789442,
+    "model_iou": 0.08704033214709371,
+    "model_f1": 0.16014186332014732
+  },
+  {
+    "stem": "India_80221",
+    "region": "India",
+    "water_percent": 75.42077732900748,
+    "bucket": ">30%",
+    "baseline_iou": 0.8863895693527923,
+    "baseline_f1": 0.9397736117221075,
+    "model_iou": 0.8686987836982759,
+    "model_f1": 0.9297365538806257
+  },
+  {
+    "stem": "India_804466",
+    "region": "India",
+    "water_percent": 19.145618122183734,
+    "bucket": "10-30%",
+    "baseline_iou": 0.4274053084462006,
+    "baseline_f1": 0.5988562686675895,
+    "model_iou": 0.35053503930719954,
+    "model_f1": 0.5191054346683486
+  },
+  {
+    "stem": "India_828067",
+    "region": "India",
+    "water_percent": 3.799024990118143,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08461293659002307,
+    "baseline_f1": 0.15602420685860993,
+    "model_iou": 0.5117298837974128,
+    "model_f1": 0.6770123277737491
+  },
+  {
+    "stem": "India_833266",
+    "region": "India",
+    "water_percent": 8.350580607348254,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13236087660359624,
+    "baseline_f1": 0.23377861128618205,
+    "model_iou": 0.13464518128292532,
+    "model_f1": 0.23733442578178343
+  },
+  {
+    "stem": "India_842775",
+    "region": "India",
+    "water_percent": 2.390971612824228,
+    "bucket": "1-10%",
+    "baseline_iou": 0.035149718524792456,
+    "baseline_f1": 0.06791233750202792,
+    "model_iou": 0.22432962720732505,
+    "model_f1": 0.36645299145299143
+  },
+  {
+    "stem": "India_869358",
+    "region": "India",
+    "water_percent": 1.9449704459555808,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03619008486495883,
+    "baseline_f1": 0.06985221224091387,
+    "model_iou": 0.2707154532880674,
+    "model_f1": 0.4260835147437166
+  },
+  {
+    "stem": "India_900498",
+    "region": "India",
+    "water_percent": 47.325990732814056,
+    "bucket": ">30%",
+    "baseline_iou": 0.6593123616258006,
+    "baseline_f1": 0.7946814317465867,
+    "model_iou": 0.6428398826304585,
+    "model_f1": 0.7825959053309145
+  },
+  {
+    "stem": "India_91379",
+    "region": "India",
+    "water_percent": 11.293092213695983,
+    "bucket": "10-30%",
+    "baseline_iou": 0.21281124083066433,
+    "baseline_f1": 0.350938767165298,
+    "model_iou": 0.2846337579617834,
+    "model_f1": 0.44313603966532383
+  },
+  {
+    "stem": "India_943439",
+    "region": "India",
+    "water_percent": 18.997616051650873,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5155622020749603,
+    "baseline_f1": 0.6803576934936787,
+    "model_iou": 0.5618848445617355,
+    "model_f1": 0.7194958661877537
+  },
+  {
+    "stem": "India_952728",
+    "region": "India",
+    "water_percent": 3.098106712564544,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05378103096230313,
+    "baseline_f1": 0.10207249776206502,
+    "model_iou": 0.1610182033446796,
+    "model_f1": 0.2773741236456342
+  },
+  {
+    "stem": "India_956930",
+    "region": "India",
+    "water_percent": 16.925038872341958,
+    "bucket": "10-30%",
+    "baseline_iou": 0.3712278344190938,
+    "baseline_f1": 0.541453178094741,
+    "model_iou": 0.3402560649976037,
+    "model_f1": 0.5077478459285495
+  },
+  {
+    "stem": "India_979278",
+    "region": "India",
+    "water_percent": 5.019678688947674,
+    "bucket": "1-10%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.365098807773967,
+    "model_f1": 0.5349045881438057
+  },
+  {
+    "stem": "India_981708",
+    "region": "India",
+    "water_percent": 4.6504948051073765,
+    "bucket": "1-10%",
+    "baseline_iou": 0.11732847385054541,
+    "baseline_f1": 0.21001608138778954,
+    "model_iou": 0.03265716259498838,
+    "model_f1": 0.0632487988809828
+  },
+  {
+    "stem": "Mekong_1111068",
+    "region": "Mekong",
+    "water_percent": 2.8465242641391364,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08385711662594104,
+    "baseline_f1": 0.1547383236030025,
+    "model_iou": 0.09929559092094965,
+    "model_f1": 0.18065312322004937
+  },
+  {
+    "stem": "Mekong_1149855",
+    "region": "Mekong",
+    "water_percent": 7.683239843239131,
+    "bucket": "1-10%",
+    "baseline_iou": 0.5567941673710904,
+    "baseline_f1": 0.715308650354634,
+    "model_iou": 0.5832967996492766,
+    "model_f1": 0.736812958604458
+  },
+  {
+    "stem": "Mekong_1191208",
+    "region": "Mekong",
+    "water_percent": 7.496195576987687,
+    "bucket": "1-10%",
+    "baseline_iou": 0.8394843606857741,
+    "baseline_f1": 0.9127387855287965,
+    "model_iou": 0.818694696834729,
+    "model_f1": 0.9003102040816326
+  },
+  {
+    "stem": "Mekong_119477",
+    "region": "Mekong",
+    "water_percent": 1.1384094443550672,
+    "bucket": "1-10%",
+    "baseline_iou": 0.038369902482269506,
+    "baseline_f1": 0.07390411141645101,
+    "model_iou": 0.2500467726847521,
+    "model_f1": 0.40005986679637806
+  },
+  {
+    "stem": "Mekong_1248200",
+    "region": "Mekong",
+    "water_percent": 78.4060120409438,
+    "bucket": ">30%",
+    "baseline_iou": 0.8370018215283672,
+    "baseline_f1": 0.9112694519072279,
+    "model_iou": 0.750469972748867,
+    "model_f1": 0.8574496957184126
+  },
+  {
+    "stem": "Mekong_1282475",
+    "region": "Mekong",
+    "water_percent": 10.121951684703207,
+    "bucket": "10-30%",
+    "baseline_iou": 0.8504703565959308,
+    "baseline_f1": 0.9191937104687592,
+    "model_iou": 0.7828824486352955,
+    "model_f1": 0.8782210506750477
+  },
+  {
+    "stem": "Mekong_1395593",
+    "region": "Mekong",
+    "water_percent": 7.20765820849893,
+    "bucket": "1-10%",
+    "baseline_iou": 0.7963371801304566,
+    "baseline_f1": 0.8866232786793665,
+    "model_iou": 0.7550444241468073,
+    "model_f1": 0.8604277062831188
+  },
+  {
+    "stem": "Mekong_1396181",
+    "region": "Mekong",
+    "water_percent": 59.68690132622941,
+    "bucket": ">30%",
+    "baseline_iou": 0.7310668877833056,
+    "baseline_f1": 0.8446431422640907,
+    "model_iou": 0.7383346390163998,
+    "model_f1": 0.8494735391502881
+  },
+  {
+    "stem": "Mekong_1413877",
+    "region": "Mekong",
+    "water_percent": 0.9761544417166934,
+    "bucket": "<1%",
+    "baseline_iou": 0.0336716585198792,
+    "baseline_f1": 0.06514962124064397,
+    "model_iou": 0.4125569419687067,
+    "model_f1": 0.5841278743690409
+  },
+  {
+    "stem": "Mekong_1439641",
+    "region": "Mekong",
+    "water_percent": 75.49817216036145,
+    "bucket": ">30%",
+    "baseline_iou": 0.875146898909169,
+    "baseline_f1": 0.9334168959437461,
+    "model_iou": 0.8273757756388332,
+    "model_f1": 0.9055343587988525
+  },
+  {
+    "stem": "Mekong_1443339",
+    "region": "Mekong",
+    "water_percent": 73.53198112451791,
+    "bucket": ">30%",
+    "baseline_iou": 0.825364146379124,
+    "baseline_f1": 0.904328210912167,
+    "model_iou": 0.7923186856120582,
+    "model_f1": 0.8841270159960304
+  },
+  {
+    "stem": "Mekong_16233",
+    "region": "Mekong",
+    "water_percent": 23.725186530157615,
+    "bucket": "10-30%",
+    "baseline_iou": 0.9236205965503002,
+    "baseline_f1": 0.9602939355158321,
+    "model_iou": 0.928756234413965,
+    "model_f1": 0.9630623277763861
+  },
+  {
+    "stem": "Mekong_213094",
+    "region": "Mekong",
+    "water_percent": 0.04513908480505558,
+    "bucket": "<1%",
+    "baseline_iou": 0.0007730480536644971,
+    "baseline_f1": 0.0015449018239808631,
+    "model_iou": 0.039504716981132074,
+    "model_f1": 0.0760068065796937
+  },
+  {
+    "stem": "Mekong_221789",
+    "region": "Mekong",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Mekong_254910",
+    "region": "Mekong",
+    "water_percent": 0.0657017432862552,
+    "bucket": "<1%",
+    "baseline_iou": 0.0042616357019728025,
+    "baseline_f1": 0.008487102465074142,
+    "model_iou": 0.0054834905660377355,
+    "model_f1": 0.010907171758634844
+  },
+  {
+    "stem": "Mekong_269835",
+    "region": "Mekong",
+    "water_percent": 0.22738935365870883,
+    "bucket": "<1%",
+    "baseline_iou": 0.007110246239053963,
+    "baseline_f1": 0.014120095124851368,
+    "model_iou": 0.4698275862068966,
+    "model_f1": 0.6392961876832844
+  },
+  {
+    "stem": "Mekong_293769",
+    "region": "Mekong",
+    "water_percent": 13.271846719151018,
+    "bucket": "10-30%",
+    "baseline_iou": 0.881513828238719,
+    "baseline_f1": 0.9370261488472845,
+    "model_iou": 0.8917581567960414,
+    "model_f1": 0.9427824096779467
+  },
+  {
+    "stem": "Mekong_333434",
+    "region": "Mekong",
+    "water_percent": 1.6355669341736006,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05742138494128293,
+    "baseline_f1": 0.10860643780997763,
+    "model_iou": 0.2077991452991453,
+    "model_f1": 0.3440955329500221
+  },
+  {
+    "stem": "Mekong_342411",
+    "region": "Mekong",
+    "water_percent": 11.076534678763334,
+    "bucket": "10-30%",
+    "baseline_iou": 0.780370019904069,
+    "baseline_f1": 0.876638014771915,
+    "model_iou": 0.7751291219705999,
+    "model_f1": 0.8733213965980304
+  },
+  {
+    "stem": "Mekong_382276",
+    "region": "Mekong",
+    "water_percent": 3.7480733132907047,
+    "bucket": "1-10%",
+    "baseline_iou": 0.9107073455110766,
+    "baseline_f1": 0.9532672260361048,
+    "model_iou": 0.8683255113787302,
+    "model_f1": 0.9295227261955543
+  },
+  {
+    "stem": "Mekong_424793",
+    "region": "Mekong",
+    "water_percent": 1.557907113462669,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06409432999028375,
+    "baseline_f1": 0.12046738373442699,
+    "model_iou": 0.43570252122133535,
+    "model_f1": 0.606953759265796
+  },
+  {
+    "stem": "Mekong_45934",
+    "region": "Mekong",
+    "water_percent": 0.11190424357696377,
+    "bucket": "<1%",
+    "baseline_iou": 0.0028695507359629007,
+    "baseline_f1": 0.005722679951459411,
+    "model_iou": 0.11154598825831702,
+    "model_f1": 0.2007042253521127
+  },
+  {
+    "stem": "Mekong_474783",
+    "region": "Mekong",
+    "water_percent": 2.1999824489780346,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05082558406001616,
+    "baseline_f1": 0.09673457675753228,
+    "model_iou": 0.26976571216065454,
+    "model_f1": 0.42490627928772257
+  },
+  {
+    "stem": "Mekong_52610",
+    "region": "Mekong",
+    "water_percent": 80.33285905558968,
+    "bucket": ">30%",
+    "baseline_iou": 0.862935055615357,
+    "baseline_f1": 0.9264252696456087,
+    "model_iou": 0.793831488372529,
+    "model_f1": 0.885068071909854
+  },
+  {
+    "stem": "Mekong_596495",
+    "region": "Mekong",
+    "water_percent": 77.1460195308585,
+    "bucket": ">30%",
+    "baseline_iou": 0.9042060935224698,
+    "baseline_f1": 0.9496935196230114,
+    "model_iou": 0.8504230118443317,
+    "model_f1": 0.9191660570592538
+  },
+  {
+    "stem": "Mekong_774566",
+    "region": "Mekong",
+    "water_percent": 33.816660734921285,
+    "bucket": ">30%",
+    "baseline_iou": 0.845275676790063,
+    "baseline_f1": 0.9161511067662873,
+    "model_iou": 0.8098217002373274,
+    "model_f1": 0.8949187647944911
+  },
+  {
+    "stem": "Mekong_846007",
+    "region": "Mekong",
+    "water_percent": 4.590411844335768,
+    "bucket": "1-10%",
+    "baseline_iou": 0.6728267602725583,
+    "baseline_f1": 0.8044189347651669,
+    "model_iou": 0.6075598488030239,
+    "model_f1": 0.7558783571951092
+  },
+  {
+    "stem": "Mekong_922373",
+    "region": "Mekong",
+    "water_percent": 45.687132550713244,
+    "bucket": ">30%",
+    "baseline_iou": 0.6557975201835923,
+    "baseline_f1": 0.7921228437531159,
+    "model_iou": 0.6984353119257887,
+    "model_f1": 0.8224455850883841
+  },
+  {
+    "stem": "Mekong_977338",
+    "region": "Mekong",
+    "water_percent": 37.04616219209665,
+    "bucket": ">30%",
+    "baseline_iou": 0.937429661351379,
+    "baseline_f1": 0.9677044592137722,
+    "model_iou": 0.933273363028307,
+    "model_f1": 0.9654851516356842
+  },
+  {
+    "stem": "Mekong_98310",
+    "region": "Mekong",
+    "water_percent": 46.886502983597055,
+    "bucket": ">30%",
+    "baseline_iou": 0.9149844365101163,
+    "baseline_f1": 0.9556050890706889,
+    "model_iou": 0.9150527718003894,
+    "model_f1": 0.9556423564663706
+  },
+  {
+    "stem": "Nigeria_1095404",
+    "region": "Nigeria",
+    "water_percent": 18.269348924784463,
+    "bucket": "10-30%",
+    "baseline_iou": 0.6439035426761439,
+    "baseline_f1": 0.7833836061061348,
+    "model_iou": 0.6269066735471337,
+    "model_f1": 0.7706731845660124
+  },
+  {
+    "stem": "Nigeria_143329",
+    "region": "Nigeria",
+    "water_percent": 1.1139839256007857,
+    "bucket": "1-10%",
+    "baseline_iou": 0.024744600374703947,
+    "baseline_f1": 0.04829418055124358,
+    "model_iou": 0.3076181292189007,
+    "model_f1": 0.47050147492625366
+  },
+  {
+    "stem": "Nigeria_22088",
+    "region": "Nigeria",
+    "water_percent": 0.2811511928715148,
+    "bucket": "<1%",
+    "baseline_iou": 0.00241932998428206,
+    "baseline_f1": 0.004826981906504127,
+    "model_iou": 0.030361260568793236,
+    "model_f1": 0.05893323386795972
+  },
+  {
+    "stem": "Nigeria_225131",
+    "region": "Nigeria",
+    "water_percent": 0.47173721998375034,
+    "bucket": "<1%",
+    "baseline_iou": 0.01162285151155039,
+    "baseline_f1": 0.02297862586671251,
+    "model_iou": 0.1353887399463807,
+    "model_f1": 0.2384887839433294
+  },
+  {
+    "stem": "Nigeria_31096",
+    "region": "Nigeria",
+    "water_percent": 0.3760850375165514,
+    "bucket": "<1%",
+    "baseline_iou": 0.01278543527265844,
+    "baseline_f1": 0.02524806306918581,
+    "model_iou": 0.17203791469194313,
+    "model_f1": 0.29357056207035986
+  },
+  {
+    "stem": "Nigeria_35845",
+    "region": "Nigeria",
+    "water_percent": 0.13424015845971152,
+    "bucket": "<1%",
+    "baseline_iou": 0.003595791592062623,
+    "baseline_f1": 0.0071658164017575415,
+    "model_iou": 0.19829059829059828,
+    "model_f1": 0.3309557774607703
+  },
+  {
+    "stem": "Nigeria_417184",
+    "region": "Nigeria",
+    "water_percent": 2.333378488214576,
+    "bucket": "1-10%",
+    "baseline_iou": 0.338104976141786,
+    "baseline_f1": 0.5053489556800815,
+    "model_iou": 0.20741105099196588,
+    "model_f1": 0.34356328082563825
+  },
+  {
+    "stem": "Nigeria_439488",
+    "region": "Nigeria",
+    "water_percent": 0.6386765783687572,
+    "bucket": "<1%",
+    "baseline_iou": 0.002109544262419704,
+    "baseline_f1": 0.004210206907015115,
+    "model_iou": 0.006395708685785022,
+    "model_f1": 0.012710127101271012
+  },
+  {
+    "stem": "Nigeria_529525",
+    "region": "Nigeria",
+    "water_percent": 85.3217237420718,
+    "bucket": ">30%",
+    "baseline_iou": 0.5950397762197892,
+    "baseline_f1": 0.7461127742281399,
+    "model_iou": 0.6038713705900718,
+    "model_f1": 0.7530172078174882
+  },
+  {
+    "stem": "Nigeria_598959",
+    "region": "Nigeria",
+    "water_percent": 21.99996212372286,
+    "bucket": "10-30%",
+    "baseline_iou": 0.12692402355213087,
+    "baseline_f1": 0.2252574635015036,
+    "model_iou": 0.08206530679388058,
+    "model_f1": 0.1516827242840583
+  },
+  {
+    "stem": "Nigeria_600295",
+    "region": "Nigeria",
+    "water_percent": 46.046598671282865,
+    "bucket": ">30%",
+    "baseline_iou": 0.8744545837747929,
+    "baseline_f1": 0.9330229618194416,
+    "model_iou": 0.9028337801004663,
+    "model_f1": 0.948936044274764
+  },
+  {
+    "stem": "Nigeria_707067",
+    "region": "Nigeria",
+    "water_percent": 1.4390388551969544,
+    "bucket": "1-10%",
+    "baseline_iou": 0.024537928029340208,
+    "baseline_f1": 0.04790047758707768,
+    "model_iou": 0.1407918514867751,
+    "model_f1": 0.24683179723502305
+  },
+  {
+    "stem": "Nigeria_78061",
+    "region": "Nigeria",
+    "water_percent": 2.4033903488651505,
+    "bucket": "1-10%",
+    "baseline_iou": 0.6095754529824098,
+    "baseline_f1": 0.7574363188167625,
+    "model_iou": 0.49724648689707557,
+    "model_f1": 0.6642145982624136
+  },
+  {
+    "stem": "Nigeria_812045",
+    "region": "Nigeria",
+    "water_percent": 50.656443606580886,
+    "bucket": ">30%",
+    "baseline_iou": 0.8456903496052843,
+    "baseline_f1": 0.9163946160157819,
+    "model_iou": 0.8867479448790755,
+    "model_f1": 0.9399749948432126
+  },
+  {
+    "stem": "Nigeria_81933",
+    "region": "Nigeria",
+    "water_percent": 72.26582324735382,
+    "bucket": ">30%",
+    "baseline_iou": 0.5121049942177877,
+    "baseline_f1": 0.6773405235430755,
+    "model_iou": 0.49649967539493617,
+    "model_f1": 0.6635479894292748
+  },
+  {
+    "stem": "Nigeria_820924",
+    "region": "Nigeria",
+    "water_percent": 0.4474725241188835,
+    "bucket": "<1%",
+    "baseline_iou": 0.010368600458147461,
+    "baseline_f1": 0.02052439169912023,
+    "model_iou": 0.12601285275216542,
+    "model_f1": 0.2238213399503722
+  },
+  {
+    "stem": "Nigeria_952958",
+    "region": "Nigeria",
+    "water_percent": 4.272824711835817,
+    "bucket": "1-10%",
+    "baseline_iou": 0.713187019320953,
+    "baseline_f1": 0.8325851308441914,
+    "model_iou": 0.6012676256943456,
+    "model_f1": 0.7509895485879475
+  },
+  {
+    "stem": "Nigeria_984831",
+    "region": "Nigeria",
+    "water_percent": 92.30343230942833,
+    "bucket": ">30%",
+    "baseline_iou": 0.6110297991920848,
+    "baseline_f1": 0.7585580347408969,
+    "model_iou": 0.5865375529286829,
+    "model_f1": 0.7393932174450694
+  },
+  {
+    "stem": "Pakistan_1027214",
+    "region": "Pakistan",
+    "water_percent": 15.03178006419446,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5022843394339164,
+    "baseline_f1": 0.6686941030393551,
+    "model_iou": 0.41875953000269084,
+    "model_f1": 0.5903178391364132
+  },
+  {
+    "stem": "Pakistan_1036366",
+    "region": "Pakistan",
+    "water_percent": 20.568975752317456,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5328170579247118,
+    "baseline_f1": 0.6952128503137814,
+    "model_iou": 0.5929326854366157,
+    "model_f1": 0.7444541641432834
+  },
+  {
+    "stem": "Pakistan_132143",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_167553",
+    "region": "Pakistan",
+    "water_percent": 0.5861842024583764,
+    "bucket": "<1%",
+    "baseline_iou": 0.006823150661893665,
+    "baseline_f1": 0.013553821557257737,
+    "model_iou": 0.0073195075967616725,
+    "model_f1": 0.014532643399757789
+  },
+  {
+    "stem": "Pakistan_210595",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_211386",
+    "region": "Pakistan",
+    "water_percent": 2.6883762144371657,
+    "bucket": "1-10%",
+    "baseline_iou": 0.038249406733251626,
+    "baseline_f1": 0.07368057517817336,
+    "model_iou": 0.21544980443285527,
+    "model_f1": 0.3545186377044784
+  },
+  {
+    "stem": "Pakistan_246510",
+    "region": "Pakistan",
+    "water_percent": 4.150224626565653,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13501875039725417,
+    "baseline_f1": 0.23791457251256493,
+    "model_iou": 0.15038031933118617,
+    "model_f1": 0.2614445271779598
+  },
+  {
+    "stem": "Pakistan_246718",
+    "region": "Pakistan",
+    "water_percent": 5.563761270931731,
+    "bucket": "1-10%",
+    "baseline_iou": 0.2697676482989725,
+    "baseline_f1": 0.4249086809864201,
+    "model_iou": 0.4809565633982753,
+    "model_f1": 0.649521498854293
+  },
+  {
+    "stem": "Pakistan_336228",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_35915",
+    "region": "Pakistan",
+    "water_percent": 40.45671651109793,
+    "bucket": ">30%",
+    "baseline_iou": 0.769350683447925,
+    "baseline_f1": 0.8696418303563148,
+    "model_iou": 0.727765390808869,
+    "model_f1": 0.8424354309680426
+  },
+  {
+    "stem": "Pakistan_366265",
+    "region": "Pakistan",
+    "water_percent": 0.001592940089523233,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_401863",
+    "region": "Pakistan",
+    "water_percent": 1.2884463683708591,
+    "bucket": "1-10%",
+    "baseline_iou": 0.032945921562383906,
+    "baseline_f1": 0.06379021568244639,
+    "model_iou": 0.05304442646593267,
+    "model_f1": 0.10074489761833183
+  },
+  {
+    "stem": "Pakistan_43105",
+    "region": "Pakistan",
+    "water_percent": 0.10384457412100218,
+    "bucket": "<1%",
+    "baseline_iou": 7.421242068547539e-05,
+    "baseline_f1": 0.00014841382722156947,
+    "model_iou": 3.813300793166565e-05,
+    "model_f1": 7.626310772163966e-05
+  },
+  {
+    "stem": "Pakistan_474121",
+    "region": "Pakistan",
+    "water_percent": 4.924925937793368,
+    "bucket": "1-10%",
+    "baseline_iou": 0.19948835887232227,
+    "baseline_f1": 0.33262241754453997,
+    "model_iou": 0.17428658430485472,
+    "model_f1": 0.2968382448276501
+  },
+  {
+    "stem": "Pakistan_528249",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_548910",
+    "region": "Pakistan",
+    "water_percent": 1.47446881425634,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02223126042217432,
+    "baseline_f1": 0.043495559728809245,
+    "model_iou": 0.09609740189150995,
+    "model_f1": 0.17534463949221463
+  },
+  {
+    "stem": "Pakistan_65724",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_664885",
+    "region": "Pakistan",
+    "water_percent": 3.2552390739789185,
+    "bucket": "1-10%",
+    "baseline_iou": 0.15213486251209066,
+    "baseline_f1": 0.2640921084192852,
+    "model_iou": 0.16487686139747995,
+    "model_f1": 0.2830803269620798
+  },
+  {
+    "stem": "Pakistan_667363",
+    "region": "Pakistan",
+    "water_percent": 0.7566298756430105,
+    "bucket": "<1%",
+    "baseline_iou": 0.02286444649577505,
+    "baseline_f1": 0.04470669906282541,
+    "model_iou": 0.02973708068902992,
+    "model_f1": 0.057756647297059344
+  },
+  {
+    "stem": "Pakistan_694942",
+    "region": "Pakistan",
+    "water_percent": 9.64659519471164,
+    "bucket": "1-10%",
+    "baseline_iou": 0.3035764573359617,
+    "baseline_f1": 0.4657593432706848,
+    "model_iou": 0.30542503203759075,
+    "model_f1": 0.46793193717277487
+  },
+  {
+    "stem": "Pakistan_70625",
+    "region": "Pakistan",
+    "water_percent": 1.7827248510529714,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05117258145809244,
+    "baseline_f1": 0.09736285432238048,
+    "model_iou": 0.05787162662193497,
+    "model_f1": 0.10941143550041973
+  },
+  {
+    "stem": "Pakistan_712873",
+    "region": "Pakistan",
+    "water_percent": 1.0822127113564801,
+    "bucket": "1-10%",
+    "baseline_iou": 0.023208191126279865,
+    "baseline_f1": 0.04536357571714476,
+    "model_iou": 0.13462555066079296,
+    "model_f1": 0.23730392918154994
+  },
+  {
+    "stem": "Pakistan_740461",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_760290",
+    "region": "Pakistan",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Pakistan_849790",
+    "region": "Pakistan",
+    "water_percent": 66.83075055570444,
+    "bucket": ">30%",
+    "baseline_iou": 0.3178423809003685,
+    "baseline_f1": 0.4823678241144652,
+    "model_iou": 0.3005389197293245,
+    "model_f1": 0.4621759720837488
+  },
+  {
+    "stem": "Pakistan_909806",
+    "region": "Pakistan",
+    "water_percent": 1.2074128727051778,
+    "bucket": "1-10%",
+    "baseline_iou": 0.028088719973870958,
+    "baseline_f1": 0.05464259927797834,
+    "model_iou": 0.2708333333333333,
+    "model_f1": 0.4262295081967213
+  },
+  {
+    "stem": "Pakistan_94095",
+    "region": "Pakistan",
+    "water_percent": 29.641128919470784,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5000366265867161,
+    "baseline_f1": 0.6666992228376889,
+    "model_iou": 0.4774373314098827,
+    "model_f1": 0.6463046807599965
+  },
+  {
+    "stem": "Pakistan_9684",
+    "region": "Pakistan",
+    "water_percent": 1.0589719443506689,
+    "bucket": "1-10%",
+    "baseline_iou": 0.029636009017452315,
+    "baseline_f1": 0.0575659917833157,
+    "model_iou": 0.3018486424032351,
+    "model_f1": 0.46372309740403816
+  },
+  {
+    "stem": "Paraguay_1019808",
+    "region": "Paraguay",
+    "water_percent": 1.9682371989940632,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03308039267710268,
+    "baseline_f1": 0.06404224281399601,
+    "model_iou": 0.5081499592502038,
+    "model_f1": 0.6738719265063496
+  },
+  {
+    "stem": "Paraguay_1029042",
+    "region": "Paraguay",
+    "water_percent": 27.398043221933197,
+    "bucket": "10-30%",
+    "baseline_iou": 0.6082340060732508,
+    "baseline_f1": 0.7563998818285743,
+    "model_iou": 0.6041728246577855,
+    "model_f1": 0.7532515391995527
+  },
+  {
+    "stem": "Paraguay_1029191",
+    "region": "Paraguay",
+    "water_percent": 19.798314280407954,
+    "bucket": "10-30%",
+    "baseline_iou": 0.8968495436254784,
+    "baseline_f1": 0.9456201169348579,
+    "model_iou": 0.8661469199516855,
+    "model_f1": 0.9282730214769049
+  },
+  {
+    "stem": "Paraguay_1056717",
+    "region": "Paraguay",
+    "water_percent": 1.9069231681789132,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05413563829787234,
+    "baseline_f1": 0.10271095356435518,
+    "model_iou": 0.4185424559839536,
+    "model_f1": 0.590102120974077
+  },
+  {
+    "stem": "Paraguay_1076204",
+    "region": "Paraguay",
+    "water_percent": 1.1628441245165984,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03170495329989244,
+    "baseline_f1": 0.06146127960030555,
+    "model_iou": 0.18326145384086506,
+    "model_f1": 0.30975648407374146
+  },
+  {
+    "stem": "Paraguay_11869",
+    "region": "Paraguay",
+    "water_percent": 0.08040614815706777,
+    "bucket": "<1%",
+    "baseline_iou": 0.002104269100091356,
+    "baseline_f1": 0.0041997008993505825,
+    "model_iou": 0.060552092609082814,
+    "model_f1": 0.11418975650713686
+  },
+  {
+    "stem": "Paraguay_126224",
+    "region": "Paraguay",
+    "water_percent": 55.0831162861958,
+    "bucket": ">30%",
+    "baseline_iou": 0.2357214702416875,
+    "baseline_f1": 0.3815123001716303,
+    "model_iou": 0.23501464192616717,
+    "model_f1": 0.3805860010851872
+  },
+  {
+    "stem": "Paraguay_12870",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_148318",
+    "region": "Paraguay",
+    "water_percent": 0.9305592134140989,
+    "bucket": "<1%",
+    "baseline_iou": 0.025536531794966788,
+    "baseline_f1": 0.0498013108324302,
+    "model_iou": 0.18268149443958515,
+    "model_f1": 0.30892762810353935
+  },
+  {
+    "stem": "Paraguay_149787",
+    "region": "Paraguay",
+    "water_percent": 15.248734695752713,
+    "bucket": "10-30%",
+    "baseline_iou": 0.8199533948642969,
+    "baseline_f1": 0.9010707605789388,
+    "model_iou": 0.7930496150556031,
+    "model_f1": 0.884581897117231
+  },
+  {
+    "stem": "Paraguay_149830",
+    "region": "Paraguay",
+    "water_percent": 0.728688745807148,
+    "bucket": "<1%",
+    "baseline_iou": 0.02335604059502294,
+    "baseline_f1": 0.045645972014671916,
+    "model_iou": 0.4685603971318257,
+    "model_f1": 0.6381220657276996
+  },
+  {
+    "stem": "Paraguay_153941",
+    "region": "Paraguay",
+    "water_percent": 0.24603022766405203,
+    "bucket": "<1%",
+    "baseline_iou": 0.005040332389487307,
+    "baseline_f1": 0.010030109692222792,
+    "model_iou": 0.03738555442522889,
+    "model_f1": 0.07207648933562148
+  },
+  {
+    "stem": "Paraguay_172476",
+    "region": "Paraguay",
+    "water_percent": 1.0757961197780979,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03030943471288089,
+    "baseline_f1": 0.05883559577677225,
+    "model_iou": 0.2615114598389428,
+    "model_f1": 0.41460021278337017
+  },
+  {
+    "stem": "Paraguay_179624",
+    "region": "Paraguay",
+    "water_percent": 0.01607120308260981,
+    "bucket": "<1%",
+    "baseline_iou": 0.0004880145939602384,
+    "baseline_f1": 0.0009755531037686546,
+    "model_iou": 0.001292503479817061,
+    "model_f1": 0.002581670141991858
+  },
+  {
+    "stem": "Paraguay_191503",
+    "region": "Paraguay",
+    "water_percent": 0.032934292257377665,
+    "bucket": "<1%",
+    "baseline_iou": 0.0003058337793409282,
+    "baseline_f1": 0.0006114805472750898,
+    "model_iou": 0.0005724462536572955,
+    "model_f1": 0.0011442374928485157
+  },
+  {
+    "stem": "Paraguay_198534",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_205585",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_212687",
+    "region": "Paraguay",
+    "water_percent": 5.8639433371767415,
+    "bucket": "1-10%",
+    "baseline_iou": 0.00356402818068794,
+    "baseline_f1": 0.007102741988767757,
+    "model_iou": 0.40181097906055463,
+    "model_f1": 0.5732741219216795
+  },
+  {
+    "stem": "Paraguay_215904",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_224845",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_225187",
+    "region": "Paraguay",
+    "water_percent": 0.017230882336048154,
+    "bucket": "<1%",
+    "baseline_iou": 0.0003044881554107545,
+    "baseline_f1": 0.0006087909411907951,
+    "model_iou": 0.0009315910063700683,
+    "model_f1": 0.0018614479046133723
+  },
+  {
+    "stem": "Paraguay_232281",
+    "region": "Paraguay",
+    "water_percent": 11.231488608816536,
+    "bucket": "10-30%",
+    "baseline_iou": 0.08348107155100641,
+    "baseline_f1": 0.15409788641993166,
+    "model_iou": 0.5496381704932572,
+    "model_f1": 0.7093761381965763
+  },
+  {
+    "stem": "Paraguay_24341",
+    "region": "Paraguay",
+    "water_percent": 26.07381817764007,
+    "bucket": "10-30%",
+    "baseline_iou": 0.8618158028639965,
+    "baseline_f1": 0.9257798774060048,
+    "model_iou": 0.8477297049380829,
+    "model_f1": 0.9175906006950191
+  },
+  {
+    "stem": "Paraguay_246154",
+    "region": "Paraguay",
+    "water_percent": 0.014548127502852198,
+    "bucket": "<1%",
+    "baseline_iou": 0.00019079782108888317,
+    "baseline_f1": 0.00038152284844958655,
+    "model_iou": 0.024495677233429394,
+    "model_f1": 0.04781997187060478
+  },
+  {
+    "stem": "Paraguay_247656",
+    "region": "Paraguay",
+    "water_percent": 8.027070789041536,
+    "bucket": "1-10%",
+    "baseline_iou": 0.9113691066119213,
+    "baseline_f1": 0.9536296296296296,
+    "model_iou": 0.8507088194705809,
+    "model_f1": 0.9193329718004338
+  },
+  {
+    "stem": "Paraguay_252217",
+    "region": "Paraguay",
+    "water_percent": 0.123547338241235,
+    "bucket": "<1%",
+    "baseline_iou": 0.0036013767624818935,
+    "baseline_f1": 0.0071769067796610166,
+    "model_iou": 0.018422826331161535,
+    "model_f1": 0.03617913081844253
+  },
+  {
+    "stem": "Paraguay_271769",
+    "region": "Paraguay",
+    "water_percent": 0.9992804874314932,
+    "bucket": "<1%",
+    "baseline_iou": 0.017471789019906175,
+    "baseline_f1": 0.03434353504137175,
+    "model_iou": 0.01862323679158668,
+    "model_f1": 0.03656550551555314
+  },
+  {
+    "stem": "Paraguay_280900",
+    "region": "Paraguay",
+    "water_percent": 2.4881752361125993,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06719435355974339,
+    "baseline_f1": 0.12592711596647654,
+    "model_iou": 0.24706233223978527,
+    "model_f1": 0.39623092744057015
+  },
+  {
+    "stem": "Paraguay_284928",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_305760",
+    "region": "Paraguay",
+    "water_percent": 16.716715183085643,
+    "bucket": "10-30%",
+    "baseline_iou": 0.044878288807201364,
+    "baseline_f1": 0.08590146677931827,
+    "model_iou": 0.1469898202640369,
+    "model_f1": 0.2563053615073931
+  },
+  {
+    "stem": "Paraguay_339807",
+    "region": "Paraguay",
+    "water_percent": 27.03635300993571,
+    "bucket": "10-30%",
+    "baseline_iou": 0.8228117416309298,
+    "baseline_f1": 0.9027939889115845,
+    "model_iou": 0.8255556440691468,
+    "model_f1": 0.9044431450240441
+  },
+  {
+    "stem": "Paraguay_34417",
+    "region": "Paraguay",
+    "water_percent": 100.0,
+    "bucket": ">30%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_36015",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_36146",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_403081",
+    "region": "Paraguay",
+    "water_percent": 0.47856494752647766,
+    "bucket": "<1%",
+    "baseline_iou": 0.013509132173349184,
+    "baseline_f1": 0.026658136063126465,
+    "model_iou": 0.3616944243301955,
+    "model_f1": 0.5312416910396172
+  },
+  {
+    "stem": "Paraguay_40936",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_44682",
+    "region": "Paraguay",
+    "water_percent": 0.49308041268686714,
+    "bucket": "<1%",
+    "baseline_iou": 0.009095349581445486,
+    "baseline_f1": 0.01802673966383469,
+    "model_iou": 0.26672535211267606,
+    "model_f1": 0.42112578179291177
+  },
+  {
+    "stem": "Paraguay_470303",
+    "region": "Paraguay",
+    "water_percent": 3.9546464414310885,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06585610622201636,
+    "baseline_f1": 0.12357410317879931,
+    "model_iou": 0.289557068698173,
+    "model_f1": 0.44907988289418654
+  },
+  {
+    "stem": "Paraguay_482517",
+    "region": "Paraguay",
+    "water_percent": 18.263908216593993,
+    "bucket": "10-30%",
+    "baseline_iou": 0.9086337142015445,
+    "baseline_f1": 0.9521300052919386,
+    "model_iou": 0.9090052634812706,
+    "model_f1": 0.9523339520013733
+  },
+  {
+    "stem": "Paraguay_48673",
+    "region": "Paraguay",
+    "water_percent": 0.04820217368849919,
+    "bucket": "<1%",
+    "baseline_iou": 0.001278459030714978,
+    "baseline_f1": 0.0025536533202813274,
+    "model_iou": 0.006134245605756754,
+    "model_f1": 0.012193692109274241
+  },
+  {
+    "stem": "Paraguay_511199",
+    "region": "Paraguay",
+    "water_percent": 4.427439400380699,
+    "bucket": "1-10%",
+    "baseline_iou": 0.10351426191494631,
+    "baseline_f1": 0.18760838076585673,
+    "model_iou": 0.4373423044575273,
+    "model_f1": 0.6085430076067876
+  },
+  {
+    "stem": "Paraguay_54421",
+    "region": "Paraguay",
+    "water_percent": 0.01645649553187011,
+    "bucket": "<1%",
+    "baseline_iou": 0.00046386799642158974,
+    "baseline_f1": 0.0009273058453386322,
+    "model_iou": 0.003476533399553017,
+    "model_f1": 0.006928977975748577
+  },
+  {
+    "stem": "Paraguay_581976",
+    "region": "Paraguay",
+    "water_percent": 56.75386854603953,
+    "bucket": ">30%",
+    "baseline_iou": 0.2735176859784545,
+    "baseline_f1": 0.42954674126619374,
+    "model_iou": 0.3120157992749829,
+    "model_f1": 0.47562811278248657
+  },
+  {
+    "stem": "Paraguay_59731",
+    "region": "Paraguay",
+    "water_percent": 1.0766737686328518,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06981151403400943,
+    "baseline_f1": 0.13051180159908077,
+    "model_iou": 0.4444444444444444,
+    "model_f1": 0.6153846153846154
+  },
+  {
+    "stem": "Paraguay_605682",
+    "region": "Paraguay",
+    "water_percent": 28.84061573764222,
+    "bucket": "10-30%",
+    "baseline_iou": 0.4018862072021506,
+    "baseline_f1": 0.5733506830118902,
+    "model_iou": 0.542935399948701,
+    "model_f1": 0.7037694513545445
+  },
+  {
+    "stem": "Paraguay_62897",
+    "region": "Paraguay",
+    "water_percent": 15.704859395763682,
+    "bucket": "10-30%",
+    "baseline_iou": 0.20646281875095435,
+    "baseline_f1": 0.34226138682782514,
+    "model_iou": 0.6070205479452054,
+    "model_f1": 0.7554608417687799
+  },
+  {
+    "stem": "Paraguay_648632",
+    "region": "Paraguay",
+    "water_percent": 7.026355522427996,
+    "bucket": "1-10%",
+    "baseline_iou": 0.04143076502783718,
+    "baseline_f1": 0.07956508760662499,
+    "model_iou": 0.33010358992677263,
+    "model_f1": 0.4963577159354124
+  },
+  {
+    "stem": "Paraguay_651904",
+    "region": "Paraguay",
+    "water_percent": 10.354317297129713,
+    "bucket": "10-30%",
+    "baseline_iou": 0.7104477611940299,
+    "baseline_f1": 0.8307155322862129,
+    "model_iou": 0.6854046289948748,
+    "model_f1": 0.8133413391698464
+  },
+  {
+    "stem": "Paraguay_657443",
+    "region": "Paraguay",
+    "water_percent": 24.779794283264366,
+    "bucket": "10-30%",
+    "baseline_iou": 0.8854161961971004,
+    "baseline_f1": 0.9392262546412744,
+    "model_iou": 0.8570593685410876,
+    "model_f1": 0.9230285073916581
+  },
+  {
+    "stem": "Paraguay_683296",
+    "region": "Paraguay",
+    "water_percent": 2.8468030977300582,
+    "bucket": "1-10%",
+    "baseline_iou": 0.11031027032915161,
+    "baseline_f1": 0.19870170217636574,
+    "model_iou": 0.6135500211059519,
+    "model_f1": 0.7604970568999346
+  },
+  {
+    "stem": "Paraguay_721886",
+    "region": "Paraguay",
+    "water_percent": 4.136074119183586,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0836244848511071,
+    "baseline_f1": 0.1543421840686764,
+    "model_iou": 0.3789328743545611,
+    "model_f1": 0.5496030755404663
+  },
+  {
+    "stem": "Paraguay_76868",
+    "region": "Paraguay",
+    "water_percent": 6.755660954712362,
+    "bucket": "1-10%",
+    "baseline_iou": 0.8602280866067985,
+    "baseline_f1": 0.9248630238412557,
+    "model_iou": 0.3998760222206328,
+    "model_f1": 0.5713020522864686
+  },
+  {
+    "stem": "Paraguay_7894",
+    "region": "Paraguay",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_790830",
+    "region": "Paraguay",
+    "water_percent": 12.223647620949777,
+    "bucket": "10-30%",
+    "baseline_iou": 0.9262062735569885,
+    "baseline_f1": 0.961689603311933,
+    "model_iou": 0.8806164655221259,
+    "model_f1": 0.9365189358561056
+  },
+  {
+    "stem": "Paraguay_791364",
+    "region": "Paraguay",
+    "water_percent": 0.46130307573729884,
+    "bucket": "<1%",
+    "baseline_iou": 0.010820457778998078,
+    "baseline_f1": 0.02140925759016211,
+    "model_iou": 0.2657272269753397,
+    "model_f1": 0.4198807157057654
+  },
+  {
+    "stem": "Paraguay_792268",
+    "region": "Paraguay",
+    "water_percent": 0.5068615957520171,
+    "bucket": "<1%",
+    "baseline_iou": 0.009864549111927056,
+    "baseline_f1": 0.01953638063758535,
+    "model_iou": 0.2850026219192449,
+    "model_f1": 0.4435829422566823
+  },
+  {
+    "stem": "Paraguay_795075",
+    "region": "Paraguay",
+    "water_percent": 1.2985323102240762,
+    "bucket": "1-10%",
+    "baseline_iou": 0.031053794619368868,
+    "baseline_f1": 0.06023700175766854,
+    "model_iou": 0.510357432981316,
+    "model_f1": 0.6758101384967057
+  },
+  {
+    "stem": "Paraguay_80102",
+    "region": "Paraguay",
+    "water_percent": 0.008419537920450675,
+    "bucket": "<1%",
+    "baseline_iou": 0.00016058035629947293,
+    "baseline_f1": 0.0003211091487774241,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Paraguay_822142",
+    "region": "Paraguay",
+    "water_percent": 30.60638212300774,
+    "bucket": ">30%",
+    "baseline_iou": 0.840509458427756,
+    "baseline_f1": 0.913344351020892,
+    "model_iou": 0.8199536548432983,
+    "model_f1": 0.9010709175601485
+  },
+  {
+    "stem": "Paraguay_868895",
+    "region": "Paraguay",
+    "water_percent": 8.999320353416223,
+    "bucket": "1-10%",
+    "baseline_iou": 0.30439548394168586,
+    "baseline_f1": 0.46672268907563025,
+    "model_iou": 0.43628557517815253,
+    "model_f1": 0.6075192604006163
+  },
+  {
+    "stem": "Paraguay_892933",
+    "region": "Paraguay",
+    "water_percent": 10.141847230838753,
+    "bucket": "10-30%",
+    "baseline_iou": 0.04303594673074997,
+    "baseline_f1": 0.08252054373704017,
+    "model_iou": 0.2512342292923752,
+    "model_f1": 0.40157825515124945
+  },
+  {
+    "stem": "Paraguay_896458",
+    "region": "Paraguay",
+    "water_percent": 20.480601210260943,
+    "bucket": "10-30%",
+    "baseline_iou": 0.906069451434323,
+    "baseline_f1": 0.9507202906510076,
+    "model_iou": 0.8865999192881988,
+    "model_f1": 0.9398918236174916
+  },
+  {
+    "stem": "Paraguay_913449",
+    "region": "Paraguay",
+    "water_percent": 2.0938921128787764,
+    "bucket": "1-10%",
+    "baseline_iou": 0.040501245536433125,
+    "baseline_f1": 0.07784948977269623,
+    "model_iou": 0.2953216374269006,
+    "model_f1": 0.45598194130925507
+  },
+  {
+    "stem": "Paraguay_921838",
+    "region": "Paraguay",
+    "water_percent": 2.802233525834704,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02074318331974263,
+    "baseline_f1": 0.04064329531406713,
+    "model_iou": 0.07804004922250811,
+    "model_f1": 0.14478135441960857
+  },
+  {
+    "stem": "Paraguay_934240",
+    "region": "Paraguay",
+    "water_percent": 7.7501932955163095,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05578010436980466,
+    "baseline_f1": 0.10566614039975647,
+    "model_iou": 0.22648279743896432,
+    "model_f1": 0.3693207893529142
+  },
+  {
+    "stem": "Paraguay_989230",
+    "region": "Paraguay",
+    "water_percent": 16.61940833481729,
+    "bucket": "10-30%",
+    "baseline_iou": 0.852613468785843,
+    "baseline_f1": 0.9204439923937558,
+    "model_iou": 0.8528512182477967,
+    "model_f1": 0.9205825161227145
+  },
+  {
+    "stem": "Paraguay_997480",
+    "region": "Paraguay",
+    "water_percent": 7.615875043504534,
+    "bucket": "1-10%",
+    "baseline_iou": 0.22137811359940973,
+    "baseline_f1": 0.36250545369117004,
+    "model_iou": 0.588018464930412,
+    "model_f1": 0.7405688005727054
+  },
+  {
+    "stem": "Somalia_1068756",
+    "region": "Somalia",
+    "water_percent": 3.7682387983440653,
+    "bucket": "1-10%",
+    "baseline_iou": 0.04931317763875593,
+    "baseline_f1": 0.09399134346091827,
+    "model_iou": 0.06037703066631917,
+    "model_f1": 0.11387842044895953
+  },
+  {
+    "stem": "Somalia_1087508",
+    "region": "Somalia",
+    "water_percent": 4.702794822559518,
+    "bucket": "1-10%",
+    "baseline_iou": 0.11175898931000972,
+    "baseline_f1": 0.20104895104895104,
+    "model_iou": 0.24368607806303486,
+    "model_f1": 0.3918771502895024
+  },
+  {
+    "stem": "Somalia_12849",
+    "region": "Somalia",
+    "water_percent": 19.383768424791334,
+    "bucket": "10-30%",
+    "baseline_iou": 0.20282303354523454,
+    "baseline_f1": 0.3372450109263841,
+    "model_iou": 0.10973350734644045,
+    "model_f1": 0.1977655114854227
+  },
+  {
+    "stem": "Somalia_166342",
+    "region": "Somalia",
+    "water_percent": 0.005436900241942061,
+    "bucket": "<1%",
+    "baseline_iou": 7.450176941702365e-05,
+    "baseline_f1": 0.00014899243863373933,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_167787",
+    "region": "Somalia",
+    "water_percent": 0.10210981570312819,
+    "bucket": "<1%",
+    "baseline_iou": 0.0021118710402417994,
+    "baseline_f1": 0.00421484088008971,
+    "model_iou": 0.032711111111111114,
+    "model_f1": 0.06334997417799966
+  },
+  {
+    "stem": "Somalia_195014",
+    "region": "Somalia",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_205466",
+    "region": "Somalia",
+    "water_percent": 0.03873611955715869,
+    "bucket": "<1%",
+    "baseline_iou": 0.0005005101353302404,
+    "baseline_f1": 0.0010005195005098801,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_230192",
+    "region": "Somalia",
+    "water_percent": 0.0249112001614933,
+    "bucket": "<1%",
+    "baseline_iou": 0.0005743086017565922,
+    "baseline_f1": 0.001147957921404467,
+    "model_iou": 0.002166149522861659,
+    "model_f1": 0.004322934922304007
+  },
+  {
+    "stem": "Somalia_256539",
+    "region": "Somalia",
+    "water_percent": 0.010393084531927103,
+    "bucket": "<1%",
+    "baseline_iou": 0.00020335414722840258,
+    "baseline_f1": 0.0004066256054535669,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_295782",
+    "region": "Somalia",
+    "water_percent": 8.02863327757552,
+    "bucket": "1-10%",
+    "baseline_iou": 0.13632865937072502,
+    "baseline_f1": 0.23994582596591552,
+    "model_iou": 0.1770087509944312,
+    "model_f1": 0.30077728962487327
+  },
+  {
+    "stem": "Somalia_32375",
+    "region": "Somalia",
+    "water_percent": 0.0007447569113441373,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_371421",
+    "region": "Somalia",
+    "water_percent": 14.974725926824304,
+    "bucket": "10-30%",
+    "baseline_iou": 0.11138816488986328,
+    "baseline_f1": 0.20044871523515218,
+    "model_iou": 0.07628558880253584,
+    "model_f1": 0.14175714995387126
+  },
+  {
+    "stem": "Somalia_60129",
+    "region": "Somalia",
+    "water_percent": 0.3044749269170227,
+    "bucket": "<1%",
+    "baseline_iou": 0.0055028767315518316,
+    "baseline_f1": 0.010945521606938145,
+    "model_iou": 0.003519946362722092,
+    "model_f1": 0.007015199599131452
+  },
+  {
+    "stem": "Somalia_61368",
+    "region": "Somalia",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_626316",
+    "region": "Somalia",
+    "water_percent": 12.811432085042982,
+    "bucket": "10-30%",
+    "baseline_iou": 0.30315742989622435,
+    "baseline_f1": 0.46526601152151814,
+    "model_iou": 0.35575711766187956,
+    "model_f1": 0.5248095149600446
+  },
+  {
+    "stem": "Somalia_649376",
+    "region": "Somalia",
+    "water_percent": 2.43066899403534,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03165081231295425,
+    "baseline_f1": 0.06135954517787534,
+    "model_iou": 0.03035199653500808,
+    "model_f1": 0.058915781474834686
+  },
+  {
+    "stem": "Somalia_685158",
+    "region": "Somalia",
+    "water_percent": 13.730485512835834,
+    "bucket": "10-30%",
+    "baseline_iou": 0.22231042489432218,
+    "baseline_f1": 0.36375444464288614,
+    "model_iou": 0.3206497797356828,
+    "model_f1": 0.4855939623900263
+  },
+  {
+    "stem": "Somalia_699062",
+    "region": "Somalia",
+    "water_percent": 1.6262162188751266,
+    "bucket": "1-10%",
+    "baseline_iou": 0.045131718128242584,
+    "baseline_f1": 0.08636560798110753,
+    "model_iou": 0.12342483482051632,
+    "model_f1": 0.2197295822470139
+  },
+  {
+    "stem": "Somalia_7931",
+    "region": "Somalia",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_886726",
+    "region": "Somalia",
+    "water_percent": 31.664936571664096,
+    "bucket": ">30%",
+    "baseline_iou": 0.463361418204841,
+    "baseline_f1": 0.6332836337495673,
+    "model_iou": 0.4149246823656459,
+    "model_f1": 0.5864972002211787
+  },
+  {
+    "stem": "Somalia_93023",
+    "region": "Somalia",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_970508",
+    "region": "Somalia",
+    "water_percent": 17.512942867144464,
+    "bucket": "10-30%",
+    "baseline_iou": 0.1604412728879429,
+    "baseline_f1": 0.27651769483975563,
+    "model_iou": 0.13234684184472126,
+    "model_f1": 0.23375672003308323
+  },
+  {
+    "stem": "Somalia_989553",
+    "region": "Somalia",
+    "water_percent": 2.090204037255826,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Somalia_992457",
+    "region": "Somalia",
+    "water_percent": 4.335717555189129,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08420231033406182,
+    "baseline_f1": 0.15532582716618193,
+    "model_iou": 0.11333446866485014,
+    "model_f1": 0.20359464627151053
+  },
+  {
+    "stem": "Spain_1167260",
+    "region": "Spain",
+    "water_percent": 16.20594590567022,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5002009992534313,
+    "baseline_f1": 0.666845308731769,
+    "model_iou": 0.527930326732124,
+    "model_f1": 0.6910397908800465
+  },
+  {
+    "stem": "Spain_1199913",
+    "region": "Spain",
+    "water_percent": 3.848461438918321,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0889076306008571,
+    "baseline_f1": 0.16329691904500301,
+    "model_iou": 0.3153707775334799,
+    "model_f1": 0.47951616824702165
+  },
+  {
+    "stem": "Spain_2472849",
+    "region": "Spain",
+    "water_percent": 0.007464064458089278,
+    "bucket": "<1%",
+    "baseline_iou": 8.416315248591375e-05,
+    "baseline_f1": 0.00016831213929158307,
+    "model_iou": 0.0020927799093128706,
+    "model_f1": 0.004176818656456666
+  },
+  {
+    "stem": "Spain_2523247",
+    "region": "Spain",
+    "water_percent": 0.9214583284298726,
+    "bucket": "<1%",
+    "baseline_iou": 0.011184997368798737,
+    "baseline_f1": 0.02212255402899209,
+    "model_iou": 0.08801903114186851,
+    "model_f1": 0.1617968594712781
+  },
+  {
+    "stem": "Spain_2594119",
+    "region": "Spain",
+    "water_percent": 1.0943107607224805,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0300371053290537,
+    "baseline_f1": 0.05832237532735892,
+    "model_iou": 0.15739248178477014,
+    "model_f1": 0.2719777158774373
+  },
+  {
+    "stem": "Spain_2938657",
+    "region": "Spain",
+    "water_percent": 3.7359783107665385,
+    "bucket": "1-10%",
+    "baseline_iou": 0.08616864918158498,
+    "baseline_f1": 0.1586653219028408,
+    "model_iou": 0.6225878932064499,
+    "model_f1": 0.7674011322445322
+  },
+  {
+    "stem": "Spain_3285448",
+    "region": "Spain",
+    "water_percent": 21.510337852141664,
+    "bucket": "10-30%",
+    "baseline_iou": 0.9031097582067869,
+    "baseline_f1": 0.9490884635658069,
+    "model_iou": 0.9164531274184394,
+    "model_f1": 0.9564054704045372
+  },
+  {
+    "stem": "Spain_337094",
+    "region": "Spain",
+    "water_percent": 9.944114359668216,
+    "bucket": "1-10%",
+    "baseline_iou": 0.22998006120745618,
+    "baseline_f1": 0.373957381035409,
+    "model_iou": 0.3850532046523138,
+    "model_f1": 0.5560121493657316
+  },
+  {
+    "stem": "Spain_4282030",
+    "region": "Spain",
+    "water_percent": 37.42328160601747,
+    "bucket": ">30%",
+    "baseline_iou": 0.6083088774761556,
+    "baseline_f1": 0.7564577749900211,
+    "model_iou": 0.6969883852400041,
+    "model_f1": 0.8214415505754088
+  },
+  {
+    "stem": "Spain_4915752",
+    "region": "Spain",
+    "water_percent": 2.9225109040133046,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1251066552901024,
+    "baseline_f1": 0.2223907479381932,
+    "model_iou": 0.39443168143529156,
+    "model_f1": 0.5657239242144902
+  },
+  {
+    "stem": "Spain_5678382",
+    "region": "Spain",
+    "water_percent": 1.3383473978103335,
+    "bucket": "1-10%",
+    "baseline_iou": 0.016017309027497456,
+    "baseline_f1": 0.03152959872864521,
+    "model_iou": 0.03767624624393251,
+    "model_f1": 0.07261657261657262
+  },
+  {
+    "stem": "Spain_5816638",
+    "region": "Spain",
+    "water_percent": 0.14363361654533682,
+    "bucket": "<1%",
+    "baseline_iou": 0.0017176163614690781,
+    "baseline_f1": 0.0034293424282742725,
+    "model_iou": 0.06844262295081967,
+    "model_f1": 0.12811660912926737
+  },
+  {
+    "stem": "Spain_5923267",
+    "region": "Spain",
+    "water_percent": 92.24515498411624,
+    "bucket": ">30%",
+    "baseline_iou": 0.9578532582478126,
+    "baseline_f1": 0.9784729822959731,
+    "model_iou": 0.9373708795961775,
+    "model_f1": 0.9676731383425786
+  },
+  {
+    "stem": "Spain_6199994",
+    "region": "Spain",
+    "water_percent": 0.29959752625895747,
+    "bucket": "<1%",
+    "baseline_iou": 0.0031750564874467673,
+    "baseline_f1": 0.006330014820272793,
+    "model_iou": 0.11542689629901062,
+    "model_f1": 0.20696452036793692
+  },
+  {
+    "stem": "Spain_6537196",
+    "region": "Spain",
+    "water_percent": 1.166010385454089,
+    "bucket": "1-10%",
+    "baseline_iou": 0.025211346608437837,
+    "baseline_f1": 0.04918273035475267,
+    "model_iou": 0.17142857142857143,
+    "model_f1": 0.2926829268292683
+  },
+  {
+    "stem": "Spain_716716",
+    "region": "Spain",
+    "water_percent": 0.9862923411300384,
+    "bucket": "<1%",
+    "baseline_iou": 0.027364929514575493,
+    "baseline_f1": 0.05327207251955793,
+    "model_iou": 0.08564582206075597,
+    "model_f1": 0.15777856888572445
+  },
+  {
+    "stem": "Spain_7604243",
+    "region": "Spain",
+    "water_percent": 7.982951092220161,
+    "bucket": "1-10%",
+    "baseline_iou": 0.9258863525983487,
+    "baseline_f1": 0.9615171231149443,
+    "model_iou": 0.8816011360610633,
+    "model_f1": 0.9370754716981132
+  },
+  {
+    "stem": "Spain_7786924",
+    "region": "Spain",
+    "water_percent": 1.4240065868146086,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02700205247585453,
+    "baseline_f1": 0.052584223002785806,
+    "model_iou": 0.1534135840435814,
+    "model_f1": 0.2660166069932201
+  },
+  {
+    "stem": "Spain_7856615",
+    "region": "Spain",
+    "water_percent": 3.6927001569858713,
+    "bucket": "1-10%",
+    "baseline_iou": 0.09474265490279747,
+    "baseline_f1": 0.1730866235612418,
+    "model_iou": 0.21823420255884363,
+    "model_f1": 0.3582795526516214
+  },
+  {
+    "stem": "Spain_8104659",
+    "region": "Spain",
+    "water_percent": 1.3323974920499237,
+    "bucket": "1-10%",
+    "baseline_iou": 0.026636378933198722,
+    "baseline_f1": 0.05189058069591727,
+    "model_iou": 0.07658569500674764,
+    "model_f1": 0.14227514885615794
+  },
+  {
+    "stem": "Spain_8154154",
+    "region": "Spain",
+    "water_percent": 1.7474593814691675,
+    "bucket": "1-10%",
+    "baseline_iou": 0.043422978705217385,
+    "baseline_f1": 0.08323178536685269,
+    "model_iou": 0.20359826918697335,
+    "model_f1": 0.3383159886471145
+  },
+  {
+    "stem": "Spain_8199661",
+    "region": "Spain",
+    "water_percent": 3.1283473866351725,
+    "bucket": "1-10%",
+    "baseline_iou": 0.16112224448897797,
+    "baseline_f1": 0.27752847773558853,
+    "model_iou": 0.43198282801180576,
+    "model_f1": 0.6033352070451564
+  },
+  {
+    "stem": "Spain_8372658",
+    "region": "Spain",
+    "water_percent": 35.5488608548296,
+    "bucket": ">30%",
+    "baseline_iou": 0.7451712606939038,
+    "baseline_f1": 0.8539806693786759,
+    "model_iou": 0.7849270599551138,
+    "model_f1": 0.8795060342408083
+  },
+  {
+    "stem": "Spain_8565131",
+    "region": "Spain",
+    "water_percent": 19.94790604258524,
+    "bucket": "10-30%",
+    "baseline_iou": 0.6373462806109792,
+    "baseline_f1": 0.7785112876344668,
+    "model_iou": 0.657702473938998,
+    "model_f1": 0.7935108793994607
+  },
+  {
+    "stem": "Sri-Lanka_101973",
+    "region": "Sri-Lanka",
+    "water_percent": 1.1250095339791015,
+    "bucket": "1-10%",
+    "baseline_iou": 0.026668330365144006,
+    "baseline_f1": 0.05195120873292969,
+    "model_iou": 0.03799873337555415,
+    "model_f1": 0.07321537522879805
+  },
+  {
+    "stem": "Sri-Lanka_1038087",
+    "region": "Sri-Lanka",
+    "water_percent": 6.916098908225313,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1480585474969,
+    "baseline_f1": 0.2579285661340365,
+    "model_iou": 0.2846445075441234,
+    "model_f1": 0.44314906711162155
+  },
+  {
+    "stem": "Sri-Lanka_120804",
+    "region": "Sri-Lanka",
+    "water_percent": 2.667246502862941,
+    "bucket": "1-10%",
+    "baseline_iou": 0.04004793489772031,
+    "baseline_f1": 0.07701170985288995,
+    "model_iou": 0.11805227257378267,
+    "model_f1": 0.2111748716399879
+  },
+  {
+    "stem": "Sri-Lanka_132922",
+    "region": "Sri-Lanka",
+    "water_percent": 6.806208824954319,
+    "bucket": "1-10%",
+    "baseline_iou": 0.12423143622891376,
+    "baseline_f1": 0.22100687140653485,
+    "model_iou": 0.18099127529237052,
+    "model_f1": 0.30650738761395785
+  },
+  {
+    "stem": "Sri-Lanka_135713",
+    "region": "Sri-Lanka",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Sri-Lanka_14484",
+    "region": "Sri-Lanka",
+    "water_percent": 16.75150313557313,
+    "bucket": "10-30%",
+    "baseline_iou": 0.2918653536864084,
+    "baseline_f1": 0.4518510429179862,
+    "model_iou": 0.18920826080820435,
+    "model_f1": 0.31820878990466395
+  },
+  {
+    "stem": "Sri-Lanka_152185",
+    "region": "Sri-Lanka",
+    "water_percent": 0.8217518515132121,
+    "bucket": "<1%",
+    "baseline_iou": 0.01775162786026347,
+    "baseline_f1": 0.0348840077958603,
+    "model_iou": 0.19343926191696567,
+    "model_f1": 0.3241711046211991
+  },
+  {
+    "stem": "Sri-Lanka_163406",
+    "region": "Sri-Lanka",
+    "water_percent": 1.9327612563329382,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05751932773109244,
+    "baseline_f1": 0.10878161036451248,
+    "model_iou": 0.18046500184524542,
+    "model_f1": 0.30575239683201333
+  },
+  {
+    "stem": "Sri-Lanka_178753",
+    "region": "Sri-Lanka",
+    "water_percent": 0.25406403989396276,
+    "bucket": "<1%",
+    "baseline_iou": 0.005078165984681565,
+    "baseline_f1": 0.01010501701567948,
+    "model_iou": 0.08787878787878788,
+    "model_f1": 0.1615598885793872
+  },
+  {
+    "stem": "Sri-Lanka_233609",
+    "region": "Sri-Lanka",
+    "water_percent": 2.664524986484857,
+    "bucket": "1-10%",
+    "baseline_iou": 0.06574296446825544,
+    "baseline_f1": 0.12337489743797164,
+    "model_iou": 0.1068726897618843,
+    "model_f1": 0.1931074652946316
+  },
+  {
+    "stem": "Sri-Lanka_236030",
+    "region": "Sri-Lanka",
+    "water_percent": 0.8306662787314518,
+    "bucket": "<1%",
+    "baseline_iou": 0.01996271093852055,
+    "baseline_f1": 0.03914400149031297,
+    "model_iou": 0.5771971496437055,
+    "model_f1": 0.7319277108433735
+  },
+  {
+    "stem": "Sri-Lanka_236628",
+    "region": "Sri-Lanka",
+    "water_percent": 1.1753171944976386,
+    "bucket": "1-10%",
+    "baseline_iou": 0.038081541938255234,
+    "baseline_f1": 0.07336907631967184,
+    "model_iou": 0.15896077258353986,
+    "model_f1": 0.2743160533883932
+  },
+  {
+    "stem": "Sri-Lanka_249079",
+    "region": "Sri-Lanka",
+    "water_percent": 0.006675769989379457,
+    "bucket": "<1%",
+    "baseline_iou": 0.00010359607888841407,
+    "baseline_f1": 0.0002071706957050925,
+    "model_iou": 0.00023408239700374532,
+    "model_f1": 0.000468055230517201
+  },
+  {
+    "stem": "Sri-Lanka_31559",
+    "region": "Sri-Lanka",
+    "water_percent": 0.21207065974999428,
+    "bucket": "<1%",
+    "baseline_iou": 0.002451886443708459,
+    "baseline_f1": 0.00489177880128842,
+    "model_iou": 0.005247048535198951,
+    "model_f1": 0.010439321444106133
+  },
+  {
+    "stem": "Sri-Lanka_321316",
+    "region": "Sri-Lanka",
+    "water_percent": 37.01244211859299,
+    "bucket": ">30%",
+    "baseline_iou": 0.36639388173572496,
+    "baseline_f1": 0.5362932118377114,
+    "model_iou": 0.5974455374921984,
+    "model_f1": 0.7480011348995568
+  },
+  {
+    "stem": "Sri-Lanka_400518",
+    "region": "Sri-Lanka",
+    "water_percent": 0.90789794921875,
+    "bucket": "<1%",
+    "baseline_iou": 0.04298143098298922,
+    "baseline_f1": 0.0824203187250996,
+    "model_iou": 0.48293595137914913,
+    "model_f1": 0.6513240857503153
+  },
+  {
+    "stem": "Sri-Lanka_49764",
+    "region": "Sri-Lanka",
+    "water_percent": 1.021683023458434,
+    "bucket": "1-10%",
+    "baseline_iou": 0.010603252203614818,
+    "baseline_f1": 0.02098400570252369,
+    "model_iou": 0.023606975754997872,
+    "model_f1": 0.046125077913982966
+  },
+  {
+    "stem": "Sri-Lanka_52223",
+    "region": "Sri-Lanka",
+    "water_percent": 0.0,
+    "bucket": "<1%",
+    "baseline_iou": 0.0,
+    "baseline_f1": 0.0,
+    "model_iou": 0.0,
+    "model_f1": 0.0
+  },
+  {
+    "stem": "Sri-Lanka_523539",
+    "region": "Sri-Lanka",
+    "water_percent": 11.291142021503013,
+    "bucket": "10-30%",
+    "baseline_iou": 0.17893238434163702,
+    "baseline_f1": 0.3035498671818401,
+    "model_iou": 0.20234090846938496,
+    "model_f1": 0.3365782650229723
+  },
+  {
+    "stem": "Sri-Lanka_551926",
+    "region": "Sri-Lanka",
+    "water_percent": 7.448873364576858,
+    "bucket": "1-10%",
+    "baseline_iou": 0.14775182990589056,
+    "baseline_f1": 0.25746302651158554,
+    "model_iou": 0.14750487922791813,
+    "model_f1": 0.25708802097149186
+  },
+  {
+    "stem": "Sri-Lanka_55568",
+    "region": "Sri-Lanka",
+    "water_percent": 7.17285702205226,
+    "bucket": "1-10%",
+    "baseline_iou": 0.4654481568240661,
+    "baseline_f1": 0.6352297823114944,
+    "model_iou": 0.7146341463414634,
+    "model_f1": 0.833570412517781
+  },
+  {
+    "stem": "Sri-Lanka_579082",
+    "region": "Sri-Lanka",
+    "water_percent": 6.946024978032584,
+    "bucket": "1-10%",
+    "baseline_iou": 0.30366873763493113,
+    "baseline_f1": 0.46586794462193826,
+    "model_iou": 0.39334589448631496,
+    "model_f1": 0.5646062417707555
+  },
+  {
+    "stem": "Sri-Lanka_612594",
+    "region": "Sri-Lanka",
+    "water_percent": 16.448654394982604,
+    "bucket": "10-30%",
+    "baseline_iou": 0.7750500090925623,
+    "baseline_f1": 0.8732711812314312,
+    "model_iou": 0.8221297868686676,
+    "model_f1": 0.9023833458993047
+  },
+  {
+    "stem": "Sri-Lanka_63307",
+    "region": "Sri-Lanka",
+    "water_percent": 2.6882908980027445,
+    "bucket": "1-10%",
+    "baseline_iou": 0.013150291896630736,
+    "baseline_f1": 0.025959212570552028,
+    "model_iou": 0.08078341732038027,
+    "model_f1": 0.1494904825995001
+  },
+  {
+    "stem": "Sri-Lanka_653336",
+    "region": "Sri-Lanka",
+    "water_percent": 6.876478217746243,
+    "bucket": "1-10%",
+    "baseline_iou": 0.23881322957198445,
+    "baseline_f1": 0.3855516293678838,
+    "model_iou": 0.281365087159342,
+    "model_f1": 0.43916459091780036
+  },
+  {
+    "stem": "Sri-Lanka_748447",
+    "region": "Sri-Lanka",
+    "water_percent": 0.4891908486397766,
+    "bucket": "<1%",
+    "baseline_iou": 0.017034700315457414,
+    "baseline_f1": 0.033498759305210915,
+    "model_iou": 0.17134689759542626,
+    "model_f1": 0.29256388171116854
+  },
+  {
+    "stem": "Sri-Lanka_845821",
+    "region": "Sri-Lanka",
+    "water_percent": 97.41981574859402,
+    "bucket": ">30%",
+    "baseline_iou": 0.27057999618004713,
+    "baseline_f1": 0.4259157187954101,
+    "model_iou": 0.004097259824256972,
+    "model_f1": 0.008161081576846646
+  },
+  {
+    "stem": "Sri-Lanka_847275",
+    "region": "Sri-Lanka",
+    "water_percent": 21.8118006059794,
+    "bucket": "10-30%",
+    "baseline_iou": 0.677262717065598,
+    "baseline_f1": 0.8075809593508184,
+    "model_iou": 0.6801466754718293,
+    "model_f1": 0.8096277371507773
+  },
+  {
+    "stem": "Sri-Lanka_85652",
+    "region": "Sri-Lanka",
+    "water_percent": 0.9834420980098091,
+    "bucket": "<1%",
+    "baseline_iou": 0.01642553989729641,
+    "baseline_f1": 0.032320203010554244,
+    "model_iou": 0.08007414272474514,
+    "model_f1": 0.14827527029346146
+  },
+  {
+    "stem": "Sri-Lanka_883641",
+    "region": "Sri-Lanka",
+    "water_percent": 5.132182177795223,
+    "bucket": "1-10%",
+    "baseline_iou": 0.24065702501665975,
+    "baseline_f1": 0.38795093271394354,
+    "model_iou": 0.3184702738810955,
+    "model_f1": 0.4830905636478784
+  },
+  {
+    "stem": "Sri-Lanka_916628",
+    "region": "Sri-Lanka",
+    "water_percent": 31.34632305759307,
+    "bucket": ">30%",
+    "baseline_iou": 0.7533016811771774,
+    "baseline_f1": 0.859294996707476,
+    "model_iou": 0.712946386507114,
+    "model_f1": 0.8324211336945461
+  },
+  {
+    "stem": "Sri-Lanka_92824",
+    "region": "Sri-Lanka",
+    "water_percent": 22.47004129716924,
+    "bucket": "10-30%",
+    "baseline_iou": 0.4415074813505239,
+    "baseline_f1": 0.6125635656595873,
+    "model_iou": 0.4217893289602279,
+    "model_f1": 0.5933218380091341
+  },
+  {
+    "stem": "Sri-Lanka_956740",
+    "region": "Sri-Lanka",
+    "water_percent": 3.918463495142748,
+    "bucket": "1-10%",
+    "baseline_iou": 0.8559170938266102,
+    "baseline_f1": 0.9223656559591714,
+    "model_iou": 0.718049225159526,
+    "model_f1": 0.8358890009020004
+  },
+  {
+    "stem": "USA_1010394",
+    "region": "USA",
+    "water_percent": 0.5718013511017492,
+    "bucket": "<1%",
+    "baseline_iou": 0.014621249245005642,
+    "baseline_f1": 0.02882109803216821,
+    "model_iou": 0.1524181729360039,
+    "model_f1": 0.2645188639253921
+  },
+  {
+    "stem": "USA_1039203",
+    "region": "USA",
+    "water_percent": 0.6202591811321793,
+    "bucket": "<1%",
+    "baseline_iou": 0.017506902011069386,
+    "baseline_f1": 0.03441136758181701,
+    "model_iou": 0.1674280775404371,
+    "model_f1": 0.28683236382866206
+  },
+  {
+    "stem": "USA_1068362",
+    "region": "USA",
+    "water_percent": 11.876668845847872,
+    "bucket": "10-30%",
+    "baseline_iou": 0.3240463293765126,
+    "baseline_f1": 0.48947883799368946,
+    "model_iou": 0.581125116831283,
+    "model_f1": 0.7350779652351738
+  },
+  {
+    "stem": "USA_1082482",
+    "region": "USA",
+    "water_percent": 0.8525474227047254,
+    "bucket": "<1%",
+    "baseline_iou": 0.025017815717253197,
+    "baseline_f1": 0.04881440172773398,
+    "model_iou": 0.1926264163707086,
+    "model_f1": 0.32302892796369825
+  },
+  {
+    "stem": "USA_11422",
+    "region": "USA",
+    "water_percent": 13.72732638205784,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5688610018079336,
+    "baseline_f1": 0.7251898047722343,
+    "model_iou": 0.56534728669086,
+    "model_f1": 0.7223282545638836
+  },
+  {
+    "stem": "USA_114964",
+    "region": "USA",
+    "water_percent": 0.1398298408697022,
+    "bucket": "<1%",
+    "baseline_iou": 0.004980021154072159,
+    "baseline_f1": 0.009910686877841282,
+    "model_iou": 0.018361581920903956,
+    "model_f1": 0.036061026352288486
+  },
+  {
+    "stem": "USA_115033",
+    "region": "USA",
+    "water_percent": 0.8928009812555039,
+    "bucket": "<1%",
+    "baseline_iou": 0.021887204761019154,
+    "baseline_f1": 0.042836831029972135,
+    "model_iou": 0.29854316155686017,
+    "model_f1": 0.4598124581379772
+  },
+  {
+    "stem": "USA_170264",
+    "region": "USA",
+    "water_percent": 16.640663991731543,
+    "bucket": "10-30%",
+    "baseline_iou": 0.7051784160139252,
+    "baseline_f1": 0.8271022074773511,
+    "model_iou": 0.7358634637609378,
+    "model_f1": 0.8478356496617645
+  },
+  {
+    "stem": "USA_179917",
+    "region": "USA",
+    "water_percent": 0.19468260835365375,
+    "bucket": "<1%",
+    "baseline_iou": 0.004765893532826897,
+    "baseline_f1": 0.009486575058931754,
+    "model_iou": 0.13356598984771573,
+    "model_f1": 0.23565631122306185
+  },
+  {
+    "stem": "USA_181263",
+    "region": "USA",
+    "water_percent": 0.5180578761604397,
+    "bucket": "<1%",
+    "baseline_iou": 0.013454539963456805,
+    "baseline_f1": 0.02655183717257204,
+    "model_iou": 0.019934182132067328,
+    "model_f1": 0.03908915394990876
+  },
+  {
+    "stem": "USA_181503",
+    "region": "USA",
+    "water_percent": 0.46227635606323564,
+    "bucket": "<1%",
+    "baseline_iou": 0.014164157612252913,
+    "baseline_f1": 0.027932672449401074,
+    "model_iou": 0.07837593304682199,
+    "model_f1": 0.14535920293654955
+  },
+  {
+    "stem": "USA_19225",
+    "region": "USA",
+    "water_percent": 0.5236445345338268,
+    "bucket": "<1%",
+    "baseline_iou": 0.014382829114779894,
+    "baseline_f1": 0.02835779293963668,
+    "model_iou": 0.138602372356885,
+    "model_f1": 0.24346053674555543
+  },
+  {
+    "stem": "USA_198411",
+    "region": "USA",
+    "water_percent": 10.396517783999903,
+    "bucket": "10-30%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.32887984836577133,
+    "model_f1": 0.49497303878935467
+  },
+  {
+    "stem": "USA_211406",
+    "region": "USA",
+    "water_percent": 0.42761316969739965,
+    "bucket": "<1%",
+    "baseline_iou": 0.015286299335443513,
+    "baseline_f1": 0.030112293144208036,
+    "model_iou": 0.08547933347760225,
+    "model_f1": 0.15749601275917066
+  },
+  {
+    "stem": "USA_217598",
+    "region": "USA",
+    "water_percent": 17.56113343505596,
+    "bucket": "10-30%",
+    "baseline_iou": 0.4500675333445889,
+    "baseline_f1": 0.6207538931742105,
+    "model_iou": 0.6824268474127955,
+    "model_f1": 0.8112410337034489
+  },
+  {
+    "stem": "USA_224165",
+    "region": "USA",
+    "water_percent": 0.06427926382497111,
+    "bucket": "<1%",
+    "baseline_iou": 0.0019720763665400346,
+    "baseline_f1": 0.003936389871644711,
+    "model_iou": 0.04332425068119891,
+    "model_f1": 0.08305040480543223
+  },
+  {
+    "stem": "USA_225017",
+    "region": "USA",
+    "water_percent": 6.391947153192828,
+    "bucket": "1-10%",
+    "baseline_iou": 0.24724755150287064,
+    "baseline_f1": 0.3964690910075546,
+    "model_iou": 0.5205550918196995,
+    "model_f1": 0.6846908666712413
+  },
+  {
+    "stem": "USA_231124",
+    "region": "USA",
+    "water_percent": 2.936264295598785,
+    "bucket": "1-10%",
+    "baseline_iou": NaN,
+    "baseline_f1": NaN,
+    "model_iou": 0.03167148362235067,
+    "model_f1": 0.06139838916773666
+  },
+  {
+    "stem": "USA_232060",
+    "region": "USA",
+    "water_percent": 0.6438350241536399,
+    "bucket": "<1%",
+    "baseline_iou": 0.015786608600979857,
+    "baseline_f1": 0.031082529474812434,
+    "model_iou": 0.17941747572815533,
+    "model_f1": 0.30424761277576556
+  },
+  {
+    "stem": "USA_251323",
+    "region": "USA",
+    "water_percent": 0.2692595955950875,
+    "bucket": "<1%",
+    "baseline_iou": 0.01176492248775638,
+    "baseline_f1": 0.023256237148108382,
+    "model_iou": 0.048383344963945106,
+    "model_f1": 0.09230086532061238
+  },
+  {
+    "stem": "USA_260929",
+    "region": "USA",
+    "water_percent": 1.915890247704286,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05243776911144295,
+    "baseline_f1": 0.09965010882442076,
+    "model_iou": 0.25090419715703594,
+    "model_f1": 0.4011565357719204
+  },
+  {
+    "stem": "USA_275372",
+    "region": "USA",
+    "water_percent": 1.048283126847368,
+    "bucket": "1-10%",
+    "baseline_iou": 0.017168500617612728,
+    "baseline_f1": 0.03375743666302725,
+    "model_iou": 0.13793103448275862,
+    "model_f1": 0.24242424242424243
+  },
+  {
+    "stem": "USA_308150",
+    "region": "USA",
+    "water_percent": 1.1243027198841866,
+    "bucket": "1-10%",
+    "baseline_iou": 0.029877456208964422,
+    "baseline_f1": 0.05802138114362651,
+    "model_iou": 0.27741935483870966,
+    "model_f1": 0.43434343434343436
+  },
+  {
+    "stem": "USA_347609",
+    "region": "USA",
+    "water_percent": 0.7965673902069662,
+    "bucket": "<1%",
+    "baseline_iou": 0.017937147977470556,
+    "baseline_f1": 0.03524215225490042,
+    "model_iou": 0.05721746040756088,
+    "model_f1": 0.10824161073825503
+  },
+  {
+    "stem": "USA_348639",
+    "region": "USA",
+    "water_percent": 10.349207597624758,
+    "bucket": "10-30%",
+    "baseline_iou": 0.406866103372155,
+    "baseline_f1": 0.5784006059950222,
+    "model_iou": 0.5737548400785021,
+    "model_f1": 0.7291540276373442
+  },
+  {
+    "stem": "USA_354981",
+    "region": "USA",
+    "water_percent": 0.6581381617791773,
+    "bucket": "<1%",
+    "baseline_iou": 0.01232042806459743,
+    "baseline_f1": 0.02434096502063524,
+    "model_iou": 0.1549662783568363,
+    "model_f1": 0.2683477106834771
+  },
+  {
+    "stem": "USA_366607",
+    "region": "USA",
+    "water_percent": 18.80481313903619,
+    "bucket": "10-30%",
+    "baseline_iou": 0.7643188513167875,
+    "baseline_f1": 0.8664180522090361,
+    "model_iou": 0.8908496863844463,
+    "model_f1": 0.9422744629562472
+  },
+  {
+    "stem": "USA_375183",
+    "region": "USA",
+    "water_percent": 2.4831001414871876,
+    "bucket": "1-10%",
+    "baseline_iou": 0.04837259048591361,
+    "baseline_f1": 0.0922812956479399,
+    "model_iou": 0.33497634069400634,
+    "model_f1": 0.5018461084034854
+  },
+  {
+    "stem": "USA_387945",
+    "region": "USA",
+    "water_percent": 5.115267232836257,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1605540995881692,
+    "baseline_f1": 0.2766852482708785,
+    "model_iou": 0.47466878380390015,
+    "model_f1": 0.6437632490999025
+  },
+  {
+    "stem": "USA_438959",
+    "region": "USA",
+    "water_percent": 2.487751661211941,
+    "bucket": "1-10%",
+    "baseline_iou": 0.0872127723067741,
+    "baseline_f1": 0.16043367872092226,
+    "model_iou": 0.4334297017650639,
+    "model_f1": 0.6047449710737222
+  },
+  {
+    "stem": "USA_486103",
+    "region": "USA",
+    "water_percent": 2.776037912003498,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02995954282209457,
+    "baseline_f1": 0.05817615464779377,
+    "model_iou": 0.13278008298755187,
+    "model_f1": 0.23443223443223443
+  },
+  {
+    "stem": "USA_58086",
+    "region": "USA",
+    "water_percent": 6.071411740680815,
+    "bucket": "1-10%",
+    "baseline_iou": 0.2331702266236911,
+    "baseline_f1": 0.3781638926883439,
+    "model_iou": 0.4780158596254429,
+    "model_f1": 0.6468345471564576
+  },
+  {
+    "stem": "USA_604222",
+    "region": "USA",
+    "water_percent": 2.545215983909238,
+    "bucket": "1-10%",
+    "baseline_iou": 0.044186352569586106,
+    "baseline_f1": 0.0846330781107225,
+    "model_iou": 0.14936889336184844,
+    "model_f1": 0.2599146265825094
+  },
+  {
+    "stem": "USA_605492",
+    "region": "USA",
+    "water_percent": 1.164681666771416,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02891561443179317,
+    "baseline_f1": 0.05620599789956825,
+    "model_iou": 0.04762090331631659,
+    "model_f1": 0.09091247256630584
+  },
+  {
+    "stem": "USA_638521",
+    "region": "USA",
+    "water_percent": 1.9612566892438932,
+    "bucket": "1-10%",
+    "baseline_iou": 0.03255128910841008,
+    "baseline_f1": 0.06305021252071176,
+    "model_iou": 0.10107322374677354,
+    "model_f1": 0.18359037631091918
+  },
+  {
+    "stem": "USA_646878",
+    "region": "USA",
+    "water_percent": 0.9516565039403568,
+    "bucket": "<1%",
+    "baseline_iou": 0.024305724429745636,
+    "baseline_f1": 0.04745794902840592,
+    "model_iou": 0.24732897464519216,
+    "model_f1": 0.396573766300179
+  },
+  {
+    "stem": "USA_652955",
+    "region": "USA",
+    "water_percent": 3.2439800090867785,
+    "bucket": "1-10%",
+    "baseline_iou": 0.17563711009863314,
+    "baseline_f1": 0.2987947702397683,
+    "model_iou": 0.3835987261146497,
+    "model_f1": 0.5544941880538612
+  },
+  {
+    "stem": "USA_655230",
+    "region": "USA",
+    "water_percent": 0.43732809430255404,
+    "bucket": "<1%",
+    "baseline_iou": 0.013022910421078688,
+    "baseline_f1": 0.025710988936401277,
+    "model_iou": 0.10567592715671939,
+    "model_f1": 0.1911517191632604
+  },
+  {
+    "stem": "USA_66026",
+    "region": "USA",
+    "water_percent": 0.3830918275059932,
+    "bucket": "<1%",
+    "baseline_iou": 0.013672629005276027,
+    "baseline_f1": 0.02697641943571678,
+    "model_iou": 0.08173677634319033,
+    "model_f1": 0.1511213783809799
+  },
+  {
+    "stem": "USA_664261",
+    "region": "USA",
+    "water_percent": 1.8284162100205688,
+    "bucket": "1-10%",
+    "baseline_iou": 0.05934899487364721,
+    "baseline_f1": 0.11204805056850223,
+    "model_iou": 0.17060491493383742,
+    "model_f1": 0.29148163100524827
+  },
+  {
+    "stem": "USA_693819",
+    "region": "USA",
+    "water_percent": 0.927942020327472,
+    "bucket": "<1%",
+    "baseline_iou": 0.021656677280389586,
+    "baseline_f1": 0.04239521506978023,
+    "model_iou": 0.2325925925925926,
+    "model_f1": 0.37740384615384615
+  },
+  {
+    "stem": "USA_741073",
+    "region": "USA",
+    "water_percent": 1.290365741360177,
+    "bucket": "1-10%",
+    "baseline_iou": 0.02436868468031267,
+    "baseline_f1": 0.04757795712569582,
+    "model_iou": 0.315536805353506,
+    "model_f1": 0.4797080614840208
+  },
+  {
+    "stem": "USA_741178",
+    "region": "USA",
+    "water_percent": 0.540559721795084,
+    "bucket": "<1%",
+    "baseline_iou": 0.010848270112546894,
+    "baseline_f1": 0.021463696250554117,
+    "model_iou": 0.13528918692372172,
+    "model_f1": 0.23833431777909037
+  },
+  {
+    "stem": "USA_761032",
+    "region": "USA",
+    "water_percent": 4.627245314766692,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1126223528052424,
+    "baseline_f1": 0.20244488621190992,
+    "model_iou": 0.2820470694541422,
+    "model_f1": 0.4399948740949574
+  },
+  {
+    "stem": "USA_770353",
+    "region": "USA",
+    "water_percent": 13.128920904132908,
+    "bucket": "10-30%",
+    "baseline_iou": 0.5358022819453394,
+    "baseline_f1": 0.6977490374173166,
+    "model_iou": 0.5595334247450178,
+    "model_f1": 0.7175651587416293
+  },
+  {
+    "stem": "USA_788696",
+    "region": "USA",
+    "water_percent": 42.496081581666125,
+    "bucket": ">30%",
+    "baseline_iou": 0.8877200477029601,
+    "baseline_f1": 0.9405208667282705,
+    "model_iou": 0.906345776564294,
+    "model_f1": 0.9508723839153178
+  },
+  {
+    "stem": "USA_806273",
+    "region": "USA",
+    "water_percent": 2.214729943164586,
+    "bucket": "1-10%",
+    "baseline_iou": 0.040169669724105427,
+    "baseline_f1": 0.07723676414206546,
+    "model_iou": 0.12692358279626464,
+    "model_f1": 0.22525676937441644
+  },
+  {
+    "stem": "USA_826217",
+    "region": "USA",
+    "water_percent": 1.7220457196266086,
+    "bucket": "1-10%",
+    "baseline_iou": 0.052865018722451744,
+    "baseline_f1": 0.10042126537093662,
+    "model_iou": 0.26276005547850206,
+    "model_f1": 0.4161678290955022
+  },
+  {
+    "stem": "USA_831672",
+    "region": "USA",
+    "water_percent": 8.008900966897068,
+    "bucket": "1-10%",
+    "baseline_iou": 0.1941358409964077,
+    "baseline_f1": 0.3251486712506969,
+    "model_iou": 0.3949798897661254,
+    "model_f1": 0.5662875754178013
+  },
+  {
+    "stem": "USA_84195",
+    "region": "USA",
+    "water_percent": 1.4583439650468515,
+    "bucket": "1-10%",
+    "baseline_iou": 0.038407483081574566,
+    "baseline_f1": 0.07397381799984076,
+    "model_iou": 0.2953095684803002,
+    "model_f1": 0.4559675550405562
+  },
+  {
+    "stem": "USA_86502",
+    "region": "USA",
+    "water_percent": 25.333286100582143,
+    "bucket": "10-30%",
+    "baseline_iou": 0.24169269366647894,
+    "baseline_f1": 0.3892955074943818,
+    "model_iou": 0.4080836030338217,
+    "model_f1": 0.5796297920870251
+  },
+  {
+    "stem": "USA_908474",
+    "region": "USA",
+    "water_percent": 0.7097642779536114,
+    "bucket": "<1%",
+    "baseline_iou": 0.00915884479365154,
+    "baseline_f1": 0.0181514433350169,
+    "model_iou": 0.023015371078175268,
+    "model_f1": 0.044995161810558
+  },
+  {
+    "stem": "USA_955053",
+    "region": "USA",
+    "water_percent": 13.731673886491008,
+    "bucket": "10-30%",
+    "baseline_iou": 0.4394805016556007,
+    "baseline_f1": 0.6106098709223746,
+    "model_iou": 0.45058334665175004,
+    "model_f1": 0.6212443396538236
+  },
+  {
+    "stem": "USA_986268",
+    "region": "USA",
+    "water_percent": 3.4676269728755384,
+    "bucket": "1-10%",
+    "baseline_iou": 0.07560337986088418,
+    "baseline_f1": 0.14057854647251578,
+    "model_iou": 0.3670748071117075,
+    "model_f1": 0.5370222685724803
+  },
+  {
+    "stem": "USA_994009",
+    "region": "USA",
+    "water_percent": 0.7233735907603496,
+    "bucket": "<1%",
+    "baseline_iou": 0.015233364184122546,
+    "baseline_f1": 0.030009581484478926,
+    "model_iou": 0.19039017341040462,
+    "model_f1": 0.31987860394537176
+  }
+]
