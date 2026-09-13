@@ -39,3 +39,7 @@ black
 flake8
 mypy
 bandit
+
+# Agent loop (P2)
+langgraph
+langchain-core
