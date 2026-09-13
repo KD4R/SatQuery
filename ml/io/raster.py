@@ -84,8 +84,8 @@ class Raster:
     @property
     def bounds(self) -> tuple[float, float, float, float]:
         """(west, south, east, north) in the units of ``spec.crs``."""
-        west, north = self.transform @ (0, 0)
-        east, south = self.transform @ (self.spec.width, self.spec.height)
+        west, north = self.transform * (0, 0)
+        east, south = self.transform * (self.spec.width, self.spec.height)
         return (min(west, east), min(north, south), max(west, east), max(north, south))
 
     def band(self, polarization: Polarization) -> npt.NDArray[np.float32]:
