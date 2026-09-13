@@ -18,6 +18,7 @@ OWASP mitigations implemented:
 
 import datetime
 import logging
+import time
 from typing import Any, Dict, List
 
 from jose import ExpiredSignatureError, JWTError, jwt
@@ -58,6 +59,26 @@ def _decode_hs256(token: str, settings: Any) -> Dict[str, Any]:
     return result
 
 
+_jwks_cache: Dict[str, bytes] = {}
+_jwks_cache_time: float = 0.0
+
+
+def _get_jwks(url: str) -> bytes:
+    global _jwks_cache_time
+    now = time.time()
+    if url in _jwks_cache and now - _jwks_cache_time < 300:
+        return _jwks_cache[url]
+
+    import urllib.request
+
+    with urllib.request.urlopen(url) as resp:  # nosec B310
+        jwks: bytes = resp.read()
+
+    _jwks_cache[url] = jwks
+    _jwks_cache_time = now
+    return jwks
+
+
 def _decode_rs256(token: str, settings: Any) -> Dict[str, Any]:
     """
     Decode and verify an RS256 token using the JWKS endpoint.
@@ -83,10 +104,7 @@ def _decode_rs256(token: str, settings: Any) -> Dict[str, Any]:
         kwargs["issuer"] = settings.issuer
 
     # Fetch JWKS and validate — python-jose handles key selection via 'kid'.
-    import urllib.request
-
-    with urllib.request.urlopen(settings.jwks_url) as resp:  # nosec B310
-        jwks = resp.read()
+    jwks = _get_jwks(settings.jwks_url)
 
     result2: Dict[str, Any] = jwt.decode(token, jwks, **kwargs)  # type: ignore[arg-type]
     return result2

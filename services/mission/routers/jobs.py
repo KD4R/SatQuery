@@ -38,7 +38,7 @@ router = APIRouter(tags=["jobs"])
 AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
 
 
-async def _run_job_background(job: Job, job_repo: JobRepository) -> None:
+async def _run_job_background(job: Job, mission_query: str, job_repo: JobRepository) -> None:
     """
     Simulate async job execution — in production this hands off to Celery/Redis.
     Marked RUNNING → COMPLETED in background.
@@ -68,9 +68,9 @@ async def _run_job_background(job: Job, job_repo: JobRepository) -> None:
     try:
         # Trigger the LangGraph agent run
         await client.post(
-            "/api/v1/agent/run",
+            "/api/v1/agent/execute",
             auth_context=system_ctx,
-            json={"mission_id": job.mission_id, "job_id": job.id},
+            json={"mission_id": job.mission_id, "query": mission_query},
         )
         logger.info("Successfully dispatched job_id=%s to Agent service.", job.id)
     except Exception as exc:
@@ -135,7 +135,8 @@ async def submit_mission_run(
     created_job = await job_repo.create(job)
 
     # Enqueue background processing
-    background_tasks.add_task(_run_job_background, created_job, job_repo)
+    mission_query = mission.description or mission.name
+    background_tasks.add_task(_run_job_background, created_job, mission_query, job_repo)
 
     logger.info(
         "Job submitted: job_id=%s mission_id=%s org=%s subject=%s",

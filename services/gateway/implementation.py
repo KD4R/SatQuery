@@ -17,6 +17,7 @@ from packages.shared.middleware import IdempotencyMiddleware
 from services.gateway.config import get_gateway_settings
 from services.gateway.middleware.rate_limit import RateLimitMiddleware
 from services.gateway.routers.missions_ws import router as ws_router
+from services.gateway.routers.proxy import router as proxy_router
 
 setup_logging("gateway")
 
@@ -50,6 +51,7 @@ app.add_middleware(
 
 # ── Routers ───────────────────────────────────────────────────────────────────
 app.include_router(ws_router)
+app.include_router(proxy_router)
 
 _api_router = APIRouter(prefix="/api/v1")
 
