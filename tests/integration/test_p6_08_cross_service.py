@@ -12,7 +12,6 @@ import pytest
 
 from infrastructure.docker.implementation import check_service_health
 
-
 pytestmark = pytest.mark.integration
 
 

@@ -15,7 +15,6 @@ import pytest
 
 from infrastructure.docker.implementation import check_service_health
 
-
 pytestmark = pytest.mark.integration
 
 
@@ -54,7 +53,8 @@ class TestDockerChaosEngineering:
                         503,
                     ), f"Expected server error, got {resp.status_code}"
             except httpx.RequestError:
-                # Disconnection or timeout is also a form of failure, but we hope for graceful HTTP error
+                # Disconnection or timeout is also a form of failure,
+                # but we hope for graceful HTTP error
                 pass
 
         # Recover
