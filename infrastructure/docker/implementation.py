@@ -51,6 +51,8 @@ class EnvironmentConfig:
     services: Dict[str, ServiceConfig] = field(
         default_factory=lambda: {
             "api": ServiceConfig(name="api", port=8000, depends_on=("postgres", "redis", "minio")),
+            "mission": ServiceConfig(name="mission", port=8001, depends_on=("postgres", "redis", "minio")),
+            "agent": ServiceConfig(name="agent", port=8002, depends_on=("postgres", "redis", "minio")),
             "web": ServiceConfig(name="web", port=3000, depends_on=("api",)),
             "postgres": ServiceConfig(name="postgres", port=5432, health_endpoint="/"),
             "redis": ServiceConfig(name="redis", port=6379, health_endpoint="/"),
@@ -217,7 +219,7 @@ def check_service_health(service_name: str, timeout: float = 5.0) -> bool:
 def check_all_services_healthy() -> Dict[str, bool]:
     """Check health of all HTTP-exposed services."""
     results: Dict[str, bool] = {}
-    for name in ["api", "postgres", "redis", "minio", "titiler", "prometheus", "grafana"]:
+    for name in ["api", "mission", "agent", "postgres", "redis", "minio", "titiler", "prometheus", "grafana"]:
         results[name] = check_service_health(name)
     return results
 

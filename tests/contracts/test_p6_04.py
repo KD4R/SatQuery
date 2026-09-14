@@ -277,3 +277,33 @@ class TestP604SchemaCompatibility:
         dumped = analysis.model_dump_json()
         restored = Analysis.model_validate_json(dumped)
         assert restored == analysis
+
+
+# -- HTTP Contract Boundary (True Integration) --
+
+
+class TestTrueContractIntegration:
+    """Verify that canonical contracts are correctly enforced over HTTP boundaries."""
+
+    def test_agent_plan_contract_validation(self):
+        """Agent service must enforce strict contract validation over HTTP."""
+        import httpx
+
+        # In a real environment, this would run against the live services
+        # If the environment is up, hit the agent service directly on 8002
+        # We will catch connection errors if the env isn't running and skip gracefully
+        try:
+            with httpx.Client(base_url="http://localhost:8002", timeout=5) as client:
+                # Missing required fields for a PlanRequest
+                bad_payload = {"some_unknown_field": 123}
+                response = client.post("/api/v1/agent/plan", json=bad_payload)
+
+                # Should be rejected with 422 Unprocessable Entity
+                assert response.status_code == 422
+
+                # Ensure the error structure matches our canonical ErrorResponse contract
+                data = response.json()
+                assert "code" in data
+                assert data["code"] == "VALIDATION_ERROR"
+        except httpx.RequestError:
+            pytest.skip("Agent service not reachable on 8002 for live contract test")

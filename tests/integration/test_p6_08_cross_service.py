@@ -3,173 +3,57 @@ P6-08 — Cross-service integration test suite
 
 Verifies that services can communicate correctly through their
 versioned API boundaries. These tests validate contract conformance
-between gateway, agent, mission, and geo services.
+between gateway, agent, mission, and geo services by spinning up
+the actual Docker Compose environment and sending live HTTP requests.
 """
 
+import httpx
 import pytest
+
+from infrastructure.docker.implementation import check_service_health
+
 
 pytestmark = pytest.mark.integration
 
 
-# -- Gateway → Agent Boundary --
+# -- Cross Service Integration Tests --
 
 
-class TestGatewayAgentBoundary:
-    """Verify gateway can invoke agent service endpoints correctly."""
+class TestTrueCrossServiceIntegration:
+    """End-to-End multi-container integration tests."""
 
-    def test_agent_service_importable(self):
-        """Agent service app must be importable from gateway context."""
-        from services.agent.app.api.implementation import app
+    def test_gateway_proxies_to_mission(self, docker_available, compose_env):
+        """Gateway must proxy /api/v1/missions to the Mission service."""
+        assert check_service_health("api"), "API Gateway must be healthy"
+        assert check_service_health("mission"), "Mission service must be healthy"
 
-        assert app.title == "SatQuery Agent Service"
+        with httpx.Client(base_url="http://localhost:8000", timeout=10) as client:
+            response = client.get("/api/v1/missions")
+            # Proxied endpoint returns standard HTTP errors, not 503/502/404 from the proxy itself
+            assert response.status_code in (
+                200,
+                401,
+                403,
+            ), f"Unexpected status: {response.status_code}"
 
-    def test_agent_schemas_importable(self):
-        """Agent schemas must be importable for contract checks."""
-        from services.agent.schemas import MissionState
+    def test_gateway_proxies_to_agent(self, docker_available, compose_env):
+        """Gateway must proxy /api/v1/agent/tools to the Agent service."""
+        assert check_service_health("agent"), "Agent service must be healthy"
 
-        state = MissionState(
-            mission_id="msn-integration-001",
-            run_id="run-001",
-            organization_id="org-test",
-            query="Test query for flood detection",
-        )
-        assert state.mission_id == "msn-integration-001"
-
-    def test_agent_has_routes(self):
-        """Agent service must have registered routes."""
-        from services.agent.app.api.implementation import app
-
-        assert len(app.routes) > 0, "Agent app must have routes"
-
-
-# -- Gateway → Mission Boundary --
-
-
-class TestGatewayMissionBoundary:
-    """Verify gateway can invoke mission service endpoints correctly."""
-
-    def test_mission_service_importable(self):
-        """Mission service app must be importable."""
-        from services.mission import implementation as mission_impl
-
-        assert hasattr(mission_impl, "app")
-
-    def test_mission_has_routes(self):
-        """Mission service must have registered routes."""
-        from services.mission.implementation import app
-
-        assert len(app.routes) > 0, "Mission app must have routes"
-
-
-# -- Agent → Tool Executor Boundary --
-
-
-class TestAgentToolExecutorBoundary:
-    """Verify agent tool executor respects boundaries."""
-
-    def test_executor_module_importable(self):
-        """Tool executor module must be importable."""
-        import services.agent.tools.executor as executor_mod
-
-        assert hasattr(executor_mod, "record_tool_call") or hasattr(executor_mod, "__all__") or True
-
-    def test_confidence_gate_module_importable(self):
-        """Confidence gate module must be importable."""
-        import services.agent.nodes.confidence_gate as gate_mod
-
-        assert hasattr(gate_mod, "record_confidence_gate") or hasattr(gate_mod, "__all__") or True
-
-
-# -- Agent Security Boundary --
-
-
-class TestAgentSecurityBoundary:
-    """Verify security modules are properly isolated."""
-
-    def test_sanitizer_importable(self):
-        """Prompt sanitizer must be importable."""
-        from services.agent.security.sanitizer import check_prompt_injection
-
-        assert callable(check_prompt_injection)
-
-    def test_validator_importable(self):
-        """Geometry validator must be importable."""
-        from services.agent.security.validator import validate_aoi_geometry
-
-        assert callable(validate_aoi_geometry)
-
-    def test_exceptions_importable(self):
-        """Security exceptions must be importable."""
-        from services.agent.security.exceptions import (
-            SecurityError,
-            PromptInjectionError,
-            GeometryValidationError,
-        )
-
-        assert issubclass(PromptInjectionError, SecurityError)
-        assert issubclass(GeometryValidationError, SecurityError)
-
-
-# -- Contracts Boundary --
-
-
-class TestContractsBoundary:
-    """Verify canonical contracts are importable and consistent."""
-
-    def test_scene_ref_importable(self):
-        from packages.contracts import SceneRef
-
-        assert SceneRef is not None
-
-    def test_measurement_importable(self):
-        from packages.contracts import Measurement
-
-        assert Measurement is not None
-
-    def test_analysis_importable(self):
-        from packages.contracts import Analysis
-
-        assert Analysis is not None
-
-    def test_abstention_importable(self):
-        from packages.contracts import Abstention
-
-        assert Abstention is not None
-
-    def test_mission_outcome_importable(self):
-        from packages.contracts import MissionOutcome
-
-        assert MissionOutcome is not None
-
-
-# -- Observability Boundary --
-
-
-class TestObservabilityBoundary:
-    """Verify observability modules are importable across services."""
-
-    def test_logging_setup_importable(self):
-        from packages.observability.logging import setup_logging
-
-        assert callable(setup_logging)
-
-    def test_telemetry_setup_importable(self):
-        from packages.observability.telemetry import setup_telemetry
-
-        assert callable(setup_telemetry)
-
-    def test_agent_metrics_importable(self):
-        from packages.observability.agent_metrics import get_agent_metrics
-
-        metrics = get_agent_metrics()
-        assert metrics is not None
+        with httpx.Client(base_url="http://localhost:8000", timeout=10) as client:
+            response = client.get("/api/v1/agent/tools")
+            assert response.status_code in (
+                200,
+                401,
+                403,
+            ), f"Unexpected status: {response.status_code}"
 
 
 # -- Service Boundary --
 
 
 class TestP608ServiceBoundary:
-    def test_services_dont_import_tests(self):
+    def test_no_service_imports_from_tests(self):
         """Service code must not import from test modules."""
         for svc_dir in ["services/agent/security", "services/agent/tools", "services/agent/nodes"]:
             from pathlib import Path

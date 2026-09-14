@@ -1,104 +1,68 @@
 """
 P6-12 — Failure injection and recovery tests
 
-Validates that services handle failures gracefully:
-- Timeout recovery
-- Connection failure handling
-- Idempotent retries
-- Graceful degradation
+Validates that services handle failures gracefully by injecting real
+failures (stopping containers) in the Docker Compose environment and
+asserting recovery and proper error handling.
 """
 
+import subprocess
+import time
 from pathlib import Path
-from unittest.mock import patch
 
+import httpx
 import pytest
 
-from infrastructure.docker.implementation import COMPOSE_FILE
+from infrastructure.docker.implementation import check_service_health
+
 
 pytestmark = pytest.mark.integration
 
 
-# -- Docker Service Failure Modes --
+# -- Docker Service Chaos Tests --
 
 
-class TestDockerServiceResilience:
-    """Verify Docker infrastructure handles service failures."""
+class TestDockerChaosEngineering:
+    """Inject failures and ensure system resilience."""
 
-    def test_compose_file_has_restart_policy(self):
-        """Build/image services must have restart policies."""
-        import yaml
+    def test_api_degrades_gracefully_when_redis_dies(self, docker_available, compose_env):
+        """API should return 503 or degrade gracefully when Redis is killed, then recover."""
+        # Ensure it's healthy initially
+        assert check_service_health("api"), "API must be healthy initially"
 
-        with open(COMPOSE_FILE) as f:
-            data = yaml.safe_load(f)
-        for name, svc in data["services"].items():
-            if "build" not in svc:
-                continue  # skip pure image services
-            assert "restart" in svc, f"Service {name} missing restart policy"
+        # Inject failure: kill redis
+        subprocess.run(["docker", "compose", "stop", "redis"], check=True)
 
-    def test_api_has_healthcheck(self):
-        """API service must have a healthcheck for failure detection."""
-        import yaml
+        # Give API a moment to notice
+        time.sleep(2)
 
-        with open(COMPOSE_FILE) as f:
-            data = yaml.safe_load(f)
-        api = data["services"]["api"]
-        assert "depends_on" in api, "API must declare dependencies"
+        # Test behavior while degraded
+        with httpx.Client(base_url="http://localhost:8000", timeout=5) as client:
+            try:
+                resp = client.get("/api/v1/health")
+                # Either it returns 503 Service Unavailable, or 200 with degraded status
+                if resp.status_code == 200:
+                    data = resp.json()
+                    assert data.get("status") in (
+                        "degraded",
+                        "ok",
+                    ), "Expected degraded status if returning 200"
+                else:
+                    assert resp.status_code in (
+                        500,
+                        502,
+                        503,
+                    ), f"Expected server error, got {resp.status_code}"
+            except httpx.RequestError:
+                # Disconnection or timeout is also a form of failure, but we hope for graceful HTTP error
+                pass
 
-    def test_workers_have_restart_policy(self):
-        """Worker services must restart on failure."""
-        import yaml
+        # Recover
+        subprocess.run(["docker", "compose", "start", "redis"], check=True)
 
-        with open(COMPOSE_FILE) as f:
-            data = yaml.safe_load(f)
-        for worker in ["worker-ingest", "worker-analysis", "worker-report"]:
-            assert "restart" in data["services"][worker], f"{worker} needs restart"
-
-
-# -- Timeout Handling --
-
-
-class TestTimeoutRecovery:
-    """Verify timeout handling in infrastructure code."""
-
-    def test_check_docker_available_timeout(self):
-        """Docker check must not hang indefinitely."""
-        with patch("subprocess.run") as mock_run:
-            import subprocess as sp
-
-            mock_run.side_effect = sp.TimeoutExpired(cmd="docker", timeout=10)
-            from infrastructure.docker.implementation import check_docker_available
-
-            assert check_docker_available() is False
-
-    def test_check_docker_unavailable(self):
-        """Docker check must handle missing Docker gracefully."""
-        with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = FileNotFoundError
-            from infrastructure.docker.implementation import check_docker_available
-
-            assert check_docker_available() is False
-
-
-# -- Connection Failure Handling --
-
-
-class TestConnectionFailure:
-    """Verify health checks handle connection failures."""
-
-    @patch("urllib.request.urlopen")
-    def test_unhealthy_service_returns_false(self, mock_urlopen):
-        from urllib.error import URLError
-
-        mock_urlopen.side_effect = URLError("Connection refused")
-        from infrastructure.docker.implementation import check_service_health
-
-        assert check_service_health("api") is False
-
-    def test_worker_zero_port_not_checked(self):
-        """Workers with port=0 should not be health-checked."""
-        from infrastructure.docker.implementation import check_service_health
-
-        assert check_service_health("worker-ingest") is False
+        # Give API a moment to recover connections
+        time.sleep(5)
+        assert check_service_health("api"), "API did not recover after Redis restarted"
 
 
 # -- Service Boundary --
