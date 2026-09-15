@@ -52,3 +52,4 @@ import-linter>=2.15
 # Agent loop (P2)
 langgraph
 langchain-core
+langchain-openai
