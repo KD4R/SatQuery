@@ -268,6 +268,14 @@ a {
   font-variant-numeric: tabular-nums;
   color: var(--ink);
   text-align: right;
+  /* Break inside a long identifier, but never mid-word in prose: "permane nt"
+     is what break-all does to a sentence. */
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+/* Identifiers (trace ids, dataset stems) may break anywhere — they have no words. */
+.readout-value-id {
   word-break: break-all;
 }
 
@@ -474,4 +482,30 @@ a {
 
 .amb {
   color: var(--amber);
+}
+
+/* Waiting caret. Suppressed under reduced motion by the global rule above. */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 1.1s steps(1, end) infinite;
+}
+
+/* Skip link: off-screen until focused, then pinned top-left. P5-15. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--surface-2);
+  border: 1px solid var(--signal);
+  padding: 6px 10px;
+}
+
+.skip-link:focus {
+  left: 8px;
+  top: 8px;
 }
