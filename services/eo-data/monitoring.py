@@ -29,11 +29,12 @@ def get_latest_observation_for_mission(
 
     try:
         observations = search_service.search_observations(
-            provider_name=provider_name,
             polygon=aoi_polygon,
             start_date=target_start,
             end_date=target_end,
+            context={"source": "monitoring_hook"},
             cloud_cover=max_cloud_cover,
+            provider_name=provider_name,
         )
     except Exception as e:
         logger.error(f"Failed to fetch monitoring observations: {e}")

@@ -15,7 +15,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
 
-
 RELEASE_DIR = Path(__file__).parent
 PROJECT_ROOT = RELEASE_DIR.parent.parent
 MANIFEST_FILE = RELEASE_DIR / "release-manifest.json"

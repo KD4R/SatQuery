@@ -125,7 +125,7 @@ def test_p4_01_schema_compatibility():
 
 def test_provider_configuration_and_secret_boundary_valid():
     """ProviderConfig loads with sensible defaults and masks secrets."""
-    from services.eo_data.implementation import config
+    from services.eo_data.search import config
 
     assert config.request_timeout_sec == 15.0
     assert "SecretStr" in str(type(config.bhoonidhi_password))
@@ -150,7 +150,7 @@ def test_p4_02_service_boundary():
 
 def test_p4_02_schema_compatibility():
     """Both eo-data and providers config agree on s3_bucket default."""
-    from services.eo_data.implementation import config as eo_cfg
+    from services.eo_data.search import config as eo_cfg
     from packages.providers.config import config as pkg_cfg
 
     assert eo_cfg.s3_bucket == "satquery-assets"
@@ -215,7 +215,7 @@ def test_p4_03_schema_compatibility():
 
 def test_bhoonidhi_adapter_valid():
     """BhoonidhiAdapter.search annotates offline features with _bhoonidhi_status."""
-    from services.eo_data.implementation import BhoonidhiAdapter
+    from services.eo_data.search import BhoonidhiAdapter
 
     adapter = BhoonidhiAdapter.__new__(BhoonidhiAdapter)
     adapter.base_url = "https://bhoonidhi-api.nrsc.gov.in"
@@ -236,7 +236,7 @@ def test_bhoonidhi_adapter_valid():
 
 def test_bhoonidhi_adapter_invalid_input():
     """BhoonidhiAdapter.get_asset raises RuntimeError on HTTP error."""
-    from services.eo_data.implementation import BhoonidhiAdapter
+    from services.eo_data.search import BhoonidhiAdapter
     import requests
 
     adapter = BhoonidhiAdapter.__new__(BhoonidhiAdapter)
@@ -280,7 +280,7 @@ def test_p4_04_schema_compatibility():
 
 def test_observation_normalization_pipeline_valid():
     """SearchService.search_observations normalises a Bhoonidhi feature into an Observation with all required fields."""  # noqa: E501
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     svc = SearchService.__new__(SearchService)
     svc.bhoonidhi = MagicMock()
@@ -288,7 +288,7 @@ def test_observation_normalization_pipeline_valid():
     fixture = json.load(open(os.path.join(FIXTURE_DIR, "bhoonidhi_sample.json")))
     svc.bhoonidhi.search.return_value = fixture["features"]
 
-    with patch("services.eo_data.implementation.redis_client", None):
+    with patch("services.eo_data.search.redis_client", None):
         results = svc.search_observations(
             {"type": "Polygon", "coordinates": [[]]},
             datetime.now(timezone.utc),
@@ -306,7 +306,7 @@ def test_observation_normalization_pipeline_valid():
 
 def test_observation_normalization_pipeline_invalid_input():
     """Normalization skips (logs error) when the feature is missing required 'datetime' property."""
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     svc = SearchService.__new__(SearchService)
     svc.bhoonidhi = MagicMock()
@@ -314,7 +314,7 @@ def test_observation_normalization_pipeline_invalid_input():
     malformed_fixture = json.load(open(os.path.join(FIXTURE_DIR, "malformed_input.json")))
     svc.bhoonidhi.search.return_value = malformed_fixture["features"]
 
-    with patch("services.eo_data.implementation.redis_client", None):
+    with patch("services.eo_data.search.redis_client", None):
         results = svc.search_observations(
             {"type": "Polygon", "coordinates": [[]]},
             datetime.now(timezone.utc),
@@ -326,8 +326,8 @@ def test_observation_normalization_pipeline_invalid_input():
 
 
 def test_p4_05_service_boundary():
-    """SearchService is defined in services.eo_data.implementation."""
-    from services.eo_data.implementation import SearchService
+    """SearchService is defined in services.eo_data.search."""
+    from services.eo_data.search import SearchService
 
     assert hasattr(SearchService, "search_observations")
 
@@ -347,13 +347,13 @@ def test_p4_05_schema_compatibility():
 
 def test_spatial_temporal_observation_search_valid():
     """search_observations returns empty list (not an exception) when provider returns nothing."""
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     svc = SearchService.__new__(SearchService)
     svc.bhoonidhi = MagicMock()
     svc.bhoonidhi.search.return_value = []
 
-    with patch("services.eo_data.implementation.redis_client", None):
+    with patch("services.eo_data.search.redis_client", None):
         results = svc.search_observations(
             {}, datetime.now(timezone.utc), datetime.now(timezone.utc), {}
         )
@@ -361,19 +361,17 @@ def test_spatial_temporal_observation_search_valid():
 
 
 def test_spatial_temporal_observation_search_invalid_input():
-    """search_observations falls back to pinned fixture on provider error (P4-17)."""
-    from services.eo_data.implementation import SearchService
+    """search_observations propagates errors instead of fabricating success (P4-17)."""
+    from services.eo_data.search import SearchService
+    import pytest
 
     svc = SearchService.__new__(SearchService)
     svc.bhoonidhi = MagicMock()
     svc.bhoonidhi.search.side_effect = RuntimeError("Bhoonidhi auth budget exceeded")
 
-    with patch("services.eo_data.implementation.redis_client", None):
-        results = svc.search_observations(
-            {}, datetime.now(timezone.utc), datetime.now(timezone.utc), {}
-        )
-        assert len(results) > 0
-        assert results[0].scene.provider.value == "bhoonidhi"
+    with patch("services.eo_data.search.redis_client", None):
+        with pytest.raises(RuntimeError):
+            svc.search_observations({}, datetime.now(timezone.utc), datetime.now(timezone.utc), {})
 
 
 def test_p4_06_service_boundary():
@@ -416,9 +414,7 @@ def test_spatial_temporal_observation_search_api_valid():
         "start_date": "2026-09-01T00:00:00Z",
         "end_date": "2026-09-10T00:00:00Z",
     }
-    with patch(
-        "services.eo_data.implementation.SearchService.search_observations", return_value=[]
-    ):
+    with patch("services.eo_data.search.SearchService.search_observations", return_value=[]):
         resp = client_eo.post(
             "/api/v1/observations/search",
             json=body,
@@ -461,7 +457,7 @@ def test_p4_07_schema_compatibility():
 def test_asset_resolver_valid():
     """POST /assets/resolve with valid payload and auth header is accepted by the router."""
     with patch(
-        "services.eo_data.implementation.BhoonidhiAdapter.get_asset",
+        "services.eo_data.search.BhoonidhiAdapter.get_asset",
         return_value="s3://bucket/key.tif",
     ):
         resp = client_eo.post(
@@ -495,7 +491,7 @@ def test_p4_08_service_boundary():
 def test_p4_08_schema_compatibility():
     """Resolve response includes 's3_uri' key on success."""
     with patch(
-        "services.eo_data.implementation.BhoonidhiAdapter.get_asset",
+        "services.eo_data.search.BhoonidhiAdapter.get_asset",
         return_value="s3://bucket/k.tif",
     ):
         resp = client_eo.post(
@@ -916,7 +912,7 @@ def test_p4_17_schema_compatibility():
 
 def test_monitoring_observation_selection_support_valid():
     """get_latest_cloud_free_observation returns the cloud-free scene from the monitoring fixture."""  # noqa: E501
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     svc = SearchService.__new__(SearchService)
     svc.bhoonidhi = MagicMock()
@@ -924,7 +920,7 @@ def test_monitoring_observation_selection_support_valid():
     fixture = json.load(open(os.path.join(FIXTURE_DIR, "monitoring_latest_cloudfree.json")))
     svc.bhoonidhi.search.return_value = fixture["features"]
 
-    with patch("services.eo_data.implementation.redis_client", None):
+    with patch("services.eo_data.search.redis_client", None):
         result = svc.get_latest_cloud_free_observation({"type": "Polygon", "coordinates": [[]]}, {})
 
     assert result is not None
@@ -934,7 +930,7 @@ def test_monitoring_observation_selection_support_valid():
 
 def test_monitoring_observation_selection_support_invalid_input():
     """get_latest_cloud_free_observation returns None when all scenes are cloudy."""
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     svc = SearchService.__new__(SearchService)
 
@@ -947,14 +943,14 @@ def test_monitoring_observation_selection_support_invalid_input():
 
 def test_p4_18_service_boundary():
     """get_latest_cloud_free_observation is defined on SearchService."""
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     assert hasattr(SearchService, "get_latest_cloud_free_observation")
 
 
 def test_p4_18_schema_compatibility():
     """get_latest_cloud_free_observation returns None (not exception) when provider returns empty."""  # noqa: E501
-    from services.eo_data.implementation import SearchService
+    from services.eo_data.search import SearchService
 
     svc = SearchService.__new__(SearchService)
     with patch.object(svc, "search_observations", return_value=[]):

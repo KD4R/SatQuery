@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 # Import canonical models and adapters
 from packages.contracts import Observation
-from services.eo_data.implementation import search_service
+from services.eo_data.search import search_service
 from services.eo_data.errors import ErrorResponse
 from packages.geo.validation import validate_geojson_geometry
 
@@ -59,7 +59,12 @@ def search_observations_api(
     try:
         req.polygon = validate_geojson_geometry(req.polygon)
         results = search_service.search_observations(
-            req.polygon, req.start_date, req.end_date, context, cloud_cover=req.cloud_cover
+            req.polygon,
+            req.start_date,
+            req.end_date,
+            context,
+            cloud_cover=req.cloud_cover,
+            provider_name=req.provider,
         )
         return results
     except ValueError as ve:
@@ -97,7 +102,9 @@ def get_latest_cloud_free_api(
     logger.info(f"AUDIT: org={org_id} action=monitoring_latest_cloud_free trace_id={trace_id}")
     try:
         req.polygon = validate_geojson_geometry(req.polygon)
-        return search_service.get_latest_cloud_free_observation(req.polygon, context)
+        return search_service.get_latest_cloud_free_observation(
+            req.polygon, context, provider_name=req.provider
+        )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
