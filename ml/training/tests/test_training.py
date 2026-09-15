@@ -663,3 +663,40 @@ def test_held_out_regions_with_only_weak_chips_are_an_error(tmp_path: Path) -> N
 
     with pytest.raises(SplitError, match="measures the label generator"):
         split_by_region(discover_chips(tmp_path))
+
+
+def test_the_cache_stops_at_its_budget_instead_of_exhausting_memory(tmp_path: Path) -> None:
+    """A prepared chip is ~5 MB; the weak split is 4,096 of them, which is ~21 GB.
+
+    Unbounded caching does not fail fast -- the run gets twenty minutes into its
+    first epoch on a 3 GB machine and is then killed, which reads as a training
+    problem rather than a memory one.
+    """
+    for i in range(6):
+        make_chip(tmp_path, f"Ghana_{i}", size=64)
+    chips = discover_chips(tmp_path)
+    normalisation = fit_normalisation(chips)
+
+    one_chip = sum(a.nbytes for a in prepare(*load_chip(chips[0]), normalisation))
+    dataset = Sen1Floods11Dataset(
+        chips,
+        normalisation,
+        crop_size=None,
+        augment_samples=False,
+        cache_budget_bytes=one_chip * 2 + 1,
+    )
+
+    for index in range(len(chips)):
+        dataset[index]
+
+    assert dataset.cached_chips == 2, "the budget must stop the cache, not resize it"
+    # Chips past the budget still load correctly -- they are simply re-read.
+    assert dataset[5][0].shape == dataset[0][0].shape
+
+
+def test_caching_off_means_nothing_is_held(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    chips = discover_chips(tmp_path)
+    dataset = Sen1Floods11Dataset(chips, fit_normalisation(chips), crop_size=None, cache=False)
+    dataset[0]
+    assert dataset.cached_chips == 0

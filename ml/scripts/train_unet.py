@@ -288,6 +288,20 @@ def main() -> int:
     )
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
+    # Warm the cache up to its budget before the timer starts, and say what fits.
+    # Without this line a 4,096-chip run looks mysteriously slower per epoch than a
+    # 308-chip one at the same per-chip cost, and the reason -- most chips are
+    # being re-read from disk every epoch -- is invisible.
+    for index in range(len(dataset.inner)):
+        dataset.inner[index]
+        if dataset.inner.cached_chips <= index:
+            break
+    cached = dataset.inner.cached_chips
+    print(
+        f"cache: {cached} of {len(split.train)} chips held in memory"
+        + ("" if cached == len(split.train) else "; the rest are re-read each epoch")
+    )
+
     in_channels = len(MODEL_BANDS) + (1 if args.prior else 0)
     model = UNet(in_channels=in_channels, base_channels=args.base_channels, depth=args.depth)
     print(

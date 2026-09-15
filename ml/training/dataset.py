@@ -114,6 +114,12 @@ PRIOR_SEASONAL_OR_DRY = -1.0
 #: has trained on rather than one it meets for the first time in production.
 PRIOR_DROPOUT = 0.25
 
+#: Memory the prepared-chip cache may occupy, in bytes. 1 GiB leaves room on a
+#: 3 GB machine for the model, the optimiser state and the batch being built.
+#: Chips beyond it are re-read from disk each epoch, which is slower and
+#: finishes; caching them all is faster and does not.
+DEFAULT_CACHE_BUDGET = 1 << 30
+
 
 def load_permanent_water_prior(
     chip: Chip, shape: tuple[int, ...]
@@ -306,6 +312,7 @@ class Sen1Floods11Dataset:
         augment_samples: bool = True,
         seed: int = 0,
         cache: bool = True,
+        cache_budget_bytes: int = DEFAULT_CACHE_BUDGET,
         include_prior: bool = False,
         prior_dropout: float = PRIOR_DROPOUT,
     ) -> None:
@@ -323,9 +330,16 @@ class Sen1Floods11Dataset:
         self._cache: dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]] | None = (
             {} if cache else None
         )
+        self._cache_budget = cache_budget_bytes
+        self._cached_bytes = 0
 
     def __len__(self) -> int:
         return len(self.chips)
+
+    @property
+    def cached_chips(self) -> int:
+        """How many chips are actually held in memory."""
+        return 0 if self._cache is None else len(self._cache)
 
     def clear_cache(self) -> None:
         """Drop cached samples.
@@ -338,6 +352,7 @@ class Sen1Floods11Dataset:
         """
         if self._cache is not None:
             self._cache.clear()
+            self._cached_bytes = 0
 
     def _prepared(self, index: int):
         if self._cache is not None and index in self._cache:
@@ -349,7 +364,20 @@ class Sen1Floods11Dataset:
             bands, labels, self.normalisation, prior, include_prior=self.include_prior
         )
         if self._cache is not None:
-            self._cache[index] = prepared
+            # Budgeted, not unbounded. A prepared chip is about 5 MB (three float32
+            # planes at 512x512 plus target and weight), so the weakly-labelled
+            # split at 4,096 chips wants roughly 21 GB -- on a 3 GB machine the run
+            # dies part-way through the first epoch, after the twenty minutes it
+            # took to get there.
+            #
+            # Filling to a budget and then stopping, rather than evicting: the
+            # chips that fit stay hot for every later epoch, and an eviction policy
+            # would spend its time re-reading whichever chip it just dropped, since
+            # the sampler visits all of them each epoch anyway.
+            size = sum(array.nbytes for array in prepared)
+            if self._cached_bytes + size <= self._cache_budget:
+                self._cache[index] = prepared
+                self._cached_bytes += size
         return prepared
 
     def __getitem__(self, index: int):

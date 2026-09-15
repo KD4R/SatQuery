@@ -37,7 +37,7 @@ THE WEAKLY-LABELLED SET (--dataset weak)
 ----------------------------------------
 The hand-labelled set is 446 chips and this project already holds 400 of them, so
 "fetch more hand-labelled data" is worth about 46 chips. The 10x is elsewhere:
-Sen1Floods11 also ships 4,385 **weakly-labelled** chips, whose labels are derived
+Sen1Floods11 also ships 4,384 **weakly-labelled** chips, whose labels are derived
 automatically rather than drawn by a person.
 
     S1Weak            the Sentinel-1 scene, same format as S1Hand
@@ -56,7 +56,7 @@ and inventing a plausible path would mean a 404 halfway through a long download.
 Listing is self-verifying: it either enumerates or it fails immediately.
 
 Size, measured from the hand-labelled chips already on disk rather than guessed: a
-scene is 1.57 MB and a label is about 7 KB, so the full weak set is 4,385 chips x 3
+scene is 1.57 MB and a label is about 7 KB, so the full weak set is 4,384 chips x 3
 layers = 13,155 files and roughly 7 GB, essentially all of it scenes. Use --count to
 take it in stages; the script caches, so re-running resumes rather than restarting.
 
@@ -377,7 +377,7 @@ def main() -> int:
         default="hand",
         choices=sorted(DATASETS),
         help="hand (446 chips, human-drawn labels, the evaluation set) or weak "
-        "(4,385 chips, automatically derived labels, training only). Default hand.",
+        "(4,384 chips, automatically derived labels, training only). Default hand.",
     )
     ap.add_argument(
         "--dest",
