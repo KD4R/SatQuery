@@ -53,7 +53,9 @@ FIXTURE_DIR = "data/fixtures"
 # ---------------------------------------------------------------------------
 
 
-from typing import Any
+from typing import Any  # noqa: E402
+
+
 def _make_scene_ref(**overrides: Any) -> SceneRef:
     defaults: dict[str, Any] = dict(
         provider=Provider.BHOONIDHI,

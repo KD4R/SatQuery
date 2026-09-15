@@ -124,6 +124,7 @@ class TestToolBudgetCeilings:
 class TestGeoJSONDepthCap:
     def _deep_polygon(self, levels: int) -> dict:
         from typing import Any
+
         coords: Any = [0.0, 0.0]
         for _ in range(levels):
             coords = [coords]
