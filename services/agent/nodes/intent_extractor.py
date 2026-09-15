@@ -3,7 +3,7 @@ nodes/intent_extractor.py — NLP/heuristic intent extraction and mission planni
 """
 
 from typing import Any, Dict, List, Optional, Tuple
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import PydanticOutputParser
@@ -60,7 +60,7 @@ def extract_intent_and_plan(
                 input_variables=["query"],
                 partial_variables={"format_instructions": parser.get_format_instructions()},
             )
-            llm = ChatOpenAI(model="gpt-4o-mini", api_key=settings.openai_api_key)
+            llm = ChatOpenAI(model="gpt-4o-mini", api_key=SecretStr(settings.openai_api_key))
             llm_chain = prompt | llm | parser
             intent_parsed = llm_chain.invoke({"query": clean_query})
         except Exception as e:
