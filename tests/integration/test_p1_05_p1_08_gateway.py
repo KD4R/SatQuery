@@ -107,7 +107,9 @@ def _allow_tenant_check(mock_httpx_client):
 @pytest.mark.integration
 @patch("services.gateway.routers.missions_ws.httpx.AsyncClient")
 @patch("services.gateway.routers.missions_ws.redis.from_url")
-def test_p1_08_websocket_valid_token_connects_and_streams(mock_redis, mock_httpx_client, gateway_client):
+def test_p1_08_websocket_valid_token_connects_and_streams(
+    mock_redis, mock_httpx_client, gateway_client
+):
     """A valid JWT connects and receives status stream messages."""
     mock_redis.side_effect = Exception("Mock Redis Failure")
     _allow_tenant_check(mock_httpx_client)
