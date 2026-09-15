@@ -223,7 +223,7 @@ def _pooled(rows, key: str):
     return pool(collected) if collected else None
 
 
-def _headline(scored, names: tuple[str, ...]) -> list[str]:
+def _headline(scored, names: tuple[str, ...], focus: str | None = None) -> list[str]:
     """Both aggregations, side by side, with the number that makes them readable.
 
     Two IoUs for the same model on the same chips is not indecision. Averaging
@@ -252,8 +252,9 @@ def _headline(scored, names: tuple[str, ...]) -> list[str]:
         f"| {fmt(mean([r['baseline_f1'] for r in scored]))} |",
     ]
     # Best pooled IoU in bold, so the table has one obvious answer to "which won"
-    # without the reader recomputing it.
-    best = max(models, key=lambda n: models[n].intersection_over_union, default=None)
+    # without the reader recomputing it. Passed in rather than recomputed, so the
+    # model this table calls the winner is the same one the tables below follow.
+    best = focus or max(models, key=lambda n: models[n].intersection_over_union, default=None)
     for name, pooled in models.items():
         emphasis = "**" if name == best else ""
         lines.append(
@@ -311,7 +312,16 @@ def render(rows, *, names, chips, split, code_hash, model_paths) -> str:
     # column per experiment makes both unreadable, and the question they answer
     # is "where does the best method still fail", not "rank the candidates".
     # The headline table above is where models are compared.
-    focus = _best(rows, names)
+    # Chosen on the HELD-OUT chips, matching the headline table -- not on every
+    # chip scored. The first version of this used all of them and promptly
+    # contradicted itself: the headline bolded hand-only-v2 as the winner and the
+    # tables underneath were labelled flood-unet, because one model is ahead on
+    # held-out regions and the other on the trained ones it has already seen.
+    # Ranking a model by data it was trained on is the thing region-holdout exists
+    # to prevent, so the held-out answer is the only one either table may use.
+    held_out = {c.stem for c in split.validation} if split is not None else None
+    scored = [r for r in rows if held_out is None or r["stem"] in held_out]
+    focus = _best(scored, names)
 
     lines = [
         "# Evaluation report",
@@ -365,10 +375,7 @@ def render(rows, *, names, chips, split, code_hash, model_paths) -> str:
             "",
         ]
 
-    held_out = {c.stem for c in split.validation} if split is not None else None
-    scored = [r for r in rows if held_out is None or r["stem"] in held_out]
-
-    lines += _headline(scored, names)
+    lines += _headline(scored, names, focus)
     lines += ["", "---", "", "## Stratified by water content", ""]
 
     lines += [

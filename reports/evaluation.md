@@ -13,13 +13,13 @@ recollection, not a measurement.
 
 | | |
 |---|---|
-| generated | 2026-09-15 06:16 UTC |
+| generated | 2026-09-15 10:46 UTC |
 | code fingerprint | `60c62b97f32d6792` |
 | dataset fingerprint | `0305c0a36ac41cd7` |
 | chips scored | 395 of 400 |
 | regions | Ghana, India, Mekong, Nigeria, Pakistan, Paraguay, Somalia, Spain, Sri-Lanka, USA |
-| models | `flood-unet` (`artifacts/flood-unet/best.pt`) |
-| tables below follow | `flood-unet` |
+| models | `flood-unet` (`artifacts/flood-unet/best.pt`), `hand-only-v2` (`artifacts/hand-only-v2/best.pt`) |
+| tables below follow | `hand-only-v2` |
 
 The code fingerprint is a hash over the modules that can change a reported
 number. CI recomputes it and fails if this report was produced by different
@@ -39,9 +39,10 @@ recognising terrain it has already seen.
 | method | pooled IoU | pooled F1 | mean per-chip IoU | mean per-chip F1 |
 |---|---|---|---|---|
 | deterministic baseline | 0.204 | 0.339 | 0.209 | 0.289 |
-| flood-unet | **0.421** | **0.593** | 0.259 | 0.359 |
+| flood-unet | 0.421 | 0.593 | 0.259 | 0.359 |
+| hand-only-v2 | **0.435** | **0.606** | 0.254 | 0.348 |
 
-**Do not quote accuracy for this task.** Water is 10.8% of the scorable pixels on this split, so a model that predicts no water anywhere scores 89.2% accuracy and 0.000 IoU. Every target of the form "N% accurate" below that figure is met by a model that does nothing. The scored methods above reach baseline 68.5%, flood-unet 90.8% -- which is why IoU and F1 are the reported metrics.
+**Do not quote accuracy for this task.** Water is 10.8% of the scorable pixels on this split, so a model that predicts no water anywhere scores 89.2% accuracy and 0.000 IoU. Every target of the form "N% accurate" below that figure is met by a model that does nothing. The scored methods above reach baseline 68.5%, flood-unet 90.8%, hand-only-v2 91.6% -- which is why IoU and F1 are the reported metrics.
 
 1 of 92 chips is absent from the pooled baseline: Otsu found no separable threshold and the method abstained. An abstention is not a zero score, so those chips are excluded rather than counted as total failures (ADR-0007 D10).
 
@@ -52,12 +53,12 @@ recognising terrain it has already seen.
 A single mean says as much about the sample's wet/dry mix as about the method
 (ADR-0007 D13), so it is never reported alone.
 
-| water in chip | chips | baseline IoU | flood-unet IoU |
+| water in chip | chips | baseline IoU | hand-only-v2 IoU |
 |---|---|---|---|
 | <1% | 21 | 0.003 | 0.018 |
-| 1-10% | 41 | 0.130 | 0.248 |
-| 10-30% | 20 | 0.327 | 0.319 |
-| >30% | 10 | 0.725 | 0.694 |
+| 1-10% | 41 | 0.130 | 0.215 |
+| 10-30% | 20 | 0.327 | 0.358 |
+| >30% | 10 | 0.725 | 0.700 |
 
 ---
 
@@ -69,20 +70,20 @@ already seen and must not be quoted as accuracy. They are shown anyway,
 because a large gap between trained and held-out rows is the signal that a
 model memorised rather than learned — which is what this table is for.
 
-| region | chips | split | baseline IoU | flood-unet IoU |
+| region | chips | split | baseline IoU | hand-only-v2 IoU |
 |---|---|---|---|---|
-| Ghana | 48 | trained | 0.104 | 0.237 |
-| India | 68 | **held out** | 0.255 | 0.319 |
-| Mekong | 30 | trained | 0.531 | 0.581 |
-| Nigeria | 18 | trained | 0.331 | 0.367 |
-| Pakistan | 28 | trained | 0.141 | 0.177 |
-| Paraguay | 67 | trained | 0.224 | 0.334 |
-| Somalia | 24 | **held out** | 0.080 | 0.092 |
-| Spain | 24 | trained | 0.261 | 0.372 |
-| Sri-Lanka | 33 | trained | 0.202 | 0.272 |
-| USA | 55 | trained | 0.140 | 0.281 |
+| Ghana | 48 | trained | 0.104 | 0.216 |
+| India | 68 | **held out** | 0.255 | 0.309 |
+| Mekong | 30 | trained | 0.531 | 0.513 |
+| Nigeria | 18 | trained | 0.331 | 0.319 |
+| Pakistan | 28 | trained | 0.141 | 0.197 |
+| Paraguay | 67 | trained | 0.224 | 0.342 |
+| Somalia | 24 | **held out** | 0.080 | 0.098 |
+| Spain | 24 | trained | 0.261 | 0.342 |
+| Sri-Lanka | 33 | trained | 0.202 | 0.299 |
+| USA | 55 | trained | 0.140 | 0.334 |
 
-Mean U-Net IoU is 0.318 on trained regions against 0.259 held out, a gap of +0.058. A large positive gap means memorisation; near zero means the model generalises about as well as it fits.
+Mean U-Net IoU is 0.318 on trained regions against 0.254 held out, a gap of +0.065. A large positive gap means memorisation; near zero means the model generalises about as well as it fits.
 
 ---
 

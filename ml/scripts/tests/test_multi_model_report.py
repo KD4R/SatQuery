@@ -109,3 +109,34 @@ def test_the_headline_survives_a_model_that_scored_nothing() -> None:
 def test_a_baseline_only_report_still_renders() -> None:
     lines = "\n".join(_headline([row()], ()))
     assert "deterministic baseline" in lines
+
+
+def test_the_bolded_winner_and_the_followed_model_are_the_same() -> None:
+    """The report contradicted itself once and this is the guard.
+
+    `_best` was computed over every scored chip while the headline bolded the
+    winner over held-out chips alone. Those disagree whenever one model leads on
+    the regions it trained on and another leads on the ones it has never seen --
+    which is not a corner case, it is the normal situation. The report then bolded
+    one model and labelled the tables underneath with a different one.
+
+    Ranking by data a model was trained on is exactly what region-holdout exists
+    to prevent, so held-out is the only admissible answer and both surfaces must
+    use it.
+    """
+    held_out = [row(alpha=(100, 10, 10, 800), beta=(200, 10, 10, 700))]
+
+    focus = _best(held_out, ("alpha", "beta"))
+    lines = "\n".join(_headline(held_out, ("alpha", "beta"), focus))
+
+    assert focus == "beta"
+    bolded = [
+        name for name in ("alpha", "beta") if "**" in lines.split(f"| {name} |")[1].split("\n")[0]
+    ]
+    assert bolded == [focus]
+
+
+def test_the_headline_still_picks_a_winner_when_none_is_passed() -> None:
+    rows = [row(alpha=(100, 50, 50, 800), beta=(200, 10, 10, 780))]
+    lines = "\n".join(_headline(rows, ("alpha", "beta")))
+    assert "**" in lines.split("| beta |")[1].split("\n")[0]
