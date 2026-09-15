@@ -5,7 +5,6 @@ security/tool_budget.py — Tool invocation budget tracking and limits.
 from pydantic import BaseModel, Field, field_validator
 from services.agent.security.exceptions import BudgetExceededError
 
-
 #: Server-side ceilings. A client may request a smaller budget, never a larger
 #: one — otherwise a caller could grant itself unlimited tool calls (A01/A04).
 MAX_ALLOWED_CALLS = 50
