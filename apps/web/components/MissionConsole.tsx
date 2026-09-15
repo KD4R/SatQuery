@@ -14,6 +14,7 @@
  */
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
@@ -228,6 +229,21 @@ export default function MissionConsole() {
       }
       statusRight={
         <div className="row" style={{ gap: 12 }}>
+          {complete ? (
+            <Link
+              href={`/missions/${ASSAM_SCENARIO.missionId}/report`}
+              className="label"
+              style={{ color: "var(--signal)" }}
+            >
+              REPORT →
+            </Link>
+          ) : null}
+          <Link href="/missions" className="label" style={{ color: "var(--ink-faint)" }}>
+            MISSIONS
+          </Link>
+          <Link href="/monitoring" className="label" style={{ color: "var(--ink-faint)" }}>
+            MONITORING
+          </Link>
           <Label faint>EPSG:4326</Label>
           <Label faint>
             {gatewayUp === null

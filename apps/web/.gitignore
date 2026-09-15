@@ -6,3 +6,6 @@ out
 *.log
 .DS_Store
 *.tsbuildinfo
+/test-results/
+/playwright-report/
+/blob-report/

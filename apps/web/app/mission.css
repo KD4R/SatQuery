@@ -509,3 +509,170 @@ a {
   left: 8px;
   top: 8px;
 }
+
+/* ─── Report (P5-14) ──────────────────────────────────────────────────────── */
+
+/*
+ * The report is the one surface that leaves the system, so unlike the console it
+ * is a document: a measured column, generous leading, and a print stylesheet,
+ * because the first thing anyone does with a report is print it or PDF it.
+ */
+
+.report {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 28px 24px 64px;
+}
+
+.report-head {
+  border-bottom: 1px solid var(--hairline-bright);
+  padding-bottom: 14px;
+}
+
+.report-ids {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0 24px;
+  margin-top: 12px;
+}
+
+.report-section {
+  padding: 18px 0;
+  border-bottom: 1px solid var(--hairline);
+  break-inside: avoid;
+}
+
+.report-prose {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-dim);
+  max-width: 68ch;
+}
+
+.report-prose strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.report-note {
+  margin: 10px 0 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--amber);
+  background: rgba(255, 159, 10, 0.05);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px 24px;
+}
+
+.report-figure {
+  margin: 14px 0 0;
+}
+
+.report-figure img {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  border: 1px solid var(--hairline);
+  background: var(--void);
+}
+
+.report-figure figcaption {
+  margin-top: 6px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  max-width: 520px;
+}
+
+.report-list {
+  margin: 6px 0 12px;
+  padding-left: 20px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--ink-dim);
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 6px 0 10px;
+}
+
+.report-table th {
+  text-align: left;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 500;
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.report-table td {
+  padding: 6px 10px 6px 0;
+  border-bottom: 1px solid var(--hairline);
+  vertical-align: top;
+  color: var(--ink-dim);
+}
+
+.report-foot {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--hairline-bright);
+}
+
+/* Tables and figures need horizontal room on a phone without the page scrolling. */
+@media (max-width: 560px) {
+  .report {
+    padding: 20px 16px 48px;
+  }
+
+  .report-table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+@media print {
+  /* The report is black-on-black on screen and has to survive a laser printer. */
+  :root {
+    --void: #ffffff;
+    --surface-1: #ffffff;
+    --surface-2: #ffffff;
+    --ink: #111111;
+    --ink-dim: #333333;
+    --ink-faint: #666666;
+    --ink-ghost: #999999;
+    --hairline: rgba(0, 0, 0, 0.18);
+    --hairline-bright: rgba(0, 0, 0, 0.4);
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #111;
+    overflow: visible;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .report {
+    max-width: none;
+    padding: 0;
+  }
+
+  .report-section {
+    break-inside: avoid;
+  }
+}
