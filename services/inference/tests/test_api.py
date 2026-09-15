@@ -22,7 +22,7 @@ import rasterio
 from fastapi.testclient import TestClient
 from rasterio.transform import from_origin
 
-from ml.contracts.scene import Provider
+from packages.contracts import Provider
 from ml.io.preflight import PreflightError
 from services.inference.dependencies import (
     get_analysis_service,

@@ -27,7 +27,7 @@ import pytest
 import rasterio
 from rasterio.transform import from_origin
 
-from ml.contracts.scene import BackscatterScale, Polarization, Provider, SceneRef
+from packages.contracts import BackscatterScale, Polarization, Provider, SceneRef
 from ml.io.raster import RasterReadError, read_raster, reproject_to_area_safe_crs
 
 pytestmark = pytest.mark.unit

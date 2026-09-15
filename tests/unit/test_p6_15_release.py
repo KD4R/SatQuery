@@ -212,10 +212,12 @@ class TestDockerfileVariants:
 
 
 class TestRollbackScriptIntegration:
+    @pytest.mark.skipif(os.name == "nt", reason="Bash scripts fail natively on Windows test runs")
     def test_rollback_script_exists_and_executable(self):
         assert ROLLBACK_SH.exists()
         assert ROLLBACK_SH.stat().st_mode & 0o111, "rollback.sh must be executable"
 
+    @pytest.mark.skipif(os.name == "nt", reason="Bash scripts fail natively on Windows test runs")
     def test_rollback_script_rejects_non_sha(self, tmp_path):
         result = subprocess.run(
             ["bash", str(ROLLBACK_SH), "not-a-sha"], capture_output=True, text=True, timeout=30
@@ -223,6 +225,7 @@ class TestRollbackScriptIntegration:
         assert result.returncode != 0
         assert "git SHA" in result.stderr
 
+    @pytest.mark.skipif(os.name == "nt", reason="Bash scripts fail natively on Windows test runs")
     def test_rollback_script_print_env_example(self):
         result = subprocess.run(
             ["bash", str(ROLLBACK_SH), "--print-env-example"],
@@ -233,6 +236,7 @@ class TestRollbackScriptIntegration:
         assert result.returncode == 0
         assert "SATQUERY_REGISTRY" in result.stdout
 
+    @pytest.mark.skipif(os.name == "nt", reason="Bash scripts fail natively on Windows test runs")
     def test_rollback_script_dry_run_no_registry(self):
         """Dry-run against a non-existent release must fail cleanly (no pull)."""
         result = subprocess.run(

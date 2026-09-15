@@ -21,6 +21,7 @@ https://github.com/cloudtostreet/Sen1Floods11
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 
 import numpy as np
@@ -62,6 +63,30 @@ class SegmentationMetrics:
             # makes aggregate scores meaningless; nan excludes it from the mean.
             return float("nan")
         return self.true_positive / denominator
+
+    @property
+    def accuracy(self) -> float:
+        """Fraction of scorable pixels classified correctly.
+
+        Provided so that reports can *show* how misleading it is, not so anyone
+        quotes it. On this benchmark water is roughly a tenth of the pixels, so
+        predicting no water anywhere scores about 0.89 here while scoring 0.0 IoU.
+        Any target expressed as "N% accuracy" is a target a broken model meets.
+        """
+        if self.valid_pixels == 0:
+            return float("nan")
+        return (self.true_positive + self.true_negative) / self.valid_pixels
+
+    @property
+    def prevalence(self) -> float:
+        """Fraction of scorable pixels that are actually water.
+
+        The number that makes ``accuracy`` interpretable: 1 - prevalence is what a
+        model predicting nothing would score.
+        """
+        if self.valid_pixels == 0:
+            return float("nan")
+        return (self.true_positive + self.false_negative) / self.valid_pixels
 
     @property
     def precision(self) -> float:
@@ -197,7 +222,7 @@ def mask_agreement_iou(
     """IoU between two predicted masks, with no ground truth involved.
 
     This is the number behind
-    :attr:`~ml.contracts.confidence.ConfidenceBasis.MODEL_AGREEMENT`:
+    :attr:`~packages.contracts.ConfidenceBasis.MODEL_AGREEMENT`:
     the deterministic Otsu baseline and the learned model are run on the same input
     and their outputs compared. Because the two methods are independent, their
     agreement is a genuine uncertainty signal rather than a model's opinion of
@@ -215,3 +240,35 @@ def mask_agreement_iou(
     if union == 0:
         return float("nan")
     return int(np.count_nonzero(a & b)) / union
+
+
+def pool(metrics: Iterable[SegmentationMetrics]) -> SegmentationMetrics:
+    """Sum confusion counts across chips into one dataset-level result.
+
+    Pooled, not averaged, and the difference is not cosmetic. Averaging per-chip
+    IoU weights a 512x512 chip holding nine water pixels exactly as heavily as one
+    that is half flooded, and on this benchmark most chips are nearly dry -- so the
+    mean is dominated by chips where the denominator is a handful of pixels and one
+    misplaced pixel swings the score. Pooling weights each chip by how much water
+    was actually there to find, which is the aggregation the Sen1Floods11 literature
+    reports and the only one comparable to a published figure.
+
+    Both belong in a report. The mean says how the model does on a typical chip;
+    the pooled figure says how it does on the region. They differ by roughly a
+    factor of two here, and quoting either alone without saying which is how two
+    people end up arguing about the same model.
+
+    An empty input is an error rather than a zeroed result: a pooled score over no
+    chips is not zero, it is undefined, and returning 0.0 would put a real-looking
+    number in a report.
+    """
+    collected = list(metrics)
+    if not collected:
+        raise ValueError("cannot pool an empty sequence of metrics")
+    return SegmentationMetrics(
+        true_positive=sum(m.true_positive for m in collected),
+        false_positive=sum(m.false_positive for m in collected),
+        false_negative=sum(m.false_negative for m in collected),
+        true_negative=sum(m.true_negative for m in collected),
+        ignored_pixels=sum(m.ignored_pixels for m in collected),
+    )

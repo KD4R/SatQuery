@@ -18,15 +18,20 @@ from rasterio.transform import from_origin
 
 from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE
 from ml.training.dataset import (
+    PRIOR_PERMANENT,
+    PRIOR_SEASONAL_OR_DRY,
+    PRIOR_UNKNOWN,
     Normalisation,
     Sen1Floods11Dataset,
     augment,
     fit_normalisation,
     load_chip,
+    load_permanent_water_prior,
     prepare,
     random_crop,
 )
 from ml.training.splits import (
+    Labelling,
     SplitError,
     discover_chips,
     region_of,
@@ -367,3 +372,331 @@ def test_samples_are_reproducible_for_a_given_seed(tmp_path: Path) -> None:
 
     assert np.array_equal(first[0], second[0])
     assert np.array_equal(first[1], second[1])
+
+
+# --------------------------------------------------------------------------- #
+# The permanent-water prior channel                                            #
+# --------------------------------------------------------------------------- #
+
+
+def write_permanent_water(root: Path, stem: str, *, rows: int = 10, size: int = 64) -> None:
+    """Write a JRCWaterHand layer whose top ``rows`` are permanent water."""
+    layer = np.zeros((size, size), dtype=np.uint8)
+    layer[:rows, :] = 1
+    (root / "JRCWaterHand").mkdir(parents=True, exist_ok=True)
+    with rasterio.open(
+        root / "JRCWaterHand" / f"{stem}_JRCWaterHand.tif",
+        "w",
+        driver="GTiff",
+        height=size,
+        width=size,
+        count=1,
+        dtype="uint8",
+        crs="EPSG:32643",
+        transform=from_origin(500000.0, 1000000.0, 10.0, 10.0),
+    ) as sink:
+        sink.write(layer, 1)
+
+
+def test_the_prior_distinguishes_absent_from_dry(tmp_path: Path) -> None:
+    """Three states, not two, and this is the reason for the third.
+
+    A binary channel cannot separate "this pixel is not permanent water" from
+    "there is no JRC layer for this chip". Encoding both as 0 would teach the model
+    that a missing layer means dry ground everywhere -- and a missing layer is an
+    ordinary production condition, because `permanent_water_href` is optional on
+    the inference request. The model would then confidently report a flood over a
+    lake on exactly the requests where it has least information.
+    """
+    make_chip(tmp_path, "Ghana_1")
+    (chip_without,) = discover_chips(tmp_path)
+    assert chip_without.permanent_water is None
+    bands, _ = load_chip(chip_without)
+    assert load_permanent_water_prior(chip_without, bands.shape[1:]) is None
+
+    write_permanent_water(tmp_path, "Ghana_1", rows=10)
+    (chip_with,) = discover_chips(tmp_path)
+    prior = load_permanent_water_prior(chip_with, bands.shape[1:])
+
+    assert prior is not None
+    assert np.all(prior[:10] == PRIOR_PERMANENT)
+    assert np.all(prior[10:] == PRIOR_SEASONAL_OR_DRY)
+    # The value used for "no layer" is distinct from both.
+    assert PRIOR_UNKNOWN not in (PRIOR_PERMANENT, PRIOR_SEASONAL_OR_DRY)
+
+
+def test_a_mismatched_prior_grid_is_refused_not_resampled(tmp_path: Path) -> None:
+    """Sen1Floods11 ships every layer co-registered, so a shape mismatch is the
+    wrong file. Resampling it away would hide that and silently shift the prior
+    relative to the scene it is meant to describe."""
+    make_chip(tmp_path, "Ghana_1", size=64)
+    write_permanent_water(tmp_path, "Ghana_1", size=32)
+    (chip,) = discover_chips(tmp_path)
+
+    with pytest.raises(ValueError, match="co-registered"):
+        load_permanent_water_prior(chip, (64, 64))
+
+
+def test_prepare_emits_the_channel_only_when_asked(tmp_path: Path) -> None:
+    """The channel count follows the architecture, never the filesystem.
+
+    If it followed the data, the input shape would depend on whether a file
+    happened to be downloaded -- a two-channel checkpoint would be handed three
+    inputs the day someone fetched the JRC layer, and fail at matrix
+    multiplication with an error that says nothing about the cause.
+    """
+    make_chip(tmp_path, "Ghana_1")
+    write_permanent_water(tmp_path, "Ghana_1")
+    (chip,) = discover_chips(tmp_path)
+    bands, labels = load_chip(chip)
+    normalisation = fit_normalisation((chip,))
+    prior = load_permanent_water_prior(chip, bands.shape[1:])
+    assert prior is not None
+
+    two, _, _ = prepare(bands, labels, normalisation, prior)
+    assert two.shape[0] == 2, "a prior was available and must still be ignored"
+
+    three, _, _ = prepare(bands, labels, normalisation, prior, include_prior=True)
+    assert three.shape[0] == 3
+    assert np.array_equal(three[:2], two)
+    assert np.array_equal(three[2], prior)
+
+
+def test_asking_for_the_channel_without_a_prior_yields_unknown(tmp_path: Path) -> None:
+    """A three-channel model must still run on a chip with no JRC layer."""
+    make_chip(tmp_path, "Ghana_1")
+    (chip,) = discover_chips(tmp_path)
+    bands, labels = load_chip(chip)
+    normalisation = fit_normalisation((chip,))
+
+    x, _, _ = prepare(bands, labels, normalisation, None, include_prior=True)
+    assert x.shape[0] == 3
+    assert np.all(x[2] == PRIOR_UNKNOWN)
+
+
+def test_prior_dropout_blanks_the_channel_without_poisoning_the_cache(tmp_path: Path) -> None:
+    """Dropout must be per-sample, not per-chip-forever.
+
+    ``_prepared`` caches, so blanking the cached array in place would make the
+    first dropped sample the last time that chip ever shows its prior -- turning a
+    25% dropout into a one-way ratchet that ends with every chip blanked. The bug
+    is invisible: training still runs and the loss still falls.
+    """
+    make_chip(tmp_path, "Ghana_1")
+    write_permanent_water(tmp_path, "Ghana_1")
+    chips = discover_chips(tmp_path)
+    normalisation = fit_normalisation(chips)
+
+    always = Sen1Floods11Dataset(
+        chips,
+        normalisation,
+        crop_size=None,
+        augment_samples=False,
+        include_prior=True,
+        prior_dropout=1.0,
+    )
+    assert np.all(always[0][0][2] == PRIOR_UNKNOWN)
+    # The cached array must be untouched, so a run with dropout off still sees it.
+    assert not np.all(always._prepared(0)[0][2] == PRIOR_UNKNOWN)
+
+    never = Sen1Floods11Dataset(
+        chips,
+        normalisation,
+        crop_size=None,
+        augment_samples=False,
+        include_prior=True,
+        prior_dropout=0.0,
+    )
+    assert np.any(never[0][0][2] == PRIOR_PERMANENT)
+
+
+def test_prior_dropout_must_be_a_probability(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    chips = discover_chips(tmp_path)
+    with pytest.raises(ValueError, match="probability"):
+        Sen1Floods11Dataset(chips, fit_normalisation(chips), include_prior=True, prior_dropout=1.5)
+
+
+# --------------------------------------------------------------------------- #
+# Weakly-labelled chips: discovery, and the leak they would otherwise cause     #
+# --------------------------------------------------------------------------- #
+
+
+def make_weak_chip(
+    root: Path,
+    stem: str,
+    *,
+    s2_label: bool = True,
+    otsu_label: bool = True,
+    size: int = 64,
+) -> None:
+    """Write an S1Weak scene plus whichever weak label layers are requested."""
+    rng = np.random.default_rng(abs(hash(stem)) % 2**32)
+    vv = rng.normal(-8.0, 1.0, (size, size)).astype(np.float32)
+    vv[:20, :] = rng.normal(-20.0, 1.0, (20, size))
+    transform = from_origin(500000.0, 1000000.0, 10.0, 10.0)
+
+    (root / "S1Weak").mkdir(parents=True, exist_ok=True)
+    with rasterio.open(
+        root / "S1Weak" / f"{stem}_S1Weak.tif",
+        "w",
+        driver="GTiff",
+        height=size,
+        width=size,
+        count=2,
+        dtype="float32",
+        crs="EPSG:32643",
+        transform=transform,
+    ) as sink:
+        sink.write(np.stack([vv, vv - 6.0]))
+        sink.set_band_description(1, "VV")
+        sink.set_band_description(2, "VH")
+
+    labels = np.zeros((size, size), dtype=np.int16)
+    labels[:20, :] = 1
+    for wanted, subdir in ((s2_label, "S2IndexLabelWeak"), (otsu_label, "S1OtsuLabelWeak")):
+        if not wanted:
+            continue
+        (root / subdir).mkdir(parents=True, exist_ok=True)
+        with rasterio.open(
+            root / subdir / f"{stem}_{subdir}.tif",
+            "w",
+            driver="GTiff",
+            height=size,
+            width=size,
+            count=1,
+            dtype="int16",
+            crs="EPSG:32643",
+            transform=transform,
+        ) as sink:
+            sink.write(labels, 1)
+
+
+def test_weak_chips_are_discovered_and_marked_as_weak(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900")
+    by_stem = {c.stem: c for c in discover_chips(tmp_path)}
+
+    assert by_stem["Ghana_1"].labelling is Labelling.HAND
+    assert by_stem["Ghana_900"].labelling is Labelling.WEAK
+
+
+def test_the_sentinel2_label_is_preferred_over_the_otsu_one(tmp_path: Path) -> None:
+    """Otsu labels inherit every failure of the deterministic baseline, including
+    inventing a flood on dry ground (ADR-0007 D13). Training on them alone would
+    teach the model to imitate the method it exists to beat."""
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900", s2_label=True, otsu_label=True)
+    (weak,) = [c for c in discover_chips(tmp_path) if c.labelling is Labelling.WEAK]
+    assert weak.label.name.endswith("_S2IndexLabelWeak.tif")
+
+
+def test_an_otsu_only_weak_chip_is_still_taken(tmp_path: Path) -> None:
+    """Preference, not exclusivity: S2 labels are absent wherever there was no
+    usable optical overpass, and the SAR imagery is real either way."""
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900", s2_label=False, otsu_label=True)
+    (weak,) = [c for c in discover_chips(tmp_path) if c.labelling is Labelling.WEAK]
+    assert weak.label.name.endswith("_S1OtsuLabelWeak.tif")
+
+
+def test_a_weak_chip_with_no_label_at_all_is_skipped(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "Ghana_900", s2_label=False, otsu_label=False)
+    assert all(c.labelling is Labelling.HAND for c in discover_chips(tmp_path))
+
+
+def test_validation_never_contains_a_weakly_labelled_chip(tmp_path: Path) -> None:
+    """Scoring against automatically derived labels measures the label generator."""
+    for stem in ("Ghana_1", "India_1", "Somalia_1"):
+        make_chip(tmp_path, stem)
+    make_weak_chip(tmp_path, "India_900")
+
+    split = split_by_region(discover_chips(tmp_path))
+    assert all(c.labelling is Labelling.HAND for c in split.validation)
+
+
+def test_a_weak_chip_from_a_held_out_region_is_discarded_not_trained_on(
+    tmp_path: Path,
+) -> None:
+    """The trap this whole enum exists for.
+
+    A weakly-labelled Indian chip has no hand label, so it cannot be validated on
+    -- which makes "put it in training, then" look obviously right. It destroys the
+    region holdout: the model trains on Indian terrain and is then scored on Indian
+    terrain, so the held-out number measures memorisation while looking like
+    generalisation. That is the exact defect region-based splitting exists to
+    prevent, reintroduced through the back door.
+    """
+    for stem in ("Ghana_1", "India_1", "Somalia_1"):
+        make_chip(tmp_path, stem)
+    make_weak_chip(tmp_path, "India_900")
+    make_weak_chip(tmp_path, "Ghana_900")
+
+    split = split_by_region(discover_chips(tmp_path))
+
+    assert "India_900" not in {c.stem for c in split.train}
+    assert "India_900" not in {c.stem for c in split.validation}
+    assert {c.stem for c in split.discarded} == {"India_900"}
+    # The non-held-out weak chip is kept, or the rule would just be "drop all weak".
+    assert "Ghana_900" in {c.stem for c in split.train}
+    assert not {c.region for c in split.train} & {c.region for c in split.validation}
+
+
+def test_the_summary_reports_what_was_discarded(tmp_path: Path) -> None:
+    """A run that quietly threw away part of its training set must not look
+    identical to one that did not."""
+    for stem in ("Ghana_1", "India_1", "Somalia_1"):
+        make_chip(tmp_path, stem)
+    make_weak_chip(tmp_path, "India_900")
+
+    summary = split_by_region(discover_chips(tmp_path)).summary()
+    assert "discarded" in summary
+    assert "India" in summary
+
+
+def test_held_out_regions_with_only_weak_chips_are_an_error(tmp_path: Path) -> None:
+    """Not an empty validation set that reports nan for every epoch."""
+    make_chip(tmp_path, "Ghana_1")
+    make_weak_chip(tmp_path, "India_900")
+    make_weak_chip(tmp_path, "Somalia_900")
+
+    with pytest.raises(SplitError, match="measures the label generator"):
+        split_by_region(discover_chips(tmp_path))
+
+
+def test_the_cache_stops_at_its_budget_instead_of_exhausting_memory(tmp_path: Path) -> None:
+    """A prepared chip is ~5 MB; the weak split is 4,096 of them, which is ~21 GB.
+
+    Unbounded caching does not fail fast -- the run gets twenty minutes into its
+    first epoch on a 3 GB machine and is then killed, which reads as a training
+    problem rather than a memory one.
+    """
+    for i in range(6):
+        make_chip(tmp_path, f"Ghana_{i}", size=64)
+    chips = discover_chips(tmp_path)
+    normalisation = fit_normalisation(chips)
+
+    one_chip = sum(a.nbytes for a in prepare(*load_chip(chips[0]), normalisation))
+    dataset = Sen1Floods11Dataset(
+        chips,
+        normalisation,
+        crop_size=None,
+        augment_samples=False,
+        cache_budget_bytes=one_chip * 2 + 1,
+    )
+
+    for index in range(len(chips)):
+        dataset[index]
+
+    assert dataset.cached_chips == 2, "the budget must stop the cache, not resize it"
+    # Chips past the budget still load correctly -- they are simply re-read.
+    assert dataset[5][0].shape == dataset[0][0].shape
+
+
+def test_caching_off_means_nothing_is_held(tmp_path: Path) -> None:
+    make_chip(tmp_path, "Ghana_1")
+    chips = discover_chips(tmp_path)
+    dataset = Sen1Floods11Dataset(chips, fit_normalisation(chips), crop_size=None, cache=False)
+    dataset[0]
+    assert dataset.cached_chips == 0

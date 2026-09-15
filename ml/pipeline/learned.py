@@ -25,7 +25,7 @@ from typing import Any
 import numpy as np
 import numpy.typing as npt
 
-from ml.contracts.scene import Polarization
+from packages.contracts import Polarization
 from ml.io.raster import Raster
 
 #: Band order the models are trained on. Fetched from the raster BY NAME, never by
@@ -41,7 +41,10 @@ WATER_THRESHOLD = 0.5
 
 
 def predict_water_probability(
-    model: Any, normalisation: Any, raster: Raster
+    model: Any,
+    normalisation: Any,
+    raster: Raster,
+    permanent_water: npt.NDArray[np.bool_] | None = None,
 ) -> npt.NDArray[np.float32]:
     """Per-pixel water probability, on the raster's own grid.
 
@@ -52,15 +55,30 @@ def predict_water_probability(
     """
     import torch
 
-    from ml.training.dataset import prepare
+    from ml.training.dataset import PRIOR_PERMANENT, PRIOR_SEASONAL_OR_DRY, prepare
 
     bands = np.stack([raster.band(p) for p in MODEL_BANDS]).astype(np.float32)
+
+    # The channel count comes off the checkpoint, never off the data. A two-channel
+    # model must not be handed three because a JRC layer happened to be available,
+    # and a three-channel model must still run when it is not -- it was trained with
+    # the prior dropped a quarter of the time precisely so that it can.
+    include_prior = getattr(model, "in_channels", len(MODEL_BANDS)) > len(MODEL_BANDS)
+    prior = None
+    if include_prior and permanent_water is not None:
+        prior = np.where(permanent_water, PRIOR_PERMANENT, PRIOR_SEASONAL_OR_DRY).astype(np.float32)
     # prepare() wants labels to build its validity mask; at inference there are
     # none, so zeros are passed and the returned mask discarded. Only the
     # standardised bands are used -- and standardising with the checkpoint's own
     # constants, not freshly fitted ones, is what keeps inference consistent with
     # training.
-    standardised, _, _ = prepare(bands, np.zeros(bands.shape[1:], dtype=np.int16), normalisation)
+    standardised, _, _ = prepare(
+        bands,
+        np.zeros(bands.shape[1:], dtype=np.int16),
+        normalisation,
+        prior,
+        include_prior=include_prior,
+    )
 
     tensor = torch.from_numpy(standardised).unsqueeze(0)
     height, width = tensor.shape[-2:]
@@ -97,11 +115,11 @@ def predict_water_mask(
     model: Any,
     normalisation: Any,
     raster: Raster,
+    permanent_water: npt.NDArray[np.bool_] | None = None,
     *,
     threshold: float = WATER_THRESHOLD,
 ) -> npt.NDArray[np.bool_]:
     """Boolean water mask, on the raster's own grid."""
-    mask: npt.NDArray[np.bool_] = (
-        predict_water_probability(model, normalisation, raster) >= threshold
-    )
+    probability = predict_water_probability(model, normalisation, raster, permanent_water)
+    mask: npt.NDArray[np.bool_] = probability >= threshold
     return mask

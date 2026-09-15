@@ -12,8 +12,7 @@ from decimal import Decimal
 import numpy as np
 import pytest
 
-from ml.contracts.measurement import MeasurementUnit
-from ml.contracts.scene import SceneRef
+from packages.contracts import MeasurementUnit, SceneRef
 from ml.geo.area import PRODUCER, area_hectares, pixel_area_m2
 from ml.geo.crs import CRSError, assert_projected, is_projected, utm_epsg_for
 

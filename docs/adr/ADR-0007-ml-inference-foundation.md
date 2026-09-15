@@ -189,7 +189,7 @@ unfalsifiable claim.
 **Decision.** Two predicates, not one. `is_projected` asks whether a CRS measures in
 linear units. `is_area_safe` asks whether multiplying two of those units yields a
 defensible area, and is currently satisfied only by the WGS 84 UTM zones. Both live
-in `ml/crs_policy.py`, which depends on nothing, so `contracts` and `geo` can share
+in `packages/contracts/crs_policy.py`, which depends on nothing, so `contracts` and `geo` can share
 the policy without depending on each other.
 
 **Reason.** Review of the foundation commit found EPSG:3857 passing the area guard.
@@ -495,6 +495,182 @@ honest framing for any external claim.
     PYTHONPATH="$PWD" python ml/scripts/train_unet.py --epochs 20 --val-every 4
 
 ---
+
+### D16 — A gate with an absurd escape hatch is a gate that gets bypassed
+
+The P3-15 staleness gate shipped with one documented remedy for a false positive:
+regenerate the report, which means a 533 MB download and a full re-score. Six days
+later a `stamp_report.py` step ran in CI immediately before the gate, writing the
+current fingerprint into the report so the comparison compared a value against
+itself. The gate could no longer fail at all.
+
+Measured rather than argued. Inverting the water polarity in `ml/pipeline/baseline.py`
+— `np.less` to `np.greater`, one word, which turns every water measurement into a
+measurement of everything that is not water — produced this:
+
+```
+Stamped reports/evaluation.md: 3d9e162ee74c4ba7 -> e4ff223d71ff72cb
+reports/evaluation.md is current (fingerprint e4ff223d71ff72cb)
+exit 0
+```
+
+The report went on publishing IoU 0.259 as a description of that code.
+
+**The bypass was a rational response to a badly designed gate.** It fired on a
+`@` → `*` operator swap that returns identical values, and the only sanctioned
+answer was the 533 MB round trip. Reverting alone would have recreated the
+pressure and, in time, the bypass.
+
+**Decision.** The escape hatch stays and becomes attributable. `waive_report.py`
+requires `--by` and `--reason`, never runs in CI, and appends a row to
+`reports/evaluation-waivers.md` naming the fingerprint, the modules that changed,
+the person and the reason. The gate accepts a waived fingerprint and prints the
+row loudly rather than passing quietly. A waiver is pinned to one fingerprint, so
+it expires the moment anything else moves — otherwise one docstring waiver carries
+every later change in behind it.
+
+Two supporting changes came out of the same analysis. A stale report now names
+*which* modules moved, because "something changed" is what sent someone looking
+for a bypass. And the gate no longer imports the report generator — it needed
+rasterio, the training dataset and the learned pipeline to answer a question about
+file hashes, and a gate that can fail from an unrelated import is a gate that gets
+switched off.
+
+**The test for this is on `ci.yml`, not on Python.** `check_report_fresh.py` was
+correct throughout; it was handed a rewritten report a second earlier. A test that
+only exercised the Python would have passed against the broken CI.
+
+### D17 — One contract module, and the validators are what make it one
+
+`packages/contracts/ml.py` (P1) and `ml/contracts/` (P3) both existed, and the
+canonical one had the strict *configuration* — `frozen=True`, `extra="forbid"`,
+`revalidate_instances="always"` — and none of the strict *behaviour*. The
+validators had not survived transcription. Measured against that file before the
+fix: hectares in EPSG:4326 constructed, a negative area constructed, and a
+`NOT_CALIBRATED` confidence carrying 0.9 constructed.
+
+Each of those is the failure mode D1 and D2 exist to prevent — a wrong number
+arriving with full provenance attached, which makes it read as *more* credible,
+not less. A file that careful-looking which validates nothing is worse than one
+that never claimed to, because reviewers stop reading it.
+
+**Decision.** `ml/contracts/` is deleted; `packages/contracts` is the only
+contract package. Restoring the validators there completes what that module's own
+docstring already promised rather than overriding P1's intent. `crs_policy` moved
+to `packages/contracts/` because `Measurement` enforces it, so it has to be
+importable without `packages/` depending on `ml/` — and it keeps its deliberate
+zero dependencies, since `packages/geo` would drag in rasterio.
+
+No field, type, requiredness or enum member changed. That was checked by
+snapshotting every model's `model_fields` before and after and diffing, not by
+reading — the whole reason this decision exists is that reading a contract file
+is not sufficient to know what it enforces.
+
+**What stops it recurring** is 35 tests in
+`packages/contracts/tests/test_validators_present.py`, and two rules they follow
+that were learned while writing them:
+
+- Every test asserts on the *error message*, not merely that a `ValidationError`
+  was raised. The first draft passed seven of seven while testing nothing — the
+  probe objects were missing required fields, pydantic raised for that reason, and
+  `except ValidationError` swallowed it as a pass.
+- Every builder is exercised unmodified at import time, so a broken happy path
+  fails at collection instead of turning the whole module green for the wrong
+  reason.
+
+Removing the three validators that were originally lost fails 12 of the 35.
+
+`PHYSICAL_UNITS` membership is pinned by a test rather than by adding
+`packages/contracts/ml.py` to `FINGERPRINTED`. Its validators only ever refuse;
+none can change a number. Fingerprinting it would make every docstring edit to
+P1's file cost a 400-chip regeneration — which is precisely the pressure D16 is
+about.
+
+### D18 — Report pooled IoU and per-chip mean together, and refuse accuracy outright
+
+The report quoted mean-of-per-chip IoU alone: 0.259 held out. Pooled over every
+scorable pixel — the aggregation the Sen1Floods11 literature uses — the same model
+on the same chips scores **0.421 IoU / 0.593 F1**. Nothing changed but the
+arithmetic of aggregation.
+
+Neither is wrong and neither is sufficient. Averaging per-chip IoU gives a
+512×512 tile holding nine water pixels the same vote as a half-flooded one, and
+most of this benchmark is nearly dry, so the mean is dominated by chips where one
+misplaced pixel swings the score. That is the right question for "how does this do
+on a typical chip" and the wrong one for "how much water did it find in this
+region" — and it is not comparable to any published number.
+
+**Decision.** Both, in the same table, always. Quoting either alone without naming
+the aggregation is how two people end up arguing about the same model, and it is
+also how a headline figure gets quietly picked for being the flattering one.
+
+**Accuracy is printed only to be refused.** Water is 10.8% of scorable pixels on
+the held-out split, so a model predicting no water anywhere scores **89.2%
+accuracy and 0.000 IoU**. The U-Net reaches 90.8% — 1.6 points above doing
+nothing. Any goal of the form "N% accuracy" on this task is met by a model that
+does nothing, so the report states the floor next to the figure rather than
+omitting accuracy and leaving someone to compute a flattering version of it later.
+
+`SegmentationMetrics.accuracy` and `.prevalence` exist for that paragraph and no
+other purpose; the docstrings say so.
+
+### D19 — Weak supervision at 13x the data did not help. Reported, not buried.
+
+The hand-labelled set is 446 chips and this project holds 400, so the only place
+more data existed was Sen1Floods11's 4,384 weakly-labelled chips -- labels derived
+from Sentinel-2 spectral indices rather than drawn by a person. D14/D15 had
+established data volume as the binding constraint (41 chips tied the baseline, 308
+beat it), so this was the obvious lever. It was pulled, and it did not work.
+
+Four models and the baseline, scored in one process against the same 92 held-out
+chips on the same reprojected grid:
+
+| method | pooled IoU | pooled F1 | chip IoU | chip F1 |
+|---|---|---|---|---|
+| deterministic baseline | 0.204 | 0.339 | 0.209 | 0.289 |
+| flood-unet (incumbent, 2ch, 20 epochs) | 0.421 | 0.593 | 0.259 | 0.359 |
+| **hand-only-v2** (3ch + JRC prior, 30 epochs) | **0.435** | **0.606** | 0.254 | 0.348 |
+| flood-unet-v2 (weak pretrain -> hand fine-tune) | 0.398 | 0.569 | 0.261 | 0.356 |
+| pretrain (weak labels only) | 0.407 | 0.579 | 0.245 | 0.337 |
+
+Twelve epochs over 4,096 chips -- 3,788 of them weak -- then thirty fine-tuning
+epochs on the 308 hand chips, produces 0.398 pooled. That is **worse than the
+incumbent and worse than the same architecture trained on hand labels alone.**
+
+**The training curve says why.** Training loss fell to 0.34 against 0.49 for the
+hand-only run: the model fitted the weak labels far better than it had ever fitted
+the hand ones. Held-out pooled IoU across the same run went 0.448, 0.445, 0.413,
+0.435 -- flat to slightly down while the loss kept falling. That is the signature
+of learning the *label generator* rather than the phenomenon. The weak labels
+encode where a Sentinel-2 spectral index says water is, and the model became good
+at predicting that index from SAR; thirty epochs of fine-tuning on 308 chips did
+not undo it.
+
+**What this closes.** Volume is no longer the binding constraint, so D14's
+diagnosis does not extend indefinitely: more *weakly* labelled data is not the
+route past 0.44, and the remaining hand-labelled set is 46 chips. The next lever
+is not data.
+
+**The JRC permanent-water prior is unproven.** `hand-only-v2` adds it and is +0.014
+pooled over the incumbent, -0.005 on the per-chip mean -- the two aggregations
+disagree, the margins are small, and there is no seed-variance estimate, so no
+claim is made either way. It is not evidence the prior works; it is evidence it
+does not hurt.
+
+**A measurement trap worth recording.** `train_unet.py` scores on the chip's
+native grid; `generate_report.py` reprojects to an area-safe CRS first. The
+baseline -- identical code in both -- reads 0.186 from training and 0.204 from the
+report on the same 92 chips. Every number in this table comes from the report
+path. Comparing a training console figure against a committed one is invalid, and
+the two were nearly compared before the discrepancy in the baseline gave it away.
+
+**Still open, and deliberately not fixed under deadline:** `ModelRegistry.default()`
+ranks on the per-chip mean recorded in metrics.json, which is the native-grid
+figure, while this table ranks on reprojected pooled IoU. The two disagree here --
+the registry would serve `flood-unet` where the report's winner is `hand-only-v2`.
+Both beat the baseline and the gap is 0.014, so the operational cost is small, but
+it is the same defect class as D18 and should be closed by recording reprojected
+scores at training time.
 
 ## Open questions
 

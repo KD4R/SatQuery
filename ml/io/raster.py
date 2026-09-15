@@ -51,10 +51,11 @@ import numpy.typing as npt
 import rasterio
 from affine import Affine
 from rasterio.enums import Resampling
+from rasterio.transform import array_bounds
 from rasterio.warp import calculate_default_transform, reproject
 
-from ml.contracts.scene import BackscatterScale, Polarization, RasterSpec
-from ml.crs_policy import is_area_safe
+from packages.contracts import BackscatterScale, Polarization, RasterSpec
+from packages.contracts.crs_policy import is_area_safe
 from ml.geo.crs import utm_epsg_for
 
 
@@ -83,10 +84,32 @@ class Raster:
 
     @property
     def bounds(self) -> tuple[float, float, float, float]:
-        """(west, south, east, north) in the units of ``spec.crs``."""
-        west, north = self.transform * (0, 0)
-        east, south = self.transform * (self.spec.width, self.spec.height)
-        return (min(west, east), min(north, south), max(west, east), max(north, south))
+        """(west, south, east, north) in the units of ``spec.crs``.
+
+        Delegated to rasterio rather than multiplying the transform here, for two
+        reasons that only became visible once this ran on someone else's machine.
+
+        The first is portability. This was originally written ``transform @ (0, 0)``,
+        which works on affine 3.x and raises ``TypeError`` on affine 2.x -- and
+        ``requirements.txt`` pins only ``rasterio>=1.3``, so both resolve. Siddharth
+        hit the crash and swapped in ``*``, which is correct and is why this code
+        runs at all; but ``*`` on a point is pending deprecation in affine 3.x, so
+        that trade is a crash on old versions for a removal on new ones.
+        ``array_bounds`` is public rasterio API and is stable across both.
+
+        The second is correctness, and it is the part the operator swap could not
+        have caught. Taking two opposite corners describes the array only while the
+        transform is north-up. Under rotation or a flip the true extent is the hull
+        of all four corners, and the two-corner form silently returns a box that is
+        too small -- a plausible wrong answer, which is the failure mode this module
+        exists to prevent. ``array_bounds`` uses all four whenever the rotation
+        terms are non-zero.
+
+        Every Sen1Floods11 chip is north-up, so no committed number moves; the
+        regression test pins both halves of that claim.
+        """
+        west, south, east, north = array_bounds(self.spec.height, self.spec.width, self.transform)
+        return (west, south, east, north)
 
     def band(self, polarization: Polarization) -> npt.NDArray[np.float32]:
         """Return one band **by name**, never by index.

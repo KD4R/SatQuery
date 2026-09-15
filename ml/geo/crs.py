@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import math
 
-from ml.crs_policy import explain_unsafe_for_area, is_area_safe, is_projected
+from packages.contracts.crs_policy import explain_unsafe_for_area, is_area_safe, is_projected
 
 __all__ = [
     "CRSError",
@@ -116,7 +116,7 @@ def assert_area_safe(crs: str, *, operation: str) -> None:
     Stricter than :func:`assert_projected`, and the one to use before any area
     arithmetic. A projected CRS is not automatically an area-safe one: Web Mercator
     passes ``assert_projected`` and would silently inflate every hectare figure by
-    1/cos^2(latitude). See :mod:`ml.crs_policy`.
+    1/cos^2(latitude). See :mod:`packages.contracts.crs_policy`.
     """
     if not is_area_safe(crs):
         raise CRSError(

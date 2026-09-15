@@ -1,0 +1,72 @@
+train        308 chips (308 hand, 0 weak)  Ghana, Mekong, Nigeria, Pakistan, Paraguay, Spain, Sri-Lanka, USA
+validation    92 chips (92 hand, 0 weak)  India, Somalia
+discarded    596 weakly-labelled chips from the held-out regions (India, Somalia)
+
+Fitting normalisation on the training split only (308 chips, each one read)...
+  mean (-10.5, -17.42) dB
+  std  (4.06, 4.83) dB
+
+cache: 204 of 308 chips held in memory; the rest are re-read each epoch
+UNet: 486,553 parameters, depth 4, 3 input channels (VV, VH, JRC permanent-water prior)
+
+adopting the pretrained normalisation from artifacts/pretrain/best.pt:
+  fitted here  mean (-10.5, -17.42)
+  adopted      mean (-10.96, -18.27)
+initialised from artifacts/pretrain/best.pt (epoch 9, validation IoU 0.242)
+
+epoch     loss pooledIoU  chipIoU   chipF1    sec
+--------------------------------------------------
+    1   0.3562     0.420    0.171    0.226   53.9
+    2   0.3605     0.391    0.202    0.275   51.9
+    3   0.3331     0.426    0.205    0.279   41.6
+    4   0.3663     0.395    0.219    0.298   39.3
+    5   0.3333     0.404    0.223    0.303   34.5
+    6   0.3453     0.423    0.223    0.301   35.0
+    7   0.3306     0.402    0.220    0.299   37.0
+    8   0.3402     0.384    0.239    0.326   35.7
+    9   0.3497     0.400    0.205    0.274   29.3
+   10   0.3157     0.401    0.254    0.345   28.7
+   11   0.3399     0.396    0.205    0.275   31.6
+   12   0.3083     0.374    0.225    0.303   31.3
+   13   0.3423     0.400    0.195    0.259   31.7
+   14   0.3097     0.374    0.240    0.327   31.5
+   15   0.2952     0.416    0.235    0.317   27.0
+   16   0.3181     0.405    0.204    0.272   24.2
+   17   0.3127     0.421    0.219    0.292   26.0
+   18   0.3389     0.389    0.227    0.307   25.8
+   19   0.3158     0.392    0.223    0.299   26.3
+   20   0.3329     0.398    0.212    0.284   26.2
+   21   0.3219     0.396    0.214    0.286   26.9
+   22   0.3144     0.398    0.216    0.289   26.9
+   23   0.3096     0.410    0.210    0.282   27.5
+   24   0.3023     0.402    0.198    0.264   27.2
+   25   0.3318     0.410    0.212    0.284   29.8
+   26   0.3071     0.402    0.212    0.283   28.1
+   27   0.3022     0.405    0.207    0.277   29.9
+   28   0.3127     0.406    0.209    0.280   32.3
+   29   0.3072     0.406    0.211    0.282   30.9
+   30   0.3220     0.406    0.211    0.283   32.3
+
+==============================================================
+HELD-OUT REGIONS: India, Somalia
+92 chips, never seen in training
+
+                        pooled IoU  pooled F1  chip IoU  chip F1
+deterministic baseline       0.186      0.314     0.189    0.262
+U-Net                        0.401      0.572     0.254    0.345
+difference                  +0.215     +0.258    +0.064   +0.083
+
+Pooled weights each chip by how much water was there to find and is what
+reports/evaluation.md leads with; the per-chip mean gives a nearly dry tile
+the same vote as a flooded one. They differ by roughly a factor of two here,
+so never quote one without saying which (ADR-0007 D18).
+
+stratified by water content (IoU) -- ADR-0007 D13:
+water in chip     baseline     U-Net
+<1%                  0.003     0.021
+1-10%                0.095     0.241
+10-30%               0.293     0.303
+>30%                 0.748     0.694
+
+checkpoint  artifacts/flood-unet-v2/best.pt
+metrics     artifacts/flood-unet-v2/metrics.json

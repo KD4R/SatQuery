@@ -27,13 +27,13 @@ import pytest
 pytestmark = pytest.mark.unit
 
 
-def _samples(text: str, family: str):
+def _samples(text: str, family: str) -> list[tuple[dict[str, str], float]]:
     """Parse exposition text; yield (labels_dict, value) for a metric family."""
     out = []
     for line in text.splitlines():
         if line.startswith(family) and not line.startswith("#"):
             labels_str, _, value = line.partition(" ")
-            labels = {}
+            labels: dict[str, str] = {}
             for part in labels_str[labels_str.find("{") + 1 : labels_str.rfind("}")].split(","):
                 if "=" in part:
                     k, _, v = part.partition("=")
@@ -42,7 +42,7 @@ def _samples(text: str, family: str):
     return out
 
 
-def _sample_value(text: str, family: str, **labels) -> float:
+def _sample_value(text: str, family: str, **labels: str) -> float:
     for got_labels, value in _samples(text, family):
         if all(got_labels.get(k) == v for k, v in labels.items()):
             return value

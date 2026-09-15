@@ -89,6 +89,7 @@ class UNet(nn.Module):
         if depth < 1:
             raise ValueError(f"depth must be at least 1, got {depth}")
 
+        self.in_channels = in_channels
         self.depth = depth
         widths = [base_channels * (2**i) for i in range(depth)]
 

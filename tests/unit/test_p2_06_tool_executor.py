@@ -35,6 +35,8 @@ def _make_context(role: Role) -> AuthContext:
         subject="usr_test",
         organisation_id="org_test",
         roles=[role],
+        email="test@satquery.com",
+        trace_id="test_trace",
     )
 
 

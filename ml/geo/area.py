@@ -18,8 +18,7 @@ from decimal import Decimal
 import numpy as np
 import numpy.typing as npt
 
-from ml.contracts.measurement import Measurement, MeasurementUnit
-from ml.contracts.scene import SceneRef
+from packages.contracts import Measurement, MeasurementUnit, SceneRef
 import math
 
 from ml.geo.crs import assert_area_safe

@@ -36,8 +36,8 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from ml.contracts.scene import Polarization
-from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE, confusion
+from packages.contracts import BackscatterScale, Polarization
+from ml.evaluation.segmentation import SEN1FLOODS11_IGNORE_VALUE, confusion, pool
 from ml.io.preflight import PreflightError
 from ml.models.unet import UNet, masked_bce_dice_loss
 from ml.pipeline.baseline import water_mask_single_date
@@ -46,10 +46,12 @@ from ml.training.dataset import (
     Normalisation,
     Sen1Floods11Dataset,
     fit_normalisation,
+    MODEL_BANDS,
     load_chip,
+    load_permanent_water_prior,
     prepare,
 )
-from ml.training.splits import Chip, discover_chips, split_by_region
+from ml.training.splits import Chip, Labelling, Split, discover_chips, split_by_region
 
 DEFAULT_ROOT = Path("data/sen1floods11")
 DEFAULT_OUT = Path("artifacts/unet")
@@ -73,9 +75,17 @@ class _TorchDataset(Dataset):
 class EpochResult:
     epoch: int
     train_loss: float
+    #: Mean per-chip IoU. The selection criterion -- see the note where best.pt is
+    #: written.
     validation_iou: float
     validation_f1: float
     seconds: float
+    #: Pooled over every scorable pixel: the aggregation reports/evaluation.md
+    #: leads with and the one comparable to published numbers. Defaulted so a
+    #: checkpoint written before this field existed still resumes rather than
+    #: dying on an unexpected keyword.
+    pooled_iou: float = float("nan")
+    pooled_f1: float = float("nan")
 
 
 def _pad_to_multiple(tensor: torch.Tensor, multiple: int) -> tuple[torch.Tensor, int, int]:
@@ -101,7 +111,12 @@ def predict_chip(
     """Full-chip inference. Returns (predicted mask, labels)."""
     model.eval()
     bands, labels = load_chip(chip)
-    x, _, _ = prepare(bands, labels, normalisation)
+    # Channel count from the model, not from the flag or the filesystem: this
+    # function is also called on a resumed run, where the architecture is the
+    # checkpoint's rather than this invocation's.
+    include_prior = model.in_channels > len(MODEL_BANDS)
+    prior = load_permanent_water_prior(chip, bands.shape[1:]) if include_prior else None
+    x, _, _ = prepare(bands, labels, normalisation, prior, include_prior=include_prior)
 
     tensor = torch.from_numpy(x).unsqueeze(0)
     tensor, pad_h, pad_w = _pad_to_multiple(tensor, 2**model.depth)
@@ -115,30 +130,48 @@ def predict_chip(
 
 def evaluate(
     model: UNet, chips: tuple[Chip, ...], normalisation: Normalisation
-) -> tuple[float, float]:
-    ious, f1s = [], []
+) -> tuple[float, float, float, float]:
+    """``(pooled IoU, pooled F1, mean per-chip IoU, mean per-chip F1)``.
+
+    Both aggregations, because this script used to print only the per-chip mean
+    while reports/evaluation.md prints both -- so the number on the training
+    console and the number in the committed report were different quantities with
+    the same name, roughly a factor of two apart. Someone comparing a fresh run
+    against the committed figures would have concluded their model had collapsed.
+    That is precisely the confusion ADR-0007 D18 exists to prevent, and the fix
+    there has to apply here too.
+    """
+    collected, ious, f1s = [], [], []
     for chip in chips:
         predicted, labels = predict_chip(model, chip, normalisation)
         if not np.any(labels != SEN1FLOODS11_IGNORE_VALUE):
             continue
         metrics = confusion(predicted, labels, ignore_value=SEN1FLOODS11_IGNORE_VALUE)
+        collected.append(metrics)
         ious.append(metrics.intersection_over_union)
         f1s.append(metrics.f1)
-    if not ious:
-        return float("nan"), float("nan")
-    return float(np.nanmean(ious)), float(np.nanmean(f1s))
+    if not collected:
+        return float("nan"), float("nan"), float("nan"), float("nan")
+    pooled = pool(collected)
+    return (
+        pooled.intersection_over_union,
+        pooled.f1,
+        float(np.nanmean(ious)),
+        float(np.nanmean(f1s)),
+    )
 
 
-def baseline_scores(chips: tuple[Chip, ...]) -> tuple[float, float, dict[str, float]]:
+def baseline_scores(
+    chips: tuple[Chip, ...],
+) -> tuple[float, float, float, float, dict[str, float]]:
     """Score the deterministic baseline on the same chips, stratified by wetness.
 
     Stratified because ADR-0007 D13 established that a single mean over a mixed
     set says more about the sample's dry/wet balance than about the method.
     """
-    from ml.contracts.scene import BackscatterScale
     from ml.io.raster import read_raster
 
-    ious, f1s = [], []
+    collected, ious, f1s = [], [], []
     buckets: dict[str, list[float]] = {"<1%": [], "1-10%": [], "10-30%": [], ">30%": []}
 
     for chip in chips:
@@ -156,6 +189,7 @@ def baseline_scores(chips: tuple[Chip, ...]) -> tuple[float, float, dict[str, fl
         except (PreflightError, ThresholdError):
             continue
         metrics = confusion(detection.mask, labels, ignore_value=SEN1FLOODS11_IGNORE_VALUE)
+        collected.append(metrics)
         ious.append(metrics.intersection_over_union)
         f1s.append(metrics.f1)
 
@@ -164,9 +198,16 @@ def baseline_scores(chips: tuple[Chip, ...]) -> tuple[float, float, dict[str, fl
         buckets[key].append(metrics.intersection_over_union)
 
     stratified = {k: float(np.nanmean(v)) for k, v in buckets.items() if v}
-    if not ious:
-        return float("nan"), float("nan"), stratified
-    return float(np.nanmean(ious)), float(np.nanmean(f1s)), stratified
+    if not collected:
+        return float("nan"), float("nan"), float("nan"), float("nan"), stratified
+    pooled = pool(collected)
+    return (
+        pooled.intersection_over_union,
+        pooled.f1,
+        float(np.nanmean(ious)),
+        float(np.nanmean(f1s)),
+        stratified,
+    )
 
 
 def model_stratified(
@@ -197,6 +238,33 @@ def main() -> int:
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument(
+        "--labelling",
+        default="hand",
+        choices=("hand", "weak", "all"),
+        help="which labellings to TRAIN on. Validation is hand-labelled whatever "
+        "this says -- scoring against automatically derived labels measures the "
+        "label generator, not the model. Default hand.",
+    )
+    parser.add_argument(
+        "--init-from",
+        type=Path,
+        default=None,
+        help="start from another checkpoint's weights. Distinct from --resume, "
+        "which continues one run: this begins a new one from a pretrained "
+        "initialisation, which is how the two-stage recipe works -- pretrain on "
+        "--labelling all, then fine-tune on hand labels from that checkpoint.",
+    )
+    parser.add_argument(
+        "--prior",
+        action="store_true",
+        help="feed the JRC permanent-water layer as a third input channel. "
+        "Postprocessing already subtracts permanent water, but only after the "
+        "model has decided; as an input the model is told, and spends its "
+        "capacity on boundary cases instead of relearning that certain dark "
+        "regions are never floods. Trained with the channel blanked a quarter "
+        "of the time so inference without JRC still works.",
+    )
+    parser.add_argument(
         "--val-every",
         type=int,
         default=1,
@@ -224,21 +292,109 @@ def main() -> int:
         print(error, file=sys.stderr)
         return 2
 
+    if args.labelling != "all":
+        wanted = Labelling(args.labelling)
+        kept = tuple(c for c in split.train if c.labelling is wanted)
+        if not kept:
+            print(
+                f"no {args.labelling}-labelled chips in the training split; "
+                f"it holds {sorted({c.labelling.value for c in split.train})}",
+                file=sys.stderr,
+            )
+            return 2
+        split = Split(train=kept, validation=split.validation, discarded=split.discarded)
+
     print(split.summary())
     print()
 
-    print("Fitting normalisation on the training split only...")
+    # The chip count is in the message because this reads every one of them before
+    # epoch 1 prints anything. At 308 chips that is a few seconds; at 4,096 it is
+    # minutes of silence on a run advertised as an hour, which reads as a hang and
+    # gets killed.
+    print(
+        f"Fitting normalisation on the training split only "
+        f"({len(split.train)} chips, each one read)..."
+    )
     normalisation = fit_normalisation(split.train)
     print(f"  mean {tuple(round(v, 2) for v in normalisation.mean)} dB")
     print(f"  std  {tuple(round(v, 2) for v in normalisation.std)} dB\n")
 
     dataset = _TorchDataset(
-        Sen1Floods11Dataset(split.train, normalisation, crop_size=args.crop, seed=args.seed)
+        Sen1Floods11Dataset(
+            split.train,
+            normalisation,
+            crop_size=args.crop,
+            seed=args.seed,
+            include_prior=args.prior,
+        )
     )
     loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=0)
 
-    model = UNet(in_channels=2, base_channels=args.base_channels, depth=args.depth)
-    print(f"UNet: {model.parameter_count:,} parameters, depth {args.depth}\n")
+    # Warm the cache up to its budget before the timer starts, and say what fits.
+    # Without this line a 4,096-chip run looks mysteriously slower per epoch than a
+    # 308-chip one at the same per-chip cost, and the reason -- most chips are
+    # being re-read from disk every epoch -- is invisible.
+    for index in range(len(dataset.inner)):
+        dataset.inner[index]
+        if dataset.inner.cached_chips <= index:
+            break
+    cached = dataset.inner.cached_chips
+    print(
+        f"cache: {cached} of {len(split.train)} chips held in memory"
+        + ("" if cached == len(split.train) else "; the rest are re-read each epoch")
+    )
+
+    in_channels = len(MODEL_BANDS) + (1 if args.prior else 0)
+    model = UNet(in_channels=in_channels, base_channels=args.base_channels, depth=args.depth)
+    print(
+        f"UNet: {model.parameter_count:,} parameters, depth {args.depth}, "
+        f"{in_channels} input channels"
+        + (" (VV, VH, JRC permanent-water prior)" if args.prior else " (VV, VH)")
+        + "\n"
+    )
+
+    if args.init_from is not None:
+        if not args.init_from.is_file():
+            print(f"--init-from given but {args.init_from} does not exist", file=sys.stderr)
+            return 2
+        pretrained = torch.load(args.init_from, weights_only=True, map_location="cpu")
+        if pretrained["architecture"] != {
+            "in_channels": in_channels,
+            "base_channels": args.base_channels,
+            "depth": args.depth,
+        }:
+            print(
+                "REFUSING to initialise from a different architecture:\n"
+                f"  checkpoint {pretrained['architecture']}\n"
+                f"  this run   in_channels={in_channels}, "
+                f"base_channels={args.base_channels}, depth={args.depth}\n"
+                "load_state_dict would either raise or, worse, load the subset of "
+                "layers whose shapes happen to match and leave the rest random.",
+                file=sys.stderr,
+            )
+            return 2
+        model.load_state_dict(pretrained["state_dict"])
+
+        # The pretrained weights encode the scaling they were trained under, so
+        # the fine-tune adopts it rather than refitting on its own smaller split.
+        # Refitting would shift every input distribution the moment stage two
+        # begins -- the features would be reading a different unit than the one
+        # they learned, which looks like catastrophic forgetting and is not.
+        adopted = Normalisation.from_dict(pretrained["normalisation"])
+        if adopted != normalisation:
+            print(
+                f"adopting the pretrained normalisation from {args.init_from}:\n"
+                f"  fitted here  mean {tuple(round(v, 2) for v in normalisation.mean)}\n"
+                f"  adopted      mean {tuple(round(v, 2) for v in adopted.mean)}"
+            )
+            normalisation = adopted
+            dataset.inner.normalisation = normalisation
+            dataset.inner.clear_cache()
+        print(
+            f"initialised from {args.init_from} "
+            f"(epoch {pretrained.get('epoch', '?')}, "
+            f"validation IoU {pretrained.get('validation_iou', float('nan')):.3f})\n"
+        )
 
     optimiser = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimiser, T_max=args.epochs)
@@ -288,8 +444,8 @@ def main() -> int:
         else:
             print(f"resuming from epoch {start_epoch} (best IoU so far {best_iou:.3f})\n")
 
-    print(f"{'epoch':>5} {'loss':>8} {'val IoU':>8} {'val F1':>8} {'sec':>6}")
-    print("-" * 40)
+    print(f"{'epoch':>5} {'loss':>8} {'pooledIoU':>9} {'chipIoU':>8} {'chipF1':>8} {'sec':>6}")
+    print("-" * 50)
 
     for epoch in range(start_epoch, args.epochs + 1):
         started = time.time()
@@ -310,10 +466,11 @@ def main() -> int:
         # five epochs ago would be quietly wrong, and the "best" checkpoint would be
         # selected on an incomplete picture.
         should_validate = epoch % args.val_every == 0 or epoch == args.epochs
-        iou, f1 = (
+        nan = float("nan")
+        pooled_iou, pooled_f1, iou, f1 = (
             evaluate(model, split.validation, normalisation)
             if should_validate
-            else (float("nan"), float("nan"))
+            else (nan, nan, nan, nan)
         )
         result = EpochResult(
             epoch=epoch,
@@ -321,13 +478,29 @@ def main() -> int:
             validation_iou=iou,
             validation_f1=f1,
             seconds=time.time() - started,
+            pooled_iou=pooled_iou,
+            pooled_f1=pooled_f1,
         )
         history.append(result)
-        scores = f"{iou:8.3f} {f1:8.3f}" if should_validate else f"{'-':>8} {'-':>8}"
+        scores = (
+            f"{pooled_iou:9.3f} {iou:8.3f} {f1:8.3f}"
+            if should_validate
+            else f"{'-':>9} {'-':>8} {'-':>8}"
+        )
         print(f"{epoch:5d} {result.train_loss:8.4f} {scores} {result.seconds:6.1f}")
 
-        # Selected on validation IoU, which is held-out by region. Selecting on
-        # training loss would pick the most memorised epoch.
+        # Selected on held-out MEAN PER-CHIP IoU, not the pooled figure, even
+        # though pooled is what the report leads with.
+        #
+        # Pooled weights each chip by how much water was in it, so a model that is
+        # excellent on the few heavily flooded chips and useless on the many nearly
+        # dry ones scores well. D13 established that the dry chips are exactly
+        # where the deterministic baseline fails and where a learned model has to
+        # win, so selecting on pooled would pick the checkpoint that best ignores
+        # the capability gap this model exists to close. Both numbers are printed
+        # and recorded; only this one chooses.
+        #
+        # Selecting on training loss would pick the most memorised epoch.
         # Written every epoch so a killed run resumes from where it stopped, as
         # opposed to best.pt which is written only on improvement.
         torch.save(
@@ -355,7 +528,7 @@ def main() -> int:
                     "state_dict": model.state_dict(),
                     "normalisation": normalisation.to_dict(),
                     "architecture": {
-                        "in_channels": 2,
+                        "in_channels": model.in_channels,
                         "base_channels": args.base_channels,
                         "depth": args.depth,
                     },
@@ -372,18 +545,38 @@ def main() -> int:
     checkpoint = torch.load(args.out / "best.pt", weights_only=True)
     model.load_state_dict(checkpoint["state_dict"])
 
-    model_iou, model_f1 = evaluate(model, split.validation, normalisation)
-    base_iou, base_f1, base_strata = baseline_scores(split.validation)
+    model_pooled_iou, model_pooled_f1, model_iou, model_f1 = evaluate(
+        model, split.validation, normalisation
+    )
+    base_pooled_iou, base_pooled_f1, base_iou, base_f1, base_strata = baseline_scores(
+        split.validation
+    )
     model_strata = model_stratified(model, split.validation, normalisation)
 
     print("=" * 62)
     print(f"HELD-OUT REGIONS: {', '.join(sorted({c.region for c in split.validation}))}")
     print(f"{len(split.validation)} chips, never seen in training\n")
-    print(f"{'':<22}{'IoU':>10}{'F1':>10}")
-    print(f"{'deterministic baseline':<22}{base_iou:>10.3f}{base_f1:>10.3f}")
-    print(f"{'U-Net':<22}{model_iou:>10.3f}{model_f1:>10.3f}")
+    print(f"{'':<22}{'pooled IoU':>12}{'pooled F1':>11}{'chip IoU':>10}{'chip F1':>9}")
+    print(
+        f"{'deterministic baseline':<22}{base_pooled_iou:>12.3f}{base_pooled_f1:>11.3f}"
+        f"{base_iou:>10.3f}{base_f1:>9.3f}"
+    )
+    print(
+        f"{'U-Net':<22}{model_pooled_iou:>12.3f}{model_pooled_f1:>11.3f}"
+        f"{model_iou:>10.3f}{model_f1:>9.3f}"
+    )
     delta = model_iou - base_iou
-    print(f"{'difference':<22}{delta:>+10.3f}")
+    print(
+        f"{'difference':<22}{model_pooled_iou - base_pooled_iou:>+12.3f}"
+        f"{model_pooled_f1 - base_pooled_f1:>+11.3f}{delta:>+10.3f}"
+        f"{model_f1 - base_f1:>+9.3f}"
+    )
+    print(
+        "\nPooled weights each chip by how much water was there to find and is what\n"
+        "reports/evaluation.md leads with; the per-chip mean gives a nearly dry tile\n"
+        "the same vote as a flooded one. They differ by roughly a factor of two here,\n"
+        "so never quote one without saying which (ADR-0007 D18)."
+    )
 
     print("\nstratified by water content (IoU) -- ADR-0007 D13:")
     print(f"{'water in chip':<16}{'baseline':>10}{'U-Net':>10}")
@@ -401,12 +594,37 @@ def main() -> int:
         )
 
     report = {
-        "model": {"iou": model_iou, "f1": model_f1, "stratified_iou": model_strata},
-        "baseline": {"iou": base_iou, "f1": base_f1, "stratified_iou": base_strata},
+        # "iou"/"f1" stay the per-chip mean so older readers of this file keep
+        # meaning what they meant; the pooled figures are added alongside rather
+        # than swapped in, which would silently redefine a recorded number.
+        "model": {
+            "iou": model_iou,
+            "f1": model_f1,
+            "pooled_iou": model_pooled_iou,
+            "pooled_f1": model_pooled_f1,
+            "stratified_iou": model_strata,
+        },
+        "baseline": {
+            "iou": base_iou,
+            "f1": base_f1,
+            "pooled_iou": base_pooled_iou,
+            "pooled_f1": base_pooled_f1,
+            "stratified_iou": base_strata,
+        },
         "delta_iou": delta,
         "epochs": args.epochs,
         "seed": args.seed,
         "parameters": model.parameter_count,
+        # Provenance a reviewer will ask for and that cannot be recovered from the
+        # weights: what the model was fed, and what it was trained on.
+        "in_channels": model.in_channels,
+        "uses_permanent_water_prior": bool(args.prior),
+        "training_labelling": args.labelling,
+        "initialised_from": str(args.init_from) if args.init_from else None,
+        "train_chips": len(split.train),
+        "train_chips_hand": sum(1 for c in split.train if c.labelling is Labelling.HAND),
+        "train_chips_weak": sum(1 for c in split.train if c.labelling is not Labelling.HAND),
+        "discarded_chips": len(split.discarded),
         "train_regions": sorted({c.region for c in split.train}),
         "validation_regions": sorted({c.region for c in split.validation}),
         "validation_chips": [c.stem for c in split.validation],

@@ -19,7 +19,8 @@ def mock_auth_context() -> AuthContext:
         subject="user123",
         organisation_id="tenant_x",
         roles=[],
-        trace_id=None,
+        email="test@satquery.com",
+        trace_id="test_trace_123",
     )
 
 
