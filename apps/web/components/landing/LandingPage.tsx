@@ -16,7 +16,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
-import { groupDigits } from "../../lib/geo/format";
+import { BootReadout, Counter } from "./BootReadout";
 import { Label } from "../system/primitives";
 import { OrbitalGlobe } from "./OrbitalGlobe";
 
@@ -208,7 +208,9 @@ export default function LandingPage() {
           right: 24,
           top: "50%",
           transform: "translateY(-50%)",
-          width: 250,
+          width: 300,
+          maxHeight: "calc(100dvh - 120px)",
+          overflowY: "auto",
           pointerEvents: "none",
         }}
       >
@@ -247,6 +249,12 @@ export default function LandingPage() {
             water is 11% of pixels, so predicting none scores 89%.
           </p>
         </Reveal>
+
+        <div style={{ marginTop: 22 }}>
+          <Reveal delay={1.15}>
+            <BootReadout />
+          </Reveal>
+        </div>
       </div>
 
       {/* Bottom band */}
@@ -263,7 +271,12 @@ export default function LandingPage() {
       >
         <Reveal delay={1.2}>
           <div className="row" style={{ gap: 16 }}>
-            <Pair k="Observations indexed" v={groupDigits(4784)} />
+            <span className="row" style={{ gap: 6 }}>
+              <Label faint>Observations indexed</Label>
+              <span className="mono dim" style={{ fontSize: 10 }}>
+                <Counter to={4784} delay={1.4} />
+              </span>
+            </span>
             <Pair k="Constellation" v="SENTINEL-1 · SENTINEL-2" />
           </div>
         </Reveal>
