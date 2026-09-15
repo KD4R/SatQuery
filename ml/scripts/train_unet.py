@@ -307,7 +307,14 @@ def main() -> int:
     print(split.summary())
     print()
 
-    print("Fitting normalisation on the training split only...")
+    # The chip count is in the message because this reads every one of them before
+    # epoch 1 prints anything. At 308 chips that is a few seconds; at 4,096 it is
+    # minutes of silence on a run advertised as an hour, which reads as a hang and
+    # gets killed.
+    print(
+        f"Fitting normalisation on the training split only "
+        f"({len(split.train)} chips, each one read)..."
+    )
     normalisation = fit_normalisation(split.train)
     print(f"  mean {tuple(round(v, 2) for v in normalisation.mean)} dB")
     print(f"  std  {tuple(round(v, 2) for v in normalisation.std)} dB\n")
