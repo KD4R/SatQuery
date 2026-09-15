@@ -27,10 +27,9 @@ _SENSOR_PREFERENCES = {
     "landslide": ["S1_SAR", "S2_OPTICAL", "CARTOSAT"],
 }
 
+
 class IntentSchema(BaseModel):
-    disaster_type: str = Field(
-        description="The type of hazard detected (e.g., flood, wildfire)"
-    )
+    disaster_type: str = Field(description="The type of hazard detected (e.g., flood, wildfire)")
     objectives: List[str] = Field(description="List of mission objectives")
 
 
@@ -54,7 +53,10 @@ def extract_intent_and_plan(
         try:
             parser = PydanticOutputParser(pydantic_object=IntentSchema)
             prompt = PromptTemplate(
-                template="Extract the mission intent from the following query.\n{format_instructions}\nQuery: {query}\n",
+                template=(
+                    "Extract the mission intent from the following query.\n"
+                    "{format_instructions}\nQuery: {query}\n"
+                ),
                 input_variables=["query"],
                 partial_variables={"format_instructions": parser.get_format_instructions()},
             )
@@ -64,6 +66,7 @@ def extract_intent_and_plan(
         except Exception as e:
             # Fallback to heuristics if LLM fails (e.g., network error, invalid key)
             import logging
+
             logging.getLogger(__name__).warning("LLM intent extraction failed: %s", e)
             intent_parsed = None
 
@@ -85,7 +88,7 @@ def extract_intent_and_plan(
             objectives.append("temporal_change_detection")
         if not objectives:
             objectives.append("delineate_hazard_extent")
-        
+
         intent_parsed = IntentSchema(disaster_type=detected_hazard, objectives=objectives)
 
     intent = {
@@ -98,7 +101,9 @@ def extract_intent_and_plan(
     }
     validate_intent(intent)
 
-    selected_sensors = _SENSOR_PREFERENCES.get(intent_parsed.disaster_type, ["S1_SAR", "S2_OPTICAL"])
+    selected_sensors = _SENSOR_PREFERENCES.get(
+        intent_parsed.disaster_type, ["S1_SAR", "S2_OPTICAL"]
+    )
 
     # Build plan DAG steps
     plan_steps = [
@@ -154,4 +159,3 @@ def extract_intent_and_plan(
     ]
 
     return intent, plan_steps, selected_sensors
-
