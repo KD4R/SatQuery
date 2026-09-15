@@ -183,10 +183,11 @@ def analyze_data(state: MissionState) -> dict:
     except Exception as e:
         logger.error(f"Inference call failed: {e}")
         import os
+
         if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
             outcome_data = {
                 "degraded_from": "baseline",
-                "measurements": [{"name": "inundation_area_ha", "value": 14250.0, "unit": "ha"}]
+                "measurements": [{"name": "inundation_area_ha", "value": 14250.0, "unit": "ha"}],
             }
             new_meta = dict(state.metadata)
             new_meta["inference_outcome"] = outcome_data
