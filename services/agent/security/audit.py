@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 
 _SENSITIVE_KEYS = re.compile(r"(token|secret|password|key|auth|credential)", re.I)
 
+#: Guards redaction recursion against deeply-nested payloads (A04).
+_MAX_REDACTION_DEPTH = 10
+
 
 class ToolAuditEntry(BaseModel):
     audit_id: str
@@ -31,15 +34,31 @@ class AuditLogger:
     def __init__(self):
         self._entries: List[ToolAuditEntry] = []
 
+    def _redact_value(self, value: Any, depth: int = 0) -> Any:
+        """Recursively redact sensitive values inside dicts AND lists (A09).
+
+        Tool arguments are frequently nested (e.g. ``{"options": [{"api_key": ...}]}``);
+        stopping at the first dict level leaked everything inside lists.
+        Depth-capped to guard against pathological nesting (A04).
+        """
+        if depth > _MAX_REDACTION_DEPTH:
+            return "[TRUNCATED]"
+        if isinstance(value, dict):
+            return {
+                k: ("[REDACTED]" if _SENSITIVE_KEYS.search(k) else self._redact_value(v, depth + 1))
+                for k, v in value.items()
+            }
+        if isinstance(value, (list, tuple)):
+            return [self._redact_value(item, depth + 1) for item in value]
+        return value
+
     def _redact_args(self, args: Dict[str, Any]) -> Dict[str, Any]:
         redacted: Dict[str, Any] = {}
         for k, v in args.items():
             if _SENSITIVE_KEYS.search(k):
                 redacted[k] = "[REDACTED]"
-            elif isinstance(v, dict):
-                redacted[k] = self._redact_args(v)
             else:
-                redacted[k] = v
+                redacted[k] = self._redact_value(v)
         return redacted
 
     def log_tool_call(

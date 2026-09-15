@@ -1,0 +1,22 @@
+# Dependencies (npm ci will reinstall)
+node_modules/
+
+# Build output (fresh build inside container)
+.next/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Misc
+*.log

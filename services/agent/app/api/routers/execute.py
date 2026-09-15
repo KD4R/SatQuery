@@ -10,6 +10,7 @@ from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from services.agent.schemas import ExecuteRequest, ExecuteResponse, MissionState
 from services.agent.security.sanitizer import sanitize_prompt
+from services.agent.security.tool_budget import ToolBudget
 from services.agent.security.validator import validate_aoi_geometry
 from services.agent.worker import process_agent_run
 
@@ -28,6 +29,33 @@ async def execute_agent(
     if payload.aoi:
         validate_aoi_geometry(payload.aoi)
 
+    # Normalise the client-supplied budget at the API edge: only the two
+    # limit fields are accepted, and server-side ceilings apply (a caller may
+    # request a smaller budget, never a larger one). Invalid or abusive
+    # budgets are rejected here with 422 instead of exploding in the worker.
+    budget_dict = None
+    if payload.budget:
+        try:
+            budget = ToolBudget(
+                max_calls=int(payload.budget.get("max_calls", ToolBudget().max_calls)),
+                max_duration_seconds=float(
+                    payload.budget.get("max_duration_seconds", ToolBudget().max_duration_seconds)
+                ),
+            )
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "code": "INVALID_BUDGET",
+                    "message": f"Invalid tool budget: {exc}",
+                    "retryable": False,
+                },
+            )
+        budget_dict = {
+            "max_calls": budget.max_calls,
+            "max_duration_seconds": budget.max_duration_seconds,
+        }
+
     mission_id = payload.mission_id or f"msn_{ctx.organisation_id}_001"
     orchestrator = get_orchestrator()
 
@@ -37,7 +65,7 @@ async def execute_agent(
         query=clean_query,
         trace_id=trace_id,
         aoi=payload.aoi,
-        metadata={"budget": payload.budget} if payload.budget else None,
+        metadata={"budget": budget_dict} if budget_dict else None,
     )
 
     # Trigger orchestrator step execution asynchronously via Celery

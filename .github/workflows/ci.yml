@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # CI — SatQuery AI P1 Backend
 # Runs on every PR to `develop` or `main` and on direct pushes.
-# Stages: lint → unit → integration → contract → security → gate
+# Stages: lint → unit → integration → contract → security → docker-build → openapi → client-gen → gate
 # ─────────────────────────────────────────────────────────────────────────────
 name: CI
 
@@ -45,6 +45,33 @@ jobs:
 
       - name: Mypy type check
         run: mypy services packages ml --ignore-missing-imports
+
+      # P6-02. Import-linter: enforce module boundaries at build time.
+      - name: Import-linter boundary check
+        run: lint-imports
+
+      # P6-02. No-fabrication gates: no mock data, demo modes, or test imports in production code.
+      - name: No fixture assets in web bundle
+        run: |
+          if find apps/web/public -name '*.tif' -o -name '*.tiff' -o -name '*.json' -path '*/fixture*' 2>/dev/null | grep -q .; then
+            echo "::error::Fixture asset in the web bundle."
+            exit 1
+          fi
+
+      - name: No demo-mode switches
+        run: |
+          if grep -rniE 'demo_?mode|use_?mock|MOCK_|FAKE_|stub_data' \
+               --include='*.py' --include='*.ts' --include='*.tsx' apps/ services/ packages/; then
+            echo "::error::Demo/mock switch found."
+            exit 1
+          fi
+
+      - name: Services must not import test fixtures
+        run: |
+          if grep -rnE '^(from|import)\s+tests?\.' services/ packages/; then
+            echo "::error::Service code imports a test module."
+            exit 1
+          fi
 
       # P3-15. Verifies that reports/evaluation.md was produced by the code on
       # this branch -- NOT that the numbers in it are right, which would need the
@@ -135,7 +162,7 @@ jobs:
 
   # ── 5. Security scan ────────────────────────────────────────────────────────
   security:
-    name: Security Scan (Bandit)
+    name: Security Scan
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -153,7 +180,33 @@ jobs:
       - name: Run Bandit SAST
         run: bandit -r services packages -ll -ii
 
-  # ── 6. OpenAPI Export & Compatibility ───────────────────────────────────────
+      - name: Run security tests
+        run: pytest -m security --tb=short -v
+
+  # ── 6. Docker Build Check ─────────────────────────────────────────────────
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate API Dockerfile builds
+        run: |
+          docker build -f infrastructure/docker/Dockerfile \
+            --target runtime \
+            --build-arg BUILDPLATFORM=linux/amd64 \
+            -t satquery-api:test .
+
+      - name: Validate Web Dockerfile builds
+        run: |
+          docker build -f apps/web/Dockerfile \
+            -t satquery-web:test apps/web/
+
+  # ── 7. OpenAPI Export & Compatibility ───────────────────────────────────────
   openapi-compat:
     name: OpenAPI Compatibility (oasdiff)
     runs-on: ubuntu-latest
@@ -177,22 +230,21 @@ jobs:
 
       - name: Export baseline OpenAPI schemas from main
         run: |
-          git checkout main || echo "No main branch locally"
+          # Export main's baseline in an isolated worktree. Checking out main
+          # in-place here would dirty the freshly-exported tracked specs in
+          # docs/openapi/ and make the switch back abort (git checkout refuses
+          # to overwrite local changes).
           mkdir -p docs/baseline
-          if [ -f scripts/export_openapi.py ]; then
-            python scripts/export_openapi.py
-            cp docs/openapi/gateway.json docs/baseline/gateway.json
-            cp docs/openapi/mission.json docs/baseline/mission.json
+          if git worktree add /tmp/baseline-wt origin/main 2>/dev/null; then
+            (cd /tmp/baseline-wt && python scripts/export_openapi.py)
+            cp /tmp/baseline-wt/docs/openapi/gateway.json docs/baseline/gateway.json
+            cp /tmp/baseline-wt/docs/openapi/mission.json docs/baseline/mission.json
+            git worktree remove --force /tmp/baseline-wt
           else
-            echo "No export script on main branch yet. Skipping baseline and mocking empty spec."
+            echo "No main branch available. Using empty stub spec as baseline."
             echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/gateway.json
             echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/mission.json
           fi
-          git checkout -
-          
-          # Re-export the schemas for the current branch so docs/openapi/ contains the PR's version,
-          # not the version generated while we were checked out on main.
-          python scripts/export_openapi.py
 
       - name: Run oasdiff (Gateway)
         uses: oasdiff/oasdiff-action/breaking@main
@@ -202,7 +254,7 @@ jobs:
           format: text
           fail-on-diff: true
 
-  # ── 7. Frontend Client Generation ───────────────────────────────────────────
+  # ── 8. Frontend Client Generation ───────────────────────────────────────────
   client-generation:
     name: TypeScript Client Generation
     runs-on: ubuntu-latest
@@ -228,10 +280,10 @@ jobs:
       - name: Generate TypeScript Client
         run: npx @openapitools/openapi-generator-cli generate -i docs/openapi/gateway.json -g typescript-axios -o clients/ts-client --skip-validate-spec
 
-  # ── 8. All-green gate ───────────────────────────────────────────────────────
+  # ── 9. All-green gate ───────────────────────────────────────────────────────
   ci-gate:
     name: CI Gate (All Green)
     runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests, contract-tests, security, client-generation]
+    needs: [lint, unit-tests, integration-tests, contract-tests, security, docker-build, openapi-compat, client-generation]
     steps:
       - run: echo "All CI checks passed ✅"

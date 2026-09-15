@@ -1,6 +1,17 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# CD — Merge feat/* → develop automatically after CI passes
-# On merge to main: tag the release.
+# CD — P6-15: Release candidate, immutable images and rollback
+#
+# On merge to main:
+#   1. Bump semver + git tag (existing behaviour, kept)
+#   2. Build three immutable server images tagged with the commit SHA and push
+#      them to GitHub Container Registry (GHCR)
+#   3. Create the GitHub Release
+#   4. Attach a release manifest recording sha-tags + image digests
+#
+# Immutability model: every image is tagged ghcr.io/<repo>/satquery-<svc>:sha-<short>
+# (and once per release with the semver tag). Tags are never moved; the digest
+# recorded in the manifest is the only thing rollback.sh trusts for pulls.
+# `latest` is deliberately NOT pushed.
 # ─────────────────────────────────────────────────────────────────────────────
 name: CD
 
@@ -8,16 +19,28 @@ on:
   push:
     branches: [main]
 
+env:
+  REGISTRY: ghcr.io
+
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   tag-release:
     name: Tag Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    outputs:
+      next_tag: ${{ steps.tag.outputs.next_tag }}
+      sha: ${{ steps.sha.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Resolve commit SHA
+        id: sha
+        run: echo "sha=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Get next semver tag
         id: tag
@@ -38,8 +61,166 @@ jobs:
           git tag ${{ steps.tag.outputs.next_tag }}
           git push origin ${{ steps.tag.outputs.next_tag }}
 
+  build-push-images:
+    name: Build & Push Immutable Images
+    runs-on: ubuntu-latest
+    needs: tag-release
+    outputs:
+      api_digest: ${{ steps.push-api.outputs.digest }}
+      mission_digest: ${{ steps.push-mission.outputs.digest }}
+      agent_digest: ${{ steps.push-agent.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Compute image names
+        id: names
+        env:
+          SHA: ${{ needs.tag-release.outputs.sha }}
+          TAG: ${{ needs.tag-release.outputs.next_tag }}
+        run: |
+          REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          for svc in api mission agent; do
+            echo "img_$svc=${REGISTRY}/${REPO_LC}/satquery-$svc" >> "$GITHUB_OUTPUT"
+          done
+          echo "sha_tag=sha-${SHA}" >> "$GITHUB_OUTPUT"
+          echo "ver_tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      # ── satquery-api ────────────────────────────────────────────────────────
+      - name: Build & push satquery-api
+        id: push-api
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile
+          target: runtime
+          push: true
+          build-args: |
+            APP_MODULE=services.gateway.implementation:app
+          tags: |
+            ${{ steps.names.outputs.img_api }}:${{ steps.names.outputs.sha_tag }}
+            ${{ steps.names.outputs.img_api }}:${{ steps.names.outputs.ver_tag }}
+
+      # ── satquery-mission ───────────────────────────────────────────────────
+      - name: Build & push satquery-mission
+        id: push-mission
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile
+          target: runtime
+          push: true
+          build-args: |
+            APP_MODULE=services.mission.implementation:app
+          tags: |
+            ${{ steps.names.outputs.img_mission }}:${{ steps.names.outputs.sha_tag }}
+            ${{ steps.names.outputs.img_mission }}:${{ steps.names.outputs.ver_tag }}
+
+      # ── satquery-agent ─────────────────────────────────────────────────────
+      - name: Build & push satquery-agent
+        id: push-agent
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/Dockerfile
+          target: runtime
+          push: true
+          build-args: |
+            APP_MODULE=services.agent.app.api.implementation:app
+          tags: |
+            ${{ steps.names.outputs.img_agent }}:${{ steps.names.outputs.sha_tag }}
+            ${{ steps.names.outputs.img_agent }}:${{ steps.names.outputs.ver_tag }}
+
+  github-release:
+    name: GitHub Release & Manifest
+    runs-on: ubuntu-latest
+    needs: [tag-release, build-push-images]
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.next_tag }}
+          tag_name: ${{ needs.tag-release.outputs.next_tag }}
           generate_release_notes: true
+
+      - name: Write release manifest
+        env:
+          TAG: ${{ needs.tag-release.outputs.next_tag }}
+          SHA: ${{ needs.tag-release.outputs.sha }}
+          API_DIGEST: ${{ needs.build-push-images.outputs.api_digest }}
+          MISSION_DIGEST: ${{ needs.build-push-images.outputs.mission_digest }}
+          AGENT_DIGEST: ${{ needs.build-push-images.outputs.agent_digest }}
+        run: |
+          REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          mkdir -p infrastructure/release/dist
+          python - "$TAG" "$SHA" "$REPO_LC" <<'EOF'
+          import datetime
+          import json
+          import sys
+
+          tag, sha, repo_lc = sys.argv[1], sys.argv[2], sys.argv[3]
+          digests = {"api": sys.argv[4], "mission": sys.argv[5], "agent": sys.argv[6]}
+          base = f"ghcr.io/{repo_lc}/satquery"
+          manifest = {
+              "version": tag,
+              "git_sha": sha,
+              "built_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              "status": "released",
+              "images": {
+                  svc: {
+                      "sha_tag": f"{base}-{svc}:sha-{sha}",
+                      "digest": f"{base}-{svc}@{digest}",
+                  }
+                  for svc, digest in digests.items()
+              },
+          }
+          with open("infrastructure/release/dist/release-manifest.json", "w") as f:
+              json.dump(manifest, f, indent=2)
+          print(json.dumps(manifest, indent=2))
+          EOF
+
+      - name: Append image provenance to release notes
+        env:
+          TAG: ${{ needs.tag-release.outputs.next_tag }}
+          API_DIGEST: ${{ needs.build-push-images.outputs.api_digest }}
+          MISSION_DIGEST: ${{ needs.build-push-images.outputs.mission_digest }}
+          AGENT_DIGEST: ${{ needs.build-push-images.outputs.agent_digest }}
+          REPO_LC: ${{ github.repository }}
+        run: |
+          REPO_LC="$(echo "$REPO_LC" | tr '[:upper:]' '[:lower:]')"
+          gh release view "$TAG" --json body -q .body > /tmp/body.md
+          cat >> /tmp/body.md <<EOF
+
+          ---
+
+          ### Immutable images (P6-15)
+
+          Pull by digest for reproducibility:
+
+          \`\`\`
+          docker pull ghcr.io/${REPO_LC}/satquery-api@$API_DIGEST
+          docker pull ghcr.io/${REPO_LC}/satquery-mission@$MISSION_DIGEST
+          docker pull ghcr.io/${REPO_LC}/satquery-agent@$AGENT_DIGEST
+          \`\`\`
+
+          Roll back to any previous release with:
+          \`infrastructure/scripts/rollback.sh <previous-sha>\`
+          EOF
+          gh release edit "$TAG" --notes-file /tmp/body.md
+
+      - name: Attach manifest to release
+        env:
+          TAG: ${{ needs.tag-release.outputs.next_tag }}
+        run: gh release upload "$TAG" infrastructure/release/dist/release-manifest.json --clobber

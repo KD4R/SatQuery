@@ -113,5 +113,9 @@ except ImportError:
 
 
 from services.agent.tests.helpers.test_tokens import make_test_token  # noqa: E402
+from tests.integration.test_p6_01_compose_integration import (
+    compose_env,
+    docker_available,
+)  # noqa: E402
 
-__all__ = ["make_test_token"]
+__all__ = ["make_test_token", "compose_env", "docker_available"]

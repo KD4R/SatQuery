@@ -45,7 +45,20 @@ def _ah(token: str):
 
 @pytest.fixture(scope="module")
 def gw():
+    # These tests exercise auth, RBAC and circuit-breaker behaviour, not rate
+    # limiting. The rate limiter now keys on the direct peer address (client-
+    # supplied X-Forwarded-For is untrusted per OWASP A04/A05), so every
+    # TestClient request lands in ONE bucket and would trip the 100/min
+    # default. Raise the limit for this module instead of weakening prod code.
+    from services.gateway.middleware.rate_limit import RateLimitMiddleware
+
     with TestClient(app, raise_server_exceptions=False) as c:
+        # The middleware chain is built on startup, so walk it inside the context.
+        node = app.middleware_stack
+        while node is not None and not isinstance(node, RateLimitMiddleware):
+            node = getattr(node, "app", None)
+        assert isinstance(node, RateLimitMiddleware), "rate limiter missing from gateway stack"
+        node._max_requests = 10_000
         yield c
 
 

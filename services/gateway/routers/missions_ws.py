@@ -27,6 +27,7 @@ import logging
 import os
 from typing import Optional
 
+import httpx
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 import redis.asyncio as redis
 
@@ -43,6 +44,47 @@ WS_CLOSE_POLICY_VIOLATION = 4001  # auth failure
 WS_CLOSE_NORMAL = 1000
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+# Resolved once at import time; never constructed from user input (A10).
+_MISSION_SERVICE_URL = os.getenv("MISSION_SERVICE_URL", "http://localhost:8001")
+_S2S_TIMEOUT_S = 3.0
+
+
+async def _verify_mission_tenant(mission_id: str, org_id: str, token: str) -> bool:
+    """Confirm with the mission service that this org owns the mission (A01).
+
+    The WebSocket route accepts a token and mission id; without an ownership
+    check, any authenticated tenant could subscribe to another tenant's
+    mission channel. The mission service's GET endpoint is tenant-scoped, so
+    a 200 proves ownership. Cross-tenant probes return 404 there.
+    """
+    from packages.auth.jwt import generate_s2s_token
+
+    try:
+        async with httpx.AsyncClient(timeout=_S2S_TIMEOUT_S) as client:
+            resp = await client.get(
+                f"{_MISSION_SERVICE_URL}/api/v1/missions/{mission_id}",
+                headers={
+                    "Authorization": "Bearer "
+                    + generate_s2s_token(
+                        caller_service="gateway",
+                        org_id=org_id,
+                        scopes=["mission:read"],
+                    )
+                },
+            )
+        if resp.status_code == 200:
+            return True
+        if resp.status_code == 404:
+            return False
+        # 5xx/other from mission service: fail closed.
+        logger.warning(
+            "Mission ownership check returned %s for mission=%s", resp.status_code, mission_id
+        )
+        return False
+    except (httpx.TimeoutException, httpx.NetworkError) as exc:
+        # Fail closed: deny rather than stream unverified.
+        logger.warning("Mission ownership check unreachable for mission=%s: %s", mission_id, exc)
+        return False
 
 
 @router.websocket("/ws/v1/missions/{mission_id}")
@@ -76,6 +118,19 @@ async def mission_status_stream(
         logger.warning("WebSocket access denied: subject=%s mission=%s", subject, mission_id)
         await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
         return
+
+    # Tenant isolation (A01): the caller's org must own this mission before
+    # anything is streamed. SYSTEM accounts (S2S) bypass by design.
+    if Role.SYSTEM not in [Role(r) for r in roles if r in [e.value for e in Role]]:
+        if not await _verify_mission_tenant(mission_id, org_id, token):
+            logger.warning(
+                "WebSocket tenant check failed: subject=%s mission=%s org=%s",
+                subject,
+                mission_id,
+                org_id,
+            )
+            await websocket.close(code=WS_CLOSE_POLICY_VIOLATION)
+            return
 
     await websocket.accept()
     logger.info("WebSocket connected: mission=%s org=%s subject=%s", mission_id, org_id, subject)

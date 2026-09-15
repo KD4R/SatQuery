@@ -14,9 +14,19 @@ _SUPPORTED_DISASTERS = {
     "inundation",
 }
 
+#: GeoJSON coordinates are at most 4 levels deep (position/ring/polygon/
+#: multipolygon). A deeper nesting is malformed input or a recursion-bomb
+#: attempt (A04) — reject before Python's own RecursionError becomes a 500.
+_MAX_COORDINATE_DEPTH = 4
+
 
 def _validate_coordinates(coords: List[Any], depth: int = 0) -> None:
     """Recursively validates coordinate pairs are within geographic boundaries."""
+    if depth > _MAX_COORDINATE_DEPTH:
+        raise GeometryValidationError(
+            f"Coordinates nested deeper than {_MAX_COORDINATE_DEPTH} levels"
+        )
+
     if not coords:
         raise GeometryValidationError("Coordinate list cannot be empty")
 

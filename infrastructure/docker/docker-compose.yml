@@ -1,0 +1,394 @@
+# SatQuery AI - Local Integration Environment
+# P6-01: Docker Compose local integration environment
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up -d
+#   docker compose ps
+#   docker compose logs -f api
+
+services:
+
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: satquery-postgres
+    environment:
+      POSTGRES_DB: satquery
+      POSTGRES_USER: satquery
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-satquery_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U satquery -d satquery"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - satquery
+
+  redis:
+    image: redis:7-alpine
+    container_name: satquery-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - satquery
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-09-22T00-33-43Z
+    container_name: satquery-minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - satquery
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+      args:
+        APP_MODULE: services.gateway.implementation:app
+    # image: + build: means `compose up` uses the local/pinned image when it
+    # exists, builds it when it doesn't. The CD pipeline pins these to GHCR
+    # sha-<sha> tags for rollback (P6-15); never set image: on this file.
+    image: satquery-api
+    container_name: satquery-api
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: satquery
+      TITILER_URL: http://titiler:8081
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-api
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+      # Upstream service discovery for the gateway proxy (proxy.py).
+      MISSION_SERVICE_URL: http://mission:8000
+      AGENT_SERVICE_URL: http://agent:8000
+      CORS_ALLOW_ORIGINS: http://localhost:3000,http://localhost:8080
+      RATE_LIMIT_REQUESTS: "200"
+      RATE_LIMIT_WINDOW_S: "60"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  worker-ingest:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+    container_name: satquery-worker-ingest
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: satquery
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-worker-ingest
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+      CELERY_CONCURRENCY: "2"
+    image: satquery-worker-ingest
+    command: celery -A services.celery_orchestrator worker -Q ingest,celery -c 2 -l info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  worker-analysis:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+    image: satquery-worker-analysis
+    container_name: satquery-worker-analysis
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: satquery
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-worker-analysis
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+    command: celery -A services.celery_orchestrator worker -Q analysis,celery --autoscale=8,2 -l info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  worker-report:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+    image: satquery-worker-report
+    container_name: satquery-worker-report
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: satquery
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-worker-report
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+    command: celery -A services.celery_orchestrator worker -Q report,celery -c 4 -l info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  titiler:
+    image: ghcr.io/developmentseed/titiler:latest
+    container_name: satquery-titiler
+    ports:
+      - "${TITILER_PORT:-8081}:80"
+    environment:
+      TITILER_API_KEY: ${TITILER_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - satquery
+
+  mission:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+      args:
+        APP_MODULE: services.mission.implementation:app
+    image: satquery-mission
+    container_name: satquery-mission
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: satquery
+      TITILER_URL: http://titiler:8081
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-mission
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+    ports:
+      - "${MISSION_PORT:-8001}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+      args:
+        APP_MODULE: services.agent.app.api.implementation:app
+    image: satquery-agent
+    container_name: satquery-agent
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      S3_BUCKET: satquery
+      TITILER_URL: http://titiler:8081
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-agent
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+    ports:
+      - "${AGENT_PORT:-8002}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    container_name: satquery-web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_GATEWAY_URL: /api/v1
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - satquery
+    restart: unless-stopped
+
+  otel-collector:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.108.0
+    container_name: satquery-otel-collector
+    volumes:
+      - ./otel-collector-config.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_PORT:-4317}:4317"
+      - "${OTEL_HTTP_PORT:-4318}:4318"
+    networks:
+      - satquery
+
+  prometheus:
+    image: quay.io/prometheus/prometheus:v2.54.1
+    container_name: satquery-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    networks:
+      - satquery
+
+  grafana:
+    image: docker.io/grafana/grafana:11.2.2
+    container_name: satquery-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    networks:
+      - satquery
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  satquery:
+    driver: bridge

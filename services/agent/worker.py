@@ -1,22 +1,15 @@
 import logging
-from celery import Celery
 import redis
-import os
 from packages.providers.config import config
 from services.agent.graph.orchestrator import get_orchestrator
+from services.celery_orchestrator import celery_app
 
 logger = logging.getLogger(__name__)
 
 # Implements P2-04: Async agent execute endpoint and run orchestration
-celery_app = Celery(
-    "agent_worker",
-    broker=config.redis_url.get_secret_value(),
-    backend=config.redis_url.get_secret_value(),
-)
-
-# In test environments, run tasks synchronously
-if os.environ.get("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
-    celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
+# Task registers on the shared SatQuery Celery app (services.celery_orchestrator),
+# which provides broker/backend config, eager-mode test support, and routes
+# this task to the `analysis` queue consumed by worker-analysis.
 
 celery_app.conf.update(
     task_serializer="json",

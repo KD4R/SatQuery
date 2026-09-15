@@ -133,18 +133,30 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         try:
             json_body = json.loads(body.decode("utf-8"))
-            done_state = {
-                "status": "done",
-                "status_code": response.status_code,
-                "response": json_body,
-            }
-            if redis_client:
-                try:
-                    await redis_client.set(store_key, json.dumps(done_state), ex=86400)
-                except Exception:
-                    pass
+            if 500 <= response.status_code < 600:
+                # Never cache server errors (A04): a transient upstream failure
+                # would otherwise be replayed to every client retry for 24h.
+                # Clear the in-progress marker so a retry can execute for real.
+                if redis_client:
+                    try:
+                        await redis_client.delete(store_key)
+                    except Exception:
+                        pass
+                else:
+                    _IDEMPOTENCY_STORE.pop(store_key, None)
             else:
-                _IDEMPOTENCY_STORE[store_key] = done_state
+                done_state = {
+                    "status": "done",
+                    "status_code": response.status_code,
+                    "response": json_body,
+                }
+                if redis_client:
+                    try:
+                        await redis_client.set(store_key, json.dumps(done_state), ex=86400)
+                    except Exception:
+                        pass
+                else:
+                    _IDEMPOTENCY_STORE[store_key] = done_state
         except Exception:
             if redis_client:
                 try:
