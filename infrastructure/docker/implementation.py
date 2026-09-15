@@ -272,7 +272,8 @@ def check_service_health(service_name: str, timeout: float = 5.0) -> bool:
     try:
         req = urllib.request.Request(url, method="GET")
         with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status == 200
+            # urlopen is untyped (returns Any); coerce so mypy sees a bool.
+            return int(resp.status) == 200
     except (urllib.error.URLError, OSError, TimeoutError):
         return False
 
@@ -280,7 +281,17 @@ def check_service_health(service_name: str, timeout: float = 5.0) -> bool:
 def check_all_services_healthy() -> Dict[str, bool]:
     """Check health of all HTTP-exposed services."""
     results: Dict[str, bool] = {}
-    for name in ["api", "mission", "agent", "postgres", "redis", "minio", "titiler", "prometheus", "grafana"]:
+    for name in [
+        "api",
+        "mission",
+        "agent",
+        "postgres",
+        "redis",
+        "minio",
+        "titiler",
+        "prometheus",
+        "grafana",
+    ]:
         results[name] = check_service_health(name)
     return results
 

@@ -13,7 +13,7 @@ from pathlib import Path
 import httpx
 import pytest
 
-from infrastructure.docker.implementation import check_service_health
+from infrastructure.docker.implementation import COMPOSE_FILE, check_service_health
 
 pytestmark = pytest.mark.integration
 
@@ -29,8 +29,9 @@ class TestDockerChaosEngineering:
         # Ensure it's healthy initially
         assert check_service_health("api"), "API must be healthy initially"
 
-        # Inject failure: kill redis
-        subprocess.run(["docker", "compose", "stop", "redis"], check=True)
+        # Inject failure: kill redis (compose file must be explicit: pytest
+        # runs from the repo root, where compose finds no config on its own).
+        subprocess.run(["docker", "compose", "-f", str(COMPOSE_FILE), "stop", "redis"], check=True)
 
         # Give API a moment to notice
         time.sleep(2)
@@ -58,7 +59,7 @@ class TestDockerChaosEngineering:
                 pass
 
         # Recover
-        subprocess.run(["docker", "compose", "start", "redis"], check=True)
+        subprocess.run(["docker", "compose", "-f", str(COMPOSE_FILE), "start", "redis"], check=True)
 
         # Give API a moment to recover connections
         time.sleep(5)
