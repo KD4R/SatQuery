@@ -230,22 +230,21 @@ jobs:
 
       - name: Export baseline OpenAPI schemas from main
         run: |
-          git checkout main || echo "No main branch locally"
+          # Export main's baseline in an isolated worktree. Checking out main
+          # in-place here would dirty the freshly-exported tracked specs in
+          # docs/openapi/ and make the switch back abort (git checkout refuses
+          # to overwrite local changes).
           mkdir -p docs/baseline
-          if [ -f scripts/export_openapi.py ]; then
-            python scripts/export_openapi.py
-            cp docs/openapi/gateway.json docs/baseline/gateway.json
-            cp docs/openapi/mission.json docs/baseline/mission.json
+          if git worktree add /tmp/baseline-wt origin/main 2>/dev/null; then
+            (cd /tmp/baseline-wt && python scripts/export_openapi.py)
+            cp /tmp/baseline-wt/docs/openapi/gateway.json docs/baseline/gateway.json
+            cp /tmp/baseline-wt/docs/openapi/mission.json docs/baseline/mission.json
+            git worktree remove --force /tmp/baseline-wt
           else
-            echo "No export script on main branch yet. Skipping baseline and mocking empty spec."
+            echo "No main branch available. Using empty stub spec as baseline."
             echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/gateway.json
             echo '{"openapi": "3.1.0", "info": {"title": "stub", "version": "1"}, "paths": {}}' > docs/baseline/mission.json
           fi
-          git checkout -
-          
-          # Re-export the schemas for the current branch so docs/openapi/ contains the PR's version,
-          # not the version generated while we were checked out on main.
-          python scripts/export_openapi.py
 
       - name: Run oasdiff (Gateway)
         uses: oasdiff/oasdiff-action/breaking@main
