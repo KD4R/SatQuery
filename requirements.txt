@@ -38,13 +38,16 @@ pytest
 pytest-asyncio
 aiosqlite
 
-# Dev / CI tooling
-black
-flake8
-mypy
-types-requests
-bandit
-import-linter
+# Dev / CI tooling -- pinned so CI's fresh install matches the versions the
+# code was actually formatted/checked with. Formatting output changes between
+# black majors (26.x reformats the tree), so an unpinned black fails the
+# Black format check on every PR (A06: vulnerable/outdated components).
+black>=25.9,<26
+flake8>=7.1
+mypy>=1.17,<2
+types-requests>=2.33
+bandit>=1.9
+import-linter>=2.15
 
 # Agent loop (P2)
 langgraph
