@@ -92,6 +92,7 @@ def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, cont
             span.record_exception(e)
             raise self.retry(exc=e)
 
+
 # --- P4-17: Geo failure recovery and fixture fallback ---
 class FixtureFallbackManager:
     """
@@ -107,10 +108,12 @@ class FixtureFallbackManager:
             inject_context_to_span(span, context)
             import os
             import json
+
             fixture_path = os.path.join(self.fixture_dir, f"{fallback_id}.json")
             if not os.path.exists(fixture_path):
                 raise FileNotFoundError(f"Fixture not found: {fixture_path}")
             with open(fixture_path, "r") as f:
                 return json.load(f)  # type: ignore
+
 
 fixture_fallback = FixtureFallbackManager()

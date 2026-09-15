@@ -371,9 +371,7 @@ def test_spatial_temporal_observation_search_invalid_input():
 
     with patch("services.eo_data.search.redis_client", None):
         with pytest.raises(RuntimeError):
-            svc.search_observations(
-                {}, datetime.now(timezone.utc), datetime.now(timezone.utc), {}
-            )
+            svc.search_observations({}, datetime.now(timezone.utc), datetime.now(timezone.utc), {})
 
 
 def test_p4_06_service_boundary():
@@ -416,9 +414,7 @@ def test_spatial_temporal_observation_search_api_valid():
         "start_date": "2026-09-01T00:00:00Z",
         "end_date": "2026-09-10T00:00:00Z",
     }
-    with patch(
-        "services.eo_data.search.SearchService.search_observations", return_value=[]
-    ):
+    with patch("services.eo_data.search.SearchService.search_observations", return_value=[]):
         resp = client_eo.post(
             "/api/v1/observations/search",
             json=body,
