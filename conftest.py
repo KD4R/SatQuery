@@ -19,10 +19,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 # Python cannot import `services.eo_data` from a folder named `eo-data` (hyphen).
 # This MetaPathFinder transparently maps the canonical underscore name to the
 # physical hyphenated directory for all submodule imports.
-import importlib
-import importlib.abc
-import importlib.machinery
-import importlib.util
+import importlib  # noqa: E402
+import importlib.abc  # noqa: E402
+import importlib.machinery  # noqa: E402
+import importlib.util  # noqa: E402
 
 _repo_root = os.path.abspath(os.path.dirname(__file__))
 
@@ -113,9 +113,9 @@ except ImportError:
 
 
 from services.agent.tests.helpers.test_tokens import make_test_token  # noqa: E402
-from tests.integration.test_p6_01_compose_integration import (
+from tests.integration.test_p6_01_compose_integration import (  # noqa: E402
     compose_env,
     docker_available,
-)  # noqa: E402
+)
 
 __all__ = ["make_test_token", "compose_env", "docker_available"]

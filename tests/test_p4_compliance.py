@@ -19,10 +19,10 @@ from fastapi.testclient import TestClient
 # Stub psycopg2 before any package imports it (not installed in this env)
 if "psycopg2" not in sys.modules:
     _psycopg2_stub = types.ModuleType("psycopg2")
-    _psycopg2_stub.Error = Exception
+    _psycopg2_stub.Error = Exception  # type: ignore[attr-defined]
     _pool_stub = types.ModuleType("psycopg2.pool")
-    _pool_stub.ThreadedConnectionPool = MagicMock
-    _psycopg2_stub.pool = _pool_stub
+    _pool_stub.ThreadedConnectionPool = MagicMock  # type: ignore[attr-defined]
+    _psycopg2_stub.pool = _pool_stub  # type: ignore[attr-defined]
     sys.modules["psycopg2"] = _psycopg2_stub
     sys.modules["psycopg2.pool"] = _pool_stub
 
@@ -53,8 +53,9 @@ FIXTURE_DIR = "data/fixtures"
 # ---------------------------------------------------------------------------
 
 
-def _make_scene_ref(**overrides) -> SceneRef:
-    defaults = dict(
+from typing import Any
+def _make_scene_ref(**overrides: Any) -> SceneRef:
+    defaults: dict[str, Any] = dict(
         provider=Provider.BHOONIDHI,
         collection="eos-04-sar",
         item_id="EOS-04_SAR_20260910_01",
@@ -70,7 +71,7 @@ def _make_scene_ref(**overrides) -> SceneRef:
     return SceneRef(**defaults)
 
 
-def _make_observation(**scene_overrides) -> Observation:
+def _make_observation(**scene_overrides: Any) -> Observation:
     scene = _make_scene_ref(**scene_overrides)
     return Observation(
         observation_id="obs_123",

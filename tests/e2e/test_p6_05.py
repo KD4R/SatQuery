@@ -21,7 +21,7 @@ def http_health(url: str, timeout: float = 5.0) -> bool:
     try:
         req = Request(url, method="GET")
         with urlopen(req, timeout=timeout) as resp:
-            return resp.status == 200
+            return bool(getattr(resp, "status", 0) == 200)
     except (URLError, OSError, TimeoutError):
         return False
 

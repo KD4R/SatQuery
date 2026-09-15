@@ -13,10 +13,11 @@ from packages.auth.models import AuthContext
 @pytest.fixture
 def mock_auth_context() -> AuthContext:
     return AuthContext(
-        subject="user123",
-        organisation_id="tenant_x",
+        subject="u1",
+        organisation_id="o1",
         roles=[],
-        trace_id=None,
+        email="test@satquery.com",
+        trace_id="trace_1",
     )
 
 
