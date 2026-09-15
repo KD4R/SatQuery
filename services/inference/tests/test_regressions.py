@@ -88,3 +88,93 @@ def test_a_checkpoint_carrying_an_arbitrary_object_is_refused_not_executed() -> 
 
         with pytest.raises(ModelUnavailable):
             ModelRegistry(root).load("hostile")
+
+
+# --------------------------------------------------------------------------- #
+# Model cards: unmeasured is not the same as measured-and-failed               #
+# --------------------------------------------------------------------------- #
+
+import json  # noqa: E402
+
+
+def register(root: Path, name: str, metrics: dict | None = None, calibration: dict | None = None):
+    (root / name).mkdir(parents=True)
+    (root / name / "best.pt").write_bytes(b"not a real checkpoint")
+    if metrics is not None:
+        (root / name / "metrics.json").write_text(json.dumps(metrics))
+    if calibration is not None:
+        (root / name / "calibration.json").write_text(json.dumps(calibration))
+
+
+def test_calibration_facts_reach_the_card(tmp_path: Path) -> None:
+    register(
+        tmp_path,
+        "m",
+        metrics={"epochs": 1, "seed": 0},
+        calibration={"ece_calibrated": 0.126, "passes_bar": False, "report": "reports/c.md"},
+    )
+    (card,) = ModelRegistry(tmp_path).cards()
+
+    assert card.calibration_ece == 0.126
+    assert card.calibration_passes is False
+    assert card.calibration_report == "reports/c.md"
+
+
+def test_an_uncalibrated_model_reports_none_not_false(tmp_path: Path) -> None:
+    """ "Nobody has measured this" and "measured, and it failed the bar" are
+    different claims. Defaulting to False would let an unexamined model be
+    described as a failed one -- the same trap `beats_baseline` avoids."""
+    register(tmp_path, "m", metrics={"epochs": 1, "seed": 0})
+    (card,) = ModelRegistry(tmp_path).cards()
+
+    assert card.calibration_passes is None
+    assert card.calibration_ece is None
+
+
+def test_an_unreadable_calibration_file_does_not_take_the_model_down(tmp_path: Path) -> None:
+    """A model that cannot be listed cannot be served, and a corrupt sidecar is a
+    reason to know less about a model, not to lose it."""
+    register(tmp_path, "m", metrics={"epochs": 1, "seed": 0})
+    (tmp_path / "m" / "calibration.json").write_text("{ not json")
+
+    (card,) = ModelRegistry(tmp_path).cards()
+    assert card.name == "m"
+    assert card.calibration_passes is None
+
+
+def test_provenance_absent_from_an_older_metrics_file_reads_as_unknown(tmp_path: Path) -> None:
+    """Checkpoints trained before these fields existed must still register.
+
+    A long training run holds its copy of the script in memory, so a run already
+    in flight when this landed writes the old format. Refusing it would discard a
+    three-hour result over missing metadata.
+    """
+    register(tmp_path, "m", metrics={"epochs": 20, "seed": 0, "parameters": 486553})
+    (card,) = ModelRegistry(tmp_path).cards()
+
+    assert card.in_channels is None
+    assert card.uses_permanent_water_prior is None
+    assert card.training_labelling is None
+    assert card.version == "e20-s0"
+
+
+def test_provenance_reaches_the_card_when_recorded(tmp_path: Path) -> None:
+    register(
+        tmp_path,
+        "m",
+        metrics={
+            "epochs": 30,
+            "seed": 0,
+            "in_channels": 3,
+            "uses_permanent_water_prior": True,
+            "training_labelling": "hand",
+            "model": {"iou": 0.42},
+            "baseline": {"iou": 0.20},
+        },
+    )
+    (card,) = ModelRegistry(tmp_path).cards()
+
+    assert (card.in_channels, card.uses_permanent_water_prior) == (3, True)
+    assert card.training_labelling == "hand"
+    assert card.beats_baseline is True
+    assert card.to_dict()["in_channels"] == 3

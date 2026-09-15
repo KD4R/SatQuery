@@ -60,6 +60,22 @@ from ml.scripts.report_freshness import code_fingerprint, write_sidecar
 DEFAULT_ROOT = Path("data/sen1floods11")
 DEFAULT_OUT = Path("reports/evaluation.md")
 DEFAULT_MODEL = Path("artifacts/flood-unet/best.pt")
+MODEL_ROOT = Path("artifacts")
+
+
+def discover_models(root: Path, single: Path | None) -> dict[str, Path]:
+    """Every ``<root>/<name>/best.pt``, or just the one the caller named.
+
+    Scored together in one process, because that is the only way two models'
+    numbers are comparable: same chips, same grid, same code. D15 is the record of
+    what happens otherwise -- the baseline appeared to drop from 0.242 to 0.189
+    when nothing about it had changed except which chips it saw.
+    """
+    if single is not None:
+        return {single.parent.name: single} if single.is_file() else {}
+    if not root.is_dir():
+        return {}
+    return {path.parent.name: path for path in sorted(root.glob("*/best.pt"))}
 
 
 WATER_BUCKETS = ("<1%", "1-10%", "10-30%", ">30%")
@@ -82,29 +98,44 @@ def bucket_for(water_percent: float) -> str:
     return ">30%"
 
 
-def evaluate_all(chips: tuple[Chip, ...], model_path: Path | None):
-    """Score baseline and, if available, the model, on the same chips.
+def load_models(paths: dict[str, Path]) -> dict[str, tuple]:
+    """Load every named checkpoint, skipping the ones that cannot be read.
 
-    Both in one pass so they cannot diverge: scoring them in separate runs is how
-    a comparison ends up between two different validation sets, which is the
-    mistake D15 records.
+    A checkpoint that fails to load is reported and dropped rather than aborting
+    the run: one unreadable experiment should not cost the comparison between the
+    others, which is the reason to score several in the first place.
     """
-    model = normalisation = None
-    if model_path is not None and model_path.is_file():
+    loaded: dict[str, tuple] = {}
+    for name, path in paths.items():
+        if not path.is_file():
+            continue
         try:
             import torch
 
             from ml.models.unet import UNet
             from ml.training.dataset import Normalisation
 
-            state = torch.load(model_path, weights_only=True, map_location="cpu")
+            state = torch.load(path, weights_only=True, map_location="cpu")
             model = UNet(**state["architecture"])
             model.load_state_dict(state["state_dict"])
             model.eval()
-            normalisation = Normalisation.from_dict(state["normalisation"])
+            loaded[name] = (model, Normalisation.from_dict(state["normalisation"]))
         except Exception as error:  # noqa: BLE001
-            print(f"model unavailable ({error}); reporting the baseline alone", file=sys.stderr)
-            model = None
+            print(f"model {name} unavailable ({error}); omitting it", file=sys.stderr)
+    return loaded
+
+
+def evaluate_all(chips: tuple[Chip, ...], model_paths: dict[str, Path]):
+    """Score the baseline and every model on the same chips, in one pass.
+
+    One pass, not one run per model. Two models scored in separate runs are two
+    numbers measured on whatever each run happened to see, and comparing them is
+    the mistake D15 records -- there the baseline appeared to fall from 0.242 to
+    0.189 when nothing about it had changed but the validation set. Everything
+    compared in this report is scored against the same chips, on the same grid, by
+    the same code, in the same process.
+    """
+    models = load_models(model_paths)
 
     rows = []
     for chip in sorted(chips, key=lambda c: c.stem):
@@ -132,34 +163,31 @@ def evaluate_all(chips: tuple[Chip, ...], model_path: Path | None):
             base = None
             base_iou = base_f1 = float("nan")
 
-        scored = None
-        model_iou = model_f1 = float("nan")
-        if model is not None:
+        row = {
+            "stem": chip.stem,
+            "region": chip.region,
+            "water_percent": water,
+            "bucket": bucket_for(water),
+            "baseline_iou": base_iou,
+            "baseline_f1": base_f1,
+            # The counts, not just the ratios. Pooling needs them, and a ratio
+            # cannot be un-averaged back into one.
+            "baseline_counts": _counts(base),
+        }
+
+        for name, (model, normalisation) in models.items():
             # Predicted on the SAME reprojected raster the baseline was scored on.
-            # Scoring the two on different grids is how a comparison silently
-            # becomes meaningless -- see ml/pipeline/learned.py.
+            # Scoring them on different grids is how a comparison silently becomes
+            # meaningless -- see ml/pipeline/learned.py.
             predicted = predict_water_mask(model, normalisation, raster)
             cleaned = postprocess_water_mask(predicted, pixel_area_m2=per_pixel).mask
             scored = confusion(cleaned, truth, ignore_value=IGNORE)
-            model_iou, model_f1 = scored.intersection_over_union, scored.f1
+            row[f"iou::{name}"] = scored.intersection_over_union
+            row[f"f1::{name}"] = scored.f1
+            row[f"counts::{name}"] = _counts(scored)
 
-        rows.append(
-            {
-                "stem": chip.stem,
-                "region": chip.region,
-                "water_percent": water,
-                "bucket": bucket_for(water),
-                "baseline_iou": base_iou,
-                "baseline_f1": base_f1,
-                "model_iou": model_iou,
-                "model_f1": model_f1,
-                # The counts, not just the ratios. Pooling needs them, and a ratio
-                # cannot be un-averaged back into one.
-                "baseline_counts": _counts(base),
-                "model_counts": _counts(scored),
-            }
-        )
-    return rows, model is not None
+        rows.append(row)
+    return rows, tuple(models)
 
 
 def _counts(metrics) -> dict[str, int] | None:
@@ -180,13 +208,22 @@ def _counts(metrics) -> dict[str, int] | None:
     }
 
 
+def _best(rows, names: tuple[str, ...]) -> str | None:
+    """The model with the highest pooled IoU, or None when none was scored."""
+    pooled = {name: _pooled(rows, f"counts::{name}") for name in names}
+    pooled = {name: p for name, p in pooled.items() if p is not None}
+    if not pooled:
+        return None
+    return max(pooled, key=lambda n: pooled[n].intersection_over_union)
+
+
 def _pooled(rows, key: str):
     """Pool the per-chip counts for one method, or None if it never scored."""
     collected = [SegmentationMetrics(**r[key]) for r in rows if r.get(key) is not None]
     return pool(collected) if collected else None
 
 
-def _headline(scored, has_model: bool) -> list[str]:
+def _headline(scored, names: tuple[str, ...]) -> list[str]:
     """Both aggregations, side by side, with the number that makes them readable.
 
     Two IoUs for the same model on the same chips is not indecision. Averaging
@@ -202,7 +239,8 @@ def _headline(scored, has_model: bool) -> list[str]:
     Accuracy is printed for one reason: to be refused. See the note under the table.
     """
     baseline = _pooled(scored, "baseline_counts")
-    model = _pooled(scored, "model_counts") if has_model else None
+    models = {name: _pooled(scored, f"counts::{name}") for name in names}
+    models = {name: m for name, m in models.items() if m is not None}
 
     base_iou = fmt(baseline.intersection_over_union) if baseline else "n/a"
     base_f1 = fmt(baseline.f1) if baseline else "n/a"
@@ -213,14 +251,19 @@ def _headline(scored, has_model: bool) -> list[str]:
         f"| {fmt(mean([r['baseline_iou'] for r in scored]))} "
         f"| {fmt(mean([r['baseline_f1'] for r in scored]))} |",
     ]
-    if has_model and model is not None:
+    # Best pooled IoU in bold, so the table has one obvious answer to "which won"
+    # without the reader recomputing it.
+    best = max(models, key=lambda n: models[n].intersection_over_union, default=None)
+    for name, pooled in models.items():
+        emphasis = "**" if name == best else ""
         lines.append(
-            f"| U-Net | **{fmt(model.intersection_over_union)}** "
-            f"| **{fmt(model.f1)}** "
-            f"| {fmt(mean([r['model_iou'] for r in scored]))} "
-            f"| {fmt(mean([r['model_f1'] for r in scored]))} |"
+            f"| {name} | {emphasis}{fmt(pooled.intersection_over_union)}{emphasis} "
+            f"| {emphasis}{fmt(pooled.f1)}{emphasis} "
+            f"| {fmt(mean([r[f'iou::{name}'] for r in scored]))} "
+            f"| {fmt(mean([r[f'f1::{name}'] for r in scored]))} |"
         )
 
+    model = models.get(best) if best else None
     reference = model if model is not None else baseline
     if reference is not None:
         floor = 1.0 - reference.prevalence
@@ -233,7 +276,7 @@ def _headline(scored, has_model: bool) -> list[str]:
             "met by a model that does nothing. The scored methods above reach "
             + ", ".join(
                 f"{name} {m.accuracy:.1%}"
-                for name, m in (("baseline", baseline), ("U-Net", model))
+                for name, m in ((("baseline", baseline),) + tuple(models.items()))
                 if m is not None
             )
             + " -- which is why IoU and F1 are the reported metrics.",
@@ -261,9 +304,14 @@ def fmt(value: float) -> str:
     return "—" if np.isnan(value) else f"{value:.3f}"
 
 
-def render(rows, *, has_model, chips, split, code_hash, model_path) -> str:
+def render(rows, *, names, chips, split, code_hash, model_paths) -> str:
     by_bucket = {b: [r for r in rows if r["bucket"] == b] for b in WATER_BUCKETS}
     regions = sorted({r["region"] for r in rows})
+    # The stratified and per-region tables follow one model, not all of them: a
+    # column per experiment makes both unreadable, and the question they answer
+    # is "where does the best method still fail", not "rank the candidates".
+    # The headline table above is where models are compared.
+    focus = _best(rows, names)
 
     lines = [
         "# Evaluation report",
@@ -286,7 +334,12 @@ def render(rows, *, has_model, chips, split, code_hash, model_path) -> str:
         f"| dataset fingerprint | `{dataset_fingerprint(chips)}` |",
         f"| chips scored | {len(rows)} of {len(chips)} |",
         f"| regions | {', '.join(regions)} |",
-        f"| model | `{model_path}` |" if has_model else "| model | none — baseline only |",
+        (
+            "| models | " + ", ".join(f"`{n}` (`{model_paths[n]}`)" for n in names) + " |"
+            if names
+            else "| models | none — baseline only |"
+        ),
+        f"| tables below follow | `{focus}` |" if focus else "| tables below follow | — |",
         "",
         "The code fingerprint is a hash over the modules that can change a reported",
         "number. CI recomputes it and fails if this report was produced by different",
@@ -315,23 +368,23 @@ def render(rows, *, has_model, chips, split, code_hash, model_path) -> str:
     held_out = {c.stem for c in split.validation} if split is not None else None
     scored = [r for r in rows if held_out is None or r["stem"] in held_out]
 
-    lines += _headline(scored, has_model)
+    lines += _headline(scored, names)
     lines += ["", "---", "", "## Stratified by water content", ""]
 
     lines += [
         "A single mean says as much about the sample's wet/dry mix as about the method",
         "(ADR-0007 D13), so it is never reported alone.",
         "",
-        "| water in chip | chips | baseline IoU | " + ("U-Net IoU |" if has_model else ""),
-        "|---|---|---|" + ("---|" if has_model else ""),
+        "| water in chip | chips | baseline IoU | " + (f"{focus} IoU |" if focus else ""),
+        "|---|---|---|" + ("---|" if focus else ""),
     ]
     for bucket in WATER_BUCKETS:
         group = [r for r in by_bucket[bucket] if held_out is None or r["stem"] in held_out]
         if not group:
             continue
         row = f"| {bucket} | {len(group)} | {fmt(mean([r['baseline_iou'] for r in group]))} |"
-        if has_model:
-            row += f" {fmt(mean([r['model_iou'] for r in group]))} |"
+        if focus:
+            row += f" {fmt(mean([r[f'iou::{focus}'] for r in group]))} |"
         lines.append(row)
 
     lines += [
@@ -346,9 +399,9 @@ def render(rows, *, has_model, chips, split, code_hash, model_path) -> str:
         "because a large gap between trained and held-out rows is the signal that a",
         "model memorised rather than learned — which is what this table is for.",
         "",
-        "| region | chips | split | baseline IoU |" + (" U-Net IoU |" if has_model else ""),
+        "| region | chips | split | baseline IoU |" + (f" {focus} IoU |" if focus else ""),
     ]
-    lines.append("|---|---|---|---|" + ("---|" if has_model else ""))
+    lines.append("|---|---|---|---|" + ("---|" if focus else ""))
 
     train_regions = {c.region for c in split.train} if split is not None else set()
     for region in regions:
@@ -358,15 +411,15 @@ def render(rows, *, has_model, chips, split, code_hash, model_path) -> str:
             f"| {region} | {len(group)} | {where} | "
             f"{fmt(mean([r['baseline_iou'] for r in group]))} |"
         )
-        if has_model:
-            row += f" {fmt(mean([r['model_iou'] for r in group]))} |"
+        if focus:
+            row += f" {fmt(mean([r[f'iou::{focus}'] for r in group]))} |"
         lines.append(row)
 
-    if has_model and train_regions:
+    if focus and train_regions:
         trained = [r for r in rows if r["region"] in train_regions]
         held = [r for r in rows if r["region"] not in train_regions]
-        on_train = mean([r["model_iou"] for r in trained])
-        on_held = mean([r["model_iou"] for r in held])
+        on_train = mean([r[f"iou::{focus}"] for r in trained])
+        on_held = mean([r[f"iou::{focus}"] for r in held])
         lines += [
             "",
             f"Mean U-Net IoU is {fmt(on_train)} on trained regions against "
@@ -397,7 +450,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--model", type=Path, default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--model",
+        type=Path,
+        default=None,
+        help="score exactly this checkpoint and no other. Without it every model "
+        "under --models is scored, which is usually what you want: two models "
+        "compared from separate runs are two numbers measured on whatever each "
+        "run happened to see (ADR-0007 D15).",
+    )
+    parser.add_argument(
+        "--models",
+        type=Path,
+        default=MODEL_ROOT,
+        help=f"directory of <name>/best.pt checkpoints (default {MODEL_ROOT})",
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -442,19 +509,24 @@ def main() -> int:
     except ValueError:
         split = None
 
-    print(f"scoring {len(chips)} chips...", file=sys.stderr)
-    rows, has_model = evaluate_all(chips, args.model)
+    model_paths = discover_models(args.models, args.model)
+    print(
+        f"scoring {len(chips)} chips against {len(model_paths)} model(s): "
+        f"{', '.join(model_paths) or 'none'}...",
+        file=sys.stderr,
+    )
+    rows, names = evaluate_all(chips, model_paths)
     if not rows:
         print("no chip produced a score; refusing to write an empty report", file=sys.stderr)
         return 1
 
     report = render(
         rows,
-        has_model=has_model,
+        names=names,
         chips=chips,
         split=split,
         code_hash=code_fingerprint(repo_root),
-        model_path=args.model,
+        model_paths=model_paths,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(report)

@@ -521,6 +521,16 @@ def main() -> int:
         "epochs": args.epochs,
         "seed": args.seed,
         "parameters": model.parameter_count,
+        # Provenance a reviewer will ask for and that cannot be recovered from the
+        # weights: what the model was fed, and what it was trained on.
+        "in_channels": model.in_channels,
+        "uses_permanent_water_prior": bool(args.prior),
+        "training_labelling": args.labelling,
+        "initialised_from": str(args.init_from) if args.init_from else None,
+        "train_chips": len(split.train),
+        "train_chips_hand": sum(1 for c in split.train if c.labelling is Labelling.HAND),
+        "train_chips_weak": sum(1 for c in split.train if c.labelling is not Labelling.HAND),
+        "discarded_chips": len(split.discarded),
         "train_regions": sorted({c.region for c in split.train}),
         "validation_regions": sorted({c.region for c in split.validation}),
         "validation_chips": [c.stem for c in split.validation],

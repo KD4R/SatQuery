@@ -69,6 +69,23 @@ class ModelCard:
     train_regions: tuple[str, ...]
     baseline_iou: float | None
     stratified_iou: dict[str, float]
+    #: Inputs the model expects. Three means it takes the JRC permanent-water prior
+    #: as a third channel; two means SAR alone. A caller listing models cannot
+    #: otherwise tell, and the difference changes what an analysis needs.
+    in_channels: int | None = None
+    uses_permanent_water_prior: bool | None = None
+    #: "hand", "weak" or "all" -- which labellings the weights were fitted on. A
+    #: model pretrained on automatically derived labels is a different claim from
+    #: one trained only on hand-drawn truth, and the difference belongs in
+    #: provenance rather than a commit message nobody reads at serving time.
+    training_labelling: str | None = None
+    #: From calibration.json beside the checkpoint, written by
+    #: ml/scripts/calibrate.py. None means nobody has measured it -- a different
+    #: state from "measured and it failed", not collapsed for the same reason
+    #: beats_baseline is tri-state.
+    calibration_ece: float | None = None
+    calibration_passes: bool | None = None
+    calibration_report: str | None = None
 
     @property
     def beats_baseline(self) -> bool | None:
@@ -95,6 +112,12 @@ class ModelCard:
             "baseline_iou": self.baseline_iou,
             "beats_baseline": self.beats_baseline,
             "stratified_iou": self.stratified_iou,
+            "in_channels": self.in_channels,
+            "uses_permanent_water_prior": self.uses_permanent_water_prior,
+            "training_labelling": self.training_labelling,
+            "calibration_ece": self.calibration_ece,
+            "calibration_passes": self.calibration_passes,
+            "calibration_report": self.calibration_report,
         }
 
 
@@ -175,7 +198,33 @@ class ModelRegistry:
             train_regions=tuple(metrics.get("train_regions", ())),
             baseline_iou=baseline.get("iou"),
             stratified_iou=dict(model.get("stratified_iou", {})),
+            in_channels=metrics.get("in_channels"),
+            uses_permanent_water_prior=metrics.get("uses_permanent_water_prior"),
+            training_labelling=metrics.get("training_labelling"),
+            **self._calibration(checkpoint.parent),
         )
+
+    @staticmethod
+    def _calibration(directory: Path) -> dict[str, Any]:
+        """Calibration facts from the sidecar, or all-None if it was never run.
+
+        Absent is not "uncalibrated" -- it is "unmeasured", and a card that
+        reported 0.0 or False for a model nobody has looked at would let an
+        unexamined model be described as a failed one.
+        """
+        path = directory / "calibration.json"
+        if not path.is_file():
+            return {}
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            logger.exception("model %s has unreadable calibration.json", directory.name)
+            return {}
+        return {
+            "calibration_ece": payload.get("ece_calibrated"),
+            "calibration_passes": payload.get("passes_bar"),
+            "calibration_report": payload.get("report"),
+        }
 
     def load(self, name: str) -> tuple[Any, Any, ModelCard]:
         """Load a model, returning ``(model, normalisation, card)``.
