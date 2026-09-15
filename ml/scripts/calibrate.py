@@ -150,6 +150,38 @@ def collect_logits(
     return np.concatenate(logits), np.concatenate(labels)
 
 
+def _where_the_error_is(calibration: Calibration) -> str:
+    """Name the bin doing the damage, computed rather than asserted.
+
+    This paragraph used to be a fixed sentence describing the first model measured
+    ("most pixels crowded into 0.2-0.5, a model that has not learned to commit").
+    It was true of that model and false of the next one, which puts 60% of its
+    pixels in the lowest bin -- and a generated report stating something it did not
+    measure is the defect this whole file exists to catch, appearing inside the
+    file itself.
+    """
+    populated = [b for b in calibration.bins if b.count > 0]
+    if not populated:
+        return ""
+    total = sum(b.count for b in populated)
+    modal = max(populated, key=lambda b: b.count)
+    worst = max(populated, key=lambda b: abs(b.gap) * b.count)
+    share = 100.0 * worst.count * abs(worst.gap) / sum(b.count * abs(b.gap) for b in populated)
+    direction = "more" if worst.gap > 0 else "less"
+    return (
+        f"Where the error is: the {worst.lower:.1f}-{worst.upper:.1f} bin holds "
+        f"{worst.count:,} pixels claiming {worst.mean_confidence:.3f} where "
+        f"{worst.observed_frequency:.3f} are water, and contributes {share:.0f}% of "
+        f"the remaining ECE on its own -- the model claims {direction} water than it "
+        f"finds there. For scale, the busiest bin is "
+        f"{modal.lower:.1f}-{modal.upper:.1f} with "
+        f"{100.0 * modal.count / total:.0f}% of all pixels. One monotonic parameter "
+        "moves the whole distribution and cannot reshape one bin, so the route past "
+        "this bar is a better model rather than a richer calibrator. Re-run after "
+        "the next training round."
+    )
+
+
 def diagram(calibration: Calibration) -> list[str]:
     lines = [
         "| confidence bin | pixels | mean claimed | observed | gap |",
@@ -270,19 +302,7 @@ def main() -> int:
             )
         ),
         "",
-        (
-            ""
-            if passes
-            else (
-                "This is a property of the model, not of the scaling. One monotonic "
-                "parameter can move the whole confidence distribution but cannot fix "
-                "a model whose scores are bunched near the middle -- and the raw "
-                "diagram shows most pixels crowded into 0.2-0.5, which is a model "
-                "that has not learned to commit. The route past this bar is a better "
-                "model, not a richer calibrator. Re-run this after the next training "
-                "round."
-            )
-        ),
+        ("" if passes else _where_the_error_is(after)),
         "",
         f"Water is {after.prevalence:.1%} of the reported pixels. ECE has to be read "
         "against that: a model emitting the base rate everywhere would score a near-"

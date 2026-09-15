@@ -13,12 +13,12 @@ recollection, not a measurement.
 
 | | |
 |---|---|
-| generated | 2026-09-15 10:46 UTC |
+| generated | 2026-09-15 13:26 UTC |
 | code fingerprint | `60c62b97f32d6792` |
 | dataset fingerprint | `0305c0a36ac41cd7` |
 | chips scored | 395 of 400 |
 | regions | Ghana, India, Mekong, Nigeria, Pakistan, Paraguay, Somalia, Spain, Sri-Lanka, USA |
-| models | `flood-unet` (`artifacts/flood-unet/best.pt`), `hand-only-v2` (`artifacts/hand-only-v2/best.pt`) |
+| models | `flood-unet` (`artifacts/flood-unet/best.pt`), `flood-unet-v2` (`artifacts/flood-unet-v2/best.pt`), `hand-only-v2` (`artifacts/hand-only-v2/best.pt`), `pretrain` (`artifacts/pretrain/best.pt`) |
 | tables below follow | `hand-only-v2` |
 
 The code fingerprint is a hash over the modules that can change a reported
@@ -40,9 +40,11 @@ recognising terrain it has already seen.
 |---|---|---|---|---|
 | deterministic baseline | 0.204 | 0.339 | 0.209 | 0.289 |
 | flood-unet | 0.421 | 0.593 | 0.259 | 0.359 |
+| flood-unet-v2 | 0.398 | 0.569 | 0.261 | 0.356 |
 | hand-only-v2 | **0.435** | **0.606** | 0.254 | 0.348 |
+| pretrain | 0.407 | 0.579 | 0.245 | 0.337 |
 
-**Do not quote accuracy for this task.** Water is 10.8% of the scorable pixels on this split, so a model that predicts no water anywhere scores 89.2% accuracy and 0.000 IoU. Every target of the form "N% accurate" below that figure is met by a model that does nothing. The scored methods above reach baseline 68.5%, flood-unet 90.8%, hand-only-v2 91.6% -- which is why IoU and F1 are the reported metrics.
+**Do not quote accuracy for this task.** Water is 10.8% of the scorable pixels on this split, so a model that predicts no water anywhere scores 89.2% accuracy and 0.000 IoU. Every target of the form "N% accurate" below that figure is met by a model that does nothing. The scored methods above reach baseline 68.5%, flood-unet 90.8%, flood-unet-v2 89.7%, hand-only-v2 91.6%, pretrain 91.0% -- which is why IoU and F1 are the reported metrics.
 
 1 of 92 chips is absent from the pooled baseline: Otsu found no separable threshold and the method abstained. An abstention is not a zero score, so those chips are excluded rather than counted as total failures (ADR-0007 D10).
 
