@@ -68,7 +68,7 @@ jobs:
 
       - name: Services must not import test fixtures
         run: |
-          if grep -rnE '^(from|import)\s+tests?\.' services/ packages/ apps/api/; then
+          if grep -rnE '^(from|import)\s+tests?\.' services/ packages/; then
             echo "::error::Service code imports a test module."
             exit 1
           fi

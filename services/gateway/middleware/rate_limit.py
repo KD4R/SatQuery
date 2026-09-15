@@ -23,20 +23,41 @@ from starlette.responses import JSONResponse
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Sliding-window rate limiter middleware."""
+    """Sliding-window rate limiter middleware.
 
-    def __init__(self, app, requests: int = 100, window_s: int = 60) -> None:
+    Client identity: by default the direct peer address is used. Client-supplied
+    ``X-Forwarded-For`` is trusted ONLY when ``trust_proxy_headers=True`` is
+    explicitly configured (i.e. the service is deployed behind a proxy that
+    overwrites the header) — otherwise attackers could rotate spoofed IPs to
+    bypass the limit and inflate the tracking store (A04/A05).
+    """
+
+    #: Hard cap on tracked clients so unique-IP floods cannot exhaust memory.
+    _MAX_TRACKED_CLIENTS = 10_000
+
+    def __init__(
+        self,
+        app,
+        requests: int = 100,
+        window_s: int = 60,
+        trust_proxy_headers: bool = False,
+    ) -> None:
         super().__init__(app)
         self._max_requests = requests
         self._window_s = window_s
+        self._trust_proxy_headers = trust_proxy_headers
         self._store: dict[str, Deque[float]] = defaultdict(deque)
 
     def _client_key(self, request: Request) -> str:
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            # Take the leftmost (original client) IP
-            ip = forwarded.split(",")[0].strip()
+        if self._trust_proxy_headers:
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                # Take the leftmost (original client) IP
+                ip = forwarded.split(",")[0].strip()
+            else:
+                ip = request.client.host if request.client else "unknown"
         else:
+            # Never trust client-supplied headers: use the direct peer.
             ip = request.client.host if request.client else "unknown"
         return ip.lower()
 
@@ -48,6 +69,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         key = self._client_key(request)
         now = time.monotonic()
         window_start = now - self._window_s
+
+        # Bound the store: if a flood of unique clients fills it, drop the
+        # oldest tracking bucket. Worst case a dropped client gets a fresh
+        # window — acceptable vs. unbounded memory growth (A04 DoS).
+        if len(self._store) > self._MAX_TRACKED_CLIENTS and key not in self._store:
+            oldest = next(iter(self._store))
+            del self._store[oldest]
 
         timestamps = self._store[key]
 

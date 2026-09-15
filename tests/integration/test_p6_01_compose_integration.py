@@ -84,9 +84,9 @@ class TestDockerComposeEnvironment:
 
         time.sleep(5)
 
-        # Check status
+        # Check status — get_service_status() keys by compose service name
         statuses = get_service_status()
-        assert statuses.get("satquery-postgres") == "running"
+        assert statuses.get("postgres") == "running"
 
         # Stop
         result = stop_environment()

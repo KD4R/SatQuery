@@ -4,6 +4,7 @@ packages/observability/telemetry.py
 Configures OpenTelemetry TracerProvider and FastAPI instrumentation.
 """
 
+import logging
 import os
 from fastapi import FastAPI
 
@@ -16,10 +17,15 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter, SpanExporter
 
 
+logger = logging.getLogger(__name__)
+
+
 def setup_telemetry(app: FastAPI, service_name: str) -> None:
     """
     Configure OpenTelemetry for the given FastAPI app.
     Extracts/injects W3C traceparent headers automatically.
+
+    Fail-soft: telemetry is never allowed to prevent the service from starting.
     """
     resource = Resource.create({"service.name": service_name})
     provider = TracerProvider(resource=resource)
@@ -42,7 +48,15 @@ def setup_telemetry(app: FastAPI, service_name: str) -> None:
     # Instrument FastAPI
     # This automatically adds middlewares that extract trace context from
     # incoming requests and create a new span for the request.
-    FastAPIInstrumentor.instrument_app(app)
+    try:
+        FastAPIInstrumentor.instrument_app(app)
+    except Exception:  # pragma: no cover - depends on upstream lib versions
+        # Never let instrumentation break the service (e.g. OTel/Starlette
+        # version drift). Tracing is lost, the API is not.
+        logger.exception("FastAPI instrumentation failed; continuing without traces")
 
     # Instrument httpx to automatically inject traceparent headers into outgoing requests
-    HTTPXClientInstrumentor().instrument()
+    try:
+        HTTPXClientInstrumentor().instrument()
+    except Exception:  # pragma: no cover - depends on upstream lib versions
+        logger.exception("httpx instrumentation failed; continuing without trace propagation")

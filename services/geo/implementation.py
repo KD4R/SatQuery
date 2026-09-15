@@ -4,26 +4,21 @@ import os
 from typing import Any, Dict, Optional
 
 import redis as _redis
-from celery import Celery
 
 from packages.geo.raster import validate_raster
 from packages.geo.crs import normalize_crs
 from packages.geo.clipping import clip_raster_to_aoi
 from packages.geo.cog import generate_cog
 from packages.providers.config import config as provider_config
+from services.celery_orchestrator import celery_app
 from services.eo_data.telemetry import tracer, geo_job_duration_ms, inject_context_to_span
 
 logger = logging.getLogger(__name__)
 
 # --- P4-16: Async GeoJob worker ---
-celery_app = Celery(
-    "geojob_worker",
-    broker=provider_config.redis_url.get_secret_value(),
-    backend=provider_config.redis_url.get_secret_value(),
-)
-# In test environments (CELERY_TASK_ALWAYS_EAGER=true), run tasks synchronously.
-if os.environ.get("CELERY_TASK_ALWAYS_EAGER", "").lower() == "true":
-    celery_app.conf.update(task_always_eager=True, task_eager_propagates=True)
+# Task registers on the shared SatQuery Celery app (services.celery_orchestrator),
+# which provides broker/backend config, eager-mode test support, and routes
+# this task to the `ingest` queue consumed by worker-ingest.
 
 try:
     redis_client = _redis.from_url(

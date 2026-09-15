@@ -12,14 +12,21 @@ layers = apps
          services
          ml
          packages
+# Deliberate cross-layer import: this regression test exists to pin the
+# services-layer SSRF allowlist from the ml side (see PR #17). It reads a
+# constant only; it does not create a runtime dependency.
+ignore_imports = ml.io.tests.test_regressions -> services.inference.validation
 
 [importlinter:contract:module-independence]
 name = Service modules do not import each other directly
 type = independence
-modules = services.planner
-          services.discovery
-          services.analysis
-          services.evidence
-          services.decision
-          services.monitoring
-          services.reporting
+modules = services.agent
+          services.gateway
+          services.geo
+          services.inference
+          services.mission
+# Placeholder dirs (monitoring/notifications/reporting) lack __init__.py
+# until their owners land code — re-add them here when implemented.
+# services.eo_data is omitted: the physical dir 'services/eo-data' is
+# hyphenated, so its module name is only resolvable via the conftest.py
+# meta-path alias, which import-linter does not use.

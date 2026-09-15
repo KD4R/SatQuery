@@ -13,6 +13,8 @@ run inside.
 """
 
 import json
+import os
+import socket
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -38,6 +40,9 @@ class ServiceConfig:
     health_endpoint: str = "/api/v1/health"
     protocol: str = "http"
     depends_on: tuple = ()
+    # "http" = GET health_endpoint and expect 200; "tcp" = plain socket
+    # connect (postgres/redis speak binary protocols, not HTTP).
+    check: str = "http"
 
     @property
     def url(self) -> str:
@@ -46,20 +51,66 @@ class ServiceConfig:
 
 @dataclass(frozen=True)
 class EnvironmentConfig:
-    """Complete configuration for the local integration environment."""
+    """Complete configuration for the local integration environment.
+
+    Host ports honour the same env vars the compose file uses, so probes
+    stay correct when a developer remaps ports locally (e.g. POSTGRES_PORT
+    to dodge a conflict with another project's container).
+    """
 
     services: Dict[str, ServiceConfig] = field(
         default_factory=lambda: {
-            "api": ServiceConfig(name="api", port=8000, depends_on=("postgres", "redis", "minio")),
-            "mission": ServiceConfig(name="mission", port=8001, depends_on=("postgres", "redis", "minio")),
-            "agent": ServiceConfig(name="agent", port=8002, depends_on=("postgres", "redis", "minio")),
-            "web": ServiceConfig(name="web", port=3000, depends_on=("api",)),
-            "postgres": ServiceConfig(name="postgres", port=5432, health_endpoint="/"),
-            "redis": ServiceConfig(name="redis", port=6379, health_endpoint="/"),
-            "minio": ServiceConfig(name="minio", port=9000, health_endpoint="/minio/health/live"),
-            "titiler": ServiceConfig(name="titiler", port=8081, health_endpoint="/healthz"),
-            "prometheus": ServiceConfig(name="prometheus", port=9090, health_endpoint="/-/healthy"),
-            "grafana": ServiceConfig(name="grafana", port=3001, health_endpoint="/api/health"),
+            "api": ServiceConfig(
+                name="api",
+                port=int(os.getenv("API_PORT", "8000")),
+                depends_on=("postgres", "redis", "minio"),
+            ),
+            "mission": ServiceConfig(
+                name="mission",
+                port=int(os.getenv("MISSION_PORT", "8001")),
+                depends_on=("postgres", "redis", "minio"),
+            ),
+            "agent": ServiceConfig(
+                name="agent",
+                port=int(os.getenv("AGENT_PORT", "8002")),
+                depends_on=("postgres", "redis", "minio"),
+            ),
+            "web": ServiceConfig(
+                name="web", port=int(os.getenv("WEB_PORT", "3000")), depends_on=("api",)
+            ),
+            # postgres/redis are TCP-only services: probe with a socket, not HTTP.
+            "postgres": ServiceConfig(
+                name="postgres",
+                port=int(os.getenv("POSTGRES_PORT", "5432")),
+                health_endpoint="/",
+                check="tcp",
+            ),
+            "redis": ServiceConfig(
+                name="redis",
+                port=int(os.getenv("REDIS_PORT", "6379")),
+                health_endpoint="/",
+                check="tcp",
+            ),
+            "minio": ServiceConfig(
+                name="minio",
+                port=int(os.getenv("MINIO_API_PORT", "9000")),
+                health_endpoint="/minio/health/live",
+            ),
+            "titiler": ServiceConfig(
+                name="titiler",
+                port=int(os.getenv("TITILER_PORT", "8081")),
+                health_endpoint="/healthz",
+            ),
+            "prometheus": ServiceConfig(
+                name="prometheus",
+                port=int(os.getenv("PROMETHEUS_PORT", "9090")),
+                health_endpoint="/-/healthy",
+            ),
+            "grafana": ServiceConfig(
+                name="grafana",
+                port=int(os.getenv("GRAFANA_PORT", "3001")),
+                health_endpoint="/api/health",
+            ),
             "otel-collector": ServiceConfig(name="otel-collector", port=4317, health_endpoint="/"),
             "worker-ingest": ServiceConfig(name="worker-ingest", port=0),
             "worker-analysis": ServiceConfig(name="worker-analysis", port=0),
@@ -138,11 +189,13 @@ def start_environment(
     if services:
         cmd.extend(services)
 
+    # Cold builds (first `up --build`) pull base images and compile wheels;
+    # 120s is not enough on a fresh machine or CI runner.
     return subprocess.run(
         cmd,
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=600 if build else 120,
         cwd=str(PROJECT_ROOT),
     )
 
@@ -190,22 +243,30 @@ def get_service_status() -> Dict[str, str]:
 
 
 def check_service_health(service_name: str, timeout: float = 5.0) -> bool:
-    """Check if a specific service is healthy via HTTP.
+    """Check if a specific service is healthy.
 
     Args:
         service_name: Name of the service to check.
-        timeout: HTTP timeout in seconds.
+        timeout: Probe timeout in seconds.
 
     Returns:
-        True if the service responds with 200.
+        True if the service responds (HTTP 200, or TCP connect for
+        non-HTTP services like postgres/redis).
     """
-    import urllib.request
-    import urllib.error
-
     config = EnvironmentConfig()
     svc = config.services.get(service_name)
     if not svc or svc.port == 0:
         return False
+
+    if svc.check == "tcp":
+        try:
+            with socket.create_connection(("localhost", svc.port), timeout=timeout):
+                return True
+        except OSError:
+            return False
+
+    import urllib.error
+    import urllib.request
 
     url = f"{svc.url}{svc.health_endpoint}"
     try:

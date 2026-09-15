@@ -1,4 +1,6 @@
-fastapi[all]
+fastapi[all]>=0.115
+# opentelemetry-instrumentation-fastapi <0.64b0 crashes on FastAPI >=0.137
+# (_IncludedRouter has no .path). Keep contrib >=0.64b0 until that floor moves.
 pydantic>=2.0
 pydantic-settings
 
@@ -22,11 +24,13 @@ psycopg2-binary
 redis
 celery
 python-jose[cryptography]
-opentelemetry-api
-opentelemetry-sdk
-opentelemetry-instrumentation-fastapi
-opentelemetry-instrumentation-httpx
-opentelemetry-exporter-otlp
+# OTel core + instrumentation must be same release train; contrib 0.64b0+
+# is required for FastAPI >=0.137 (_IncludedRouter fix).
+opentelemetry-api>=1.43
+opentelemetry-sdk>=1.43
+opentelemetry-instrumentation-fastapi>=0.64b0
+opentelemetry-instrumentation-httpx>=0.64b0
+opentelemetry-exporter-otlp>=1.43
 python-json-logger
 httpx
 tenacity
@@ -38,6 +42,7 @@ aiosqlite
 black
 flake8
 mypy
+types-requests
 bandit
 import-linter
 

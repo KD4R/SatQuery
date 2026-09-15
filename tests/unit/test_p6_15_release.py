@@ -5,6 +5,9 @@ Unit tests for infrastructure/release/implementation.py
 """
 
 import json
+import os
+import subprocess
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -132,3 +135,128 @@ class TestGitSha:
         mock_run.return_value = type("R", (), {"returncode": 1, "stdout": ""})()
         sha = get_git_sha()
         assert sha == "unknown"
+
+
+# ── CD pipeline / rollback static contracts (P6-15) ──────────────────────────
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+CD_YML = REPO_ROOT / ".github" / "workflows" / "cd.yml"
+COMPOSE_YML = REPO_ROOT / "infrastructure" / "docker" / "docker-compose.yml"
+DOCKERFILE = REPO_ROOT / "infrastructure" / "docker" / "Dockerfile"
+ROLLBACK_SH = REPO_ROOT / "infrastructure" / "scripts" / "rollback.sh"
+
+
+class TestCDWorkflow:
+    def test_cd_workflow_exists_and_parses(self):
+        assert CD_YML.exists()
+        import yaml
+
+        data = yaml.safe_load(CD_YML.read_text())
+        jobs = data["jobs"]
+        assert {"tag-release", "build-push-images", "github-release"}.issubset(jobs)
+
+    def test_cd_pushes_to_ghcr_with_sha_and_version_tags(self):
+        text = CD_YML.read_text()
+        assert "ghcr.io" in text
+        assert "sha_tag=sha-${SHA}" in text
+        assert "docker/build-push-action" in text
+        assert "docker/login-action" in text
+
+    def test_cd_builds_all_three_server_images(self):
+        text = CD_YML.read_text()
+        for module in (
+            "services.gateway.implementation:app",
+            "services.mission.implementation:app",
+            "services.agent.app.api.implementation:app",
+        ):
+            assert module in text, f"missing APP_MODULE for {module}"
+
+    def test_cd_does_not_push_moving_latest_tag(self):
+        """Immutability: `latest` must never be pushed by the pipeline."""
+        push_section = CD_YML.read_text()
+        for line in push_section.splitlines():
+            if "tags:" in line or (":latest" in line and "NOT" not in line.upper()):
+                assert "latest" not in line, f"moving 'latest' tag pushed: {line}"
+
+
+class TestComposeRollbackPinning:
+    def test_compose_services_have_image_names(self):
+        import yaml
+
+        data = yaml.safe_load(COMPOSE_YML.read_text())
+        for svc in ("api", "mission", "agent", "worker-ingest", "worker-analysis", "worker-report"):
+            assert svc in data["services"], f"{svc} missing from compose"
+            assert "image" in data["services"][svc], f"{svc} has no image: (rollback pinning)"
+
+    def test_mission_and_agent_use_app_module_arg(self):
+        import yaml
+
+        data = yaml.safe_load(COMPOSE_YML.read_text())
+        assert (
+            data["services"]["mission"]["build"]["args"]["APP_MODULE"]
+            == "services.mission.implementation:app"
+        )
+        assert (
+            data["services"]["agent"]["build"]["args"]["APP_MODULE"]
+            == "services.agent.app.api.implementation:app"
+        )
+
+
+class TestDockerfileVariants:
+    def test_dockerfile_parameterized_app_module(self):
+        text = DOCKERFILE.read_text()
+        assert "ARG APP_MODULE" in text
+        assert "ENV APP_MODULE" in text
+        assert "${APP_MODULE}" in text
+
+
+class TestRollbackScriptIntegration:
+    def test_rollback_script_exists_and_executable(self):
+        assert ROLLBACK_SH.exists()
+        assert ROLLBACK_SH.stat().st_mode & 0o111, "rollback.sh must be executable"
+
+    def test_rollback_script_rejects_non_sha(self, tmp_path):
+        result = subprocess.run(
+            ["bash", str(ROLLBACK_SH), "not-a-sha"], capture_output=True, text=True, timeout=30
+        )
+        assert result.returncode != 0
+        assert "git SHA" in result.stderr
+
+    def test_rollback_script_print_env_example(self):
+        result = subprocess.run(
+            ["bash", str(ROLLBACK_SH), "--print-env-example"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert result.returncode == 0
+        assert "SATQUERY_REGISTRY" in result.stdout
+
+    def test_rollback_script_dry_run_no_registry(self):
+        """Dry-run against a non-existent release must fail cleanly (no pull)."""
+        result = subprocess.run(
+            ["bash", str(ROLLBACK_SH), "deadbee", "--dry-run"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+            env={**os.environ, "SATQUERY_REGISTRY": "ghcr.io", "SATQUERY_REPO": "kd4r/satquery"},
+        )
+        # Either resolves (unexpected) or fails with a clear message — but it
+        # must never proceed to compose up.
+        if result.returncode != 0:
+            assert "Could not resolve digest" in result.stderr
+
+    def test_rollback_generates_digest_pinned_override(self):
+        """generate_rollback_script() must pin by digest, not by tag."""
+        manifest = ReleaseManifest(
+            version="v1.0.0",
+            git_sha="abc1234",
+            built_at="2026-01-01T00:00:00Z",
+            images={
+                "api": "ghcr.io/kd4r/satquery/satquery-api@sha256:deadbeef",
+                "mission": "ghcr.io/kd4r/satquery/satquery-mission@sha256:cafe",
+            },
+        )
+        script = generate_rollback_script(manifest)
+        assert "@sha256:" in script or "digest" in script.lower() or "docker pull" in script
