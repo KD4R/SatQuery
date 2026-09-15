@@ -2,12 +2,7 @@ from fastapi import APIRouter, Header, Depends, HTTPException
 from typing import Dict, Any, Optional
 from pydantic import BaseModel
 
-try:
-    from titiler.core.factory import TilerFactory
-
-    TITILER_AVAILABLE = True
-except ImportError:
-    TITILER_AVAILABLE = False
+from titiler.core.factory import TilerFactory
 
 from services.geo.implementation import process_geo_job
 from services.eo_data.errors import ErrorResponse
@@ -26,18 +21,9 @@ def verify_auth_context(organization_id: Optional[str] = Header(None)) -> str:
     return organization_id
 
 
-# P4-15: TiTiler Integration
-if TITILER_AVAILABLE:
-    # Mount actual titiler dynamic tile generation
-    cog_tiler = TilerFactory()
-    router.include_router(cog_tiler.router, prefix="/tiles", tags=["tiles"])
-else:
-
-    @router.get("/tiles/{z}/{x}/{y}")
-    def fallback_tiles(z: int, x: int, y: int):
-        raise HTTPException(
-            status_code=501, detail="titiler.core missing from environment. Tiles unavailable."
-        )
+# Mount actual titiler dynamic tile generation
+cog_tiler = TilerFactory()
+router.include_router(cog_tiler.router, prefix="/tiles", tags=["tiles"])
 
 
 @router.post("/geo/jobs", status_code=202)

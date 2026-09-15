@@ -1,6 +1,4 @@
-import json
 import logging
-import os
 from typing import Any, Dict, Optional
 
 import redis as _redis
@@ -71,9 +69,13 @@ def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, cont
                         # Persist AOI
                         from packages.geo.postgis import postgis_ops
 
-                        if postgis_ops:
-                            org_id = context.get("organization_id", "default_org")
-                            postgis_ops.insert_aoi(org_id, job_id, f"Job {job_id} AOI", aoi_geojson)
+                        if not postgis_ops:
+                            raise RuntimeError(
+                                "PostGIS connection pool missing. Required for persistence."
+                            )
+
+                        org_id = context.get("organization_id", "default_org")
+                        postgis_ops.insert_aoi(org_id, job_id, f"Job {job_id} AOI", aoi_geojson)
                     else:
                         pre_cog_path = reprojected_path
 
@@ -90,7 +92,6 @@ def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, cont
             span.record_exception(e)
             raise self.retry(exc=e)
 
-
 # --- P4-17: Geo failure recovery and fixture fallback ---
 class FixtureFallbackManager:
     """
@@ -104,11 +105,12 @@ class FixtureFallbackManager:
     def recover_search(self, fallback_id: str, context: dict) -> Dict[str, Any]:
         with tracer.start_as_current_span("recover_fixture") as span:
             inject_context_to_span(span, context)
+            import os
+            import json
             fixture_path = os.path.join(self.fixture_dir, f"{fallback_id}.json")
             if not os.path.exists(fixture_path):
                 raise FileNotFoundError(f"Fixture not found: {fixture_path}")
             with open(fixture_path, "r") as f:
                 return json.load(f)  # type: ignore
-
 
 fixture_fallback = FixtureFallbackManager()

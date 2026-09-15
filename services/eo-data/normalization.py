@@ -60,6 +60,8 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
 
     assets = {k: v.get("href", "") for k, v in item.get("assets", {}).items() if "href" in v}
 
+    quality_score = max(0, 100 - (cloud_cover if cloud_cover is not None else 0.0))
+
     observation = Observation(
         observation_id=str(uuid.uuid4()),
         scene=scene_ref,
@@ -68,6 +70,7 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
         normalized_properties={
             "original_id": item.get("id"),
             "offline_status": item.get("_bhoonidhi_status"),
+            "quality_score": quality_score,
         },
     )
 
