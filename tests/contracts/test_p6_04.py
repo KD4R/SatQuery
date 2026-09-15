@@ -235,7 +235,7 @@ class TestConfidenceContract:
             value=Decimal("0.91"),
             interval=None,
             calibration_ref=None,
-            agreement_iou=Decimal("0.89"),
+            agreement_iou=Decimal("0.91"),
             caveats=("Radar shadow in 4% of AOI",),
         )
         assert conf.basis == ConfidenceBasis.MODEL_AGREEMENT

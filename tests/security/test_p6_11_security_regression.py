@@ -129,6 +129,6 @@ class TestSecretLeakageRegression:
         real_envs = [
             f
             for f in env_files
-            if f.name == ".env" and ".example" not in str(f) and "infrastructure/" not in str(f)
+            if f.name == ".env" and ".example" not in f.name and "infrastructure" not in f.parts
         ]
         assert len(real_envs) == 0
