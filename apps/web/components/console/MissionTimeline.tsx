@@ -20,7 +20,7 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 
-import { Label, NumberedGutter, Panel, StatusChip } from "../system/primitives";
+import { NumberedGutter, Panel, StatusChip } from "../system/primitives";
 import type { StageState } from "../../lib/fixtures/script";
 
 export interface TimelineStage {
@@ -29,14 +29,6 @@ export interface TimelineStage {
   detail: string;
   state: StageState;
 }
-
-const TONE = {
-  queued: "idle",
-  running: "active",
-  completed: "ok",
-  degraded: "warn",
-  failed: "warn",
-} as const;
 
 const GLYPH: Record<StageState, string> = {
   queued: "·",
@@ -86,7 +78,6 @@ export function MissionTimeline({ stages, lines }: MissionTimelineProps) {
 }
 
 function StageRow({ stage, reduce }: { stage: TimelineStage; reduce: boolean }) {
-  const tone = TONE[stage.state];
   const colour =
     stage.state === "running"
       ? "var(--signal)"

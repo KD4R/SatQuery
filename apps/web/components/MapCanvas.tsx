@@ -16,6 +16,7 @@ import Map, {
   useMap,
 } from "react-map-gl/maplibre";
 import { useState } from "react";
+import type { Feature, FeatureCollection, Polygon } from "geojson";
 const aoi = {
   type: "Feature",
   properties: {},
@@ -33,7 +34,7 @@ const aoi = {
       ],
     ],
   },
-} as any;
+} satisfies Feature<Polygon>;
 const change = {
   type: "FeatureCollection",
   features: [
@@ -72,8 +73,8 @@ const change = {
       },
     },
   ],
-} as any;
-function MapButtons({ onDraw }: { onDraw: () => void }) {
+} satisfies FeatureCollection<Polygon>;
+function MapButtons({ onDraw: _onDraw }: { onDraw: () => void }) {
   const { current } = useMap();
   return (
     <div className="map-controls">

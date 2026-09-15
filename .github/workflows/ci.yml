@@ -307,6 +307,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Unit and contract tests
         # Includes the gateway route-table contract test, which reads
         # docs/openapi/gateway.json from the repo and fails when a route is added

@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@turf/turf": "^7.2.0",
@@ -30,6 +30,8 @@
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.25",
     "typescript": "^5.8.0",
     "vitest": "^5.0.1"
   }

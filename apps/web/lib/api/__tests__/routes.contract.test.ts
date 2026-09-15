@@ -9,16 +9,34 @@
  * added by P1 that nobody told P5 about fails here.
  */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { ALL_ROUTE_PATHS, buildPath, GATEWAY_ROUTES } from "../routes";
 
-const SPEC = join(__dirname, "../../../../../docs/openapi/gateway.json");
+/**
+ * Walk up for the repo root rather than counting "../" five times. A hard-coded
+ * depth breaks silently the moment the file moves, and the ENOENT it throws names
+ * a path like "/docs/openapi/gateway.json", which tells you nothing.
+ */
+function findSpec(): string {
+  let dir = __dirname;
+  for (let i = 0; i < 8; i++) {
+    const candidate = join(dir, "docs/openapi/gateway.json");
+    if (existsSync(candidate)) return candidate;
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  throw new Error(
+    `docs/openapi/gateway.json not found above ${__dirname}. This test reads the ` +
+      `gateway spec from the repo, so it must run from inside a checkout.`,
+  );
+}
 
 function specPaths(): string[] {
-  const doc = JSON.parse(readFileSync(SPEC, "utf8")) as {
+  const doc = JSON.parse(readFileSync(findSpec(), "utf8")) as {
     paths: Record<string, unknown>;
   };
   return Object.keys(doc.paths).sort();

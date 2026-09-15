@@ -1,15 +1,12 @@
 "use client";
 import {
-  Download,
-  FileText,
   Globe2,
   Menu,
   PanelRightClose,
   PanelRightOpen,
   RefreshCw,
-  ShieldCheck,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MapCanvas from "./MapCanvas";

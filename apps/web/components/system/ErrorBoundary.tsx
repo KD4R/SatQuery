@@ -163,7 +163,6 @@ export class ErrorBoundary extends Component<BoundaryProps, BoundaryState> {
   componentDidCatch(error: Error, info: ErrorInfo): void {
     // Deliberately not sent anywhere yet: there is no frontend telemetry sink in
     // the gateway contract. When P6 adds one, this is the single place to wire it.
-    // eslint-disable-next-line no-console
     console.error(`[${this.props.area}]`, error, info.componentStack);
   }
 

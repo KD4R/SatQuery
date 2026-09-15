@@ -7,7 +7,6 @@ import {
   Globe2,
   History,
   LayoutDashboard,
-  Settings,
   ShieldCheck,
   SlidersHorizontal,
   type LucideIcon,

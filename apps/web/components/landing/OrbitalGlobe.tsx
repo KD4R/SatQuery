@@ -31,7 +31,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
-import type { FeatureCollection, MultiPolygon } from "geojson";
+import type { FeatureCollection } from "geojson";
 
 interface Orbit {
   a: number;
