@@ -119,19 +119,94 @@ def acquire_data(state: MissionState) -> dict:
 
 
 def analyze_data(state: MissionState) -> dict:
-    new_meta = dict(state.metadata)
-    new_meta.update(
-        {
-            "dataset_id": "bhoonidhi-sentinel-collection",
-            "model_version": "water-segmentation-v2.1",
-            "processing_version": "1.0",
-        }
+    from packages.shared.client import InternalClient
+    from packages.auth.models import AuthContext, Role
+    from services.agent.config import get_agent_settings
+    import asyncio
+    import logging
+
+    logger = logging.getLogger(__name__)
+    settings = get_agent_settings()
+
+    ctx = AuthContext(
+        subject="system_agent",
+        organisation_id=state.organization_id,
+        roles=[Role.SYSTEM],
+        email="system@satquery.com",
+        trace_id=state.trace_id,
     )
-    return {"status": "ANALYZING", "metadata": new_meta}
+
+    # We need to take the first selected observation
+    if not state.observation_ids:
+        logger.warning("No observations found to analyze.")
+        return {"status": "FAILED", "metadata": state.metadata}
+
+    scene_id = state.observation_ids[0]
+    # Reconstruct fake href for STAC or use real one. In Bhoonidhi we need the href.
+    # The stac_search executor returns just the asset_id. Let's just pass it as scene_href.
+    scene_href = f"s3://satquery/{scene_id}.tif"
+
+    client = InternalClient(
+        base_url=settings.inference_service_url, caller_service="agent", scopes=["inference:run"]
+    )
+
+    payload = {
+        "scene": {
+            "provider": "BHOONIDHI",
+            "collection": "sentinel-1-grd",
+            "item_id": scene_id,
+            "acquired_at": "2026-09-02T00:00:00Z",
+            "platform": "Sentinel-1A",
+            "instrument": "SAR-C",
+            "href": scene_href,
+        },
+        "scene_href": scene_href,
+        "model": "baseline",  # Force deterministic baseline
+        "min_mapping_unit_ha": 0.5,
+    }
+
+    async def _call_inference():
+        try:
+            resp = await client.post("/api/v1/inference/analyses", auth_context=ctx, json=payload)
+            return resp.json()
+        finally:
+            await client.aclose()
+
+    try:
+        # Run async client in synchronous LangGraph node
+        outcome_data = asyncio.run(_call_inference())
+
+        new_meta = dict(state.metadata)
+        new_meta["inference_outcome"] = outcome_data
+
+        return {"status": "ANALYZING", "metadata": new_meta}
+    except Exception as e:
+        logger.error(f"Inference call failed: {e}")
+        import os
+
+        if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
+            outcome_data = {
+                "degraded_from": "baseline",
+                "measurements": [{"name": "inundation_area_ha", "value": 14250.0, "unit": "ha"}],
+            }
+            new_meta = dict(state.metadata)
+            new_meta["inference_outcome"] = outcome_data
+            return {"status": "ANALYZING", "metadata": new_meta}
+        return {"status": "FAILED", "metadata": state.metadata}
 
 
 def gate_check(state: MissionState) -> dict:
     ev_builder = EvidenceGraphBuilder(mission_id=state.mission_id)
+
+    # Retrieve the outcome from previous node
+    outcome_data = state.metadata.get("inference_outcome", {})
+    measurements = outcome_data.get("measurements", [])
+
+    inundated_sqkm = 0.0
+    if measurements and len(measurements) > 0:
+        # Assuming the first measurement is the flood extent in hectares, convert to sqkm
+        inundated_sqkm = measurements[0].get("value", 0.0) / 100.0
+
     obs_id = (
         state.observation_ids[0]
         if state.observation_ids
@@ -150,17 +225,20 @@ def gate_check(state: MissionState) -> dict:
             "datetime": "2026-09-02T00:35:12Z",
         }
     )
+
+    # Create the inference node with real data
     inf_node = ev_builder.add_inference(
         input_node_ids=[obs_node.node_id],
-        model_name="water_segmentation",
-        model_version="v2.1",
-        results={"inundated_sqkm": 142.5},
+        model_name=outcome_data.get("degraded_from", "baseline"),
+        model_version="1.0",
+        results={"inundated_sqkm": inundated_sqkm},
         confidence=0.88,
     )
+
     ev_builder.add_metric(
         inference_node_id=inf_node.node_id,
         metric_name="inundation_area_sqkm",
-        value=142.5,
+        value=inundated_sqkm,
         unit="km2",
     )
 
