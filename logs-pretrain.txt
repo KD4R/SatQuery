@@ -1,0 +1,49 @@
+train       4096 chips (308 hand, 3788 weak)  Bolivia, Colombia, Ghana, Mekong, Nigeria, Pakistan, Paraguay, Spain, Sri-Lanka, USA
+validation    92 chips (92 hand, 0 weak)  India, Somalia
+discarded    596 weakly-labelled chips from the held-out regions (India, Somalia)
+
+Fitting normalisation on the training split only...
+  mean (-10.96, -18.27) dB
+  std  (4.75, 6.15) dB
+
+cache: 204 of 4096 chips held in memory; the rest are re-read each epoch
+UNet: 486,553 parameters, depth 4, 3 input channels (VV, VH, JRC permanent-water prior)
+
+epoch     loss pooledIoU  chipIoU   chipF1    sec
+--------------------------------------------------
+    1   0.5717         -        -        -  278.1
+    2   0.4586         -        -        -  284.6
+    3   0.4064     0.448    0.226    0.305  301.2
+    4   0.3914         -        -        -  297.9
+    5   0.3807         -        -        -  281.7
+    6   0.3695     0.445    0.220    0.299  331.2
+    7   0.3594         -        -        -  280.4
+    8   0.3553         -        -        -  295.3
+    9   0.3469     0.413    0.242    0.329  339.2
+   10   0.3479         -        -        -  355.9
+   11   0.3446         -        -        -  318.5
+   12   0.3409     0.435    0.214    0.290  339.8
+
+==============================================================
+HELD-OUT REGIONS: India, Somalia
+92 chips, never seen in training
+
+                        pooled IoU  pooled F1  chip IoU  chip F1
+deterministic baseline       0.186      0.314     0.189    0.262
+U-Net                        0.413      0.584     0.242    0.329
+difference                  +0.227     +0.271    +0.053   +0.067
+
+Pooled weights each chip by how much water was there to find and is what
+reports/evaluation.md leads with; the per-chip mean gives a nearly dry tile
+the same vote as a flooded one. They differ by roughly a factor of two here,
+so never quote one without saying which (ADR-0007 D18).
+
+stratified by water content (IoU) -- ADR-0007 D13:
+water in chip     baseline     U-Net
+<1%                  0.003     0.021
+1-10%                0.095     0.231
+10-30%               0.293     0.280
+>30%                 0.748     0.673
+
+checkpoint  artifacts/pretrain/best.pt
+metrics     artifacts/pretrain/metrics.json

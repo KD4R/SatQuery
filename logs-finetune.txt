@@ -1,0 +1,21 @@
+train        308 chips (308 hand, 0 weak)  Ghana, Mekong, Nigeria, Pakistan, Paraguay, Spain, Sri-Lanka, USA
+validation    92 chips (92 hand, 0 weak)  India, Somalia
+discarded    596 weakly-labelled chips from the held-out regions (India, Somalia)
+
+Fitting normalisation on the training split only (308 chips, each one read)...
+  mean (-10.5, -17.42) dB
+  std  (4.06, 4.83) dB
+
+cache: 204 of 308 chips held in memory; the rest are re-read each epoch
+UNet: 486,553 parameters, depth 4, 3 input channels (VV, VH, JRC permanent-water prior)
+
+adopting the pretrained normalisation from artifacts/pretrain/best.pt:
+  fitted here  mean (-10.5, -17.42)
+  adopted      mean (-10.96, -18.27)
+initialised from artifacts/pretrain/best.pt (epoch 9, validation IoU 0.242)
+
+epoch     loss pooledIoU  chipIoU   chipF1    sec
+--------------------------------------------------
+    1   0.3562     0.420    0.171    0.226   53.9
+    2   0.3605     0.391    0.202    0.275   51.9
+    3   0.3331     0.426    0.205    0.279   41.6

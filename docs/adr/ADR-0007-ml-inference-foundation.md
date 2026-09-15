@@ -614,6 +614,64 @@ omitting accuracy and leaving someone to compute a flattering version of it late
 `SegmentationMetrics.accuracy` and `.prevalence` exist for that paragraph and no
 other purpose; the docstrings say so.
 
+### D19 — Weak supervision at 13x the data did not help. Reported, not buried.
+
+The hand-labelled set is 446 chips and this project holds 400, so the only place
+more data existed was Sen1Floods11's 4,384 weakly-labelled chips -- labels derived
+from Sentinel-2 spectral indices rather than drawn by a person. D14/D15 had
+established data volume as the binding constraint (41 chips tied the baseline, 308
+beat it), so this was the obvious lever. It was pulled, and it did not work.
+
+Four models and the baseline, scored in one process against the same 92 held-out
+chips on the same reprojected grid:
+
+| method | pooled IoU | pooled F1 | chip IoU | chip F1 |
+|---|---|---|---|---|
+| deterministic baseline | 0.204 | 0.339 | 0.209 | 0.289 |
+| flood-unet (incumbent, 2ch, 20 epochs) | 0.421 | 0.593 | 0.259 | 0.359 |
+| **hand-only-v2** (3ch + JRC prior, 30 epochs) | **0.435** | **0.606** | 0.254 | 0.348 |
+| flood-unet-v2 (weak pretrain -> hand fine-tune) | 0.398 | 0.569 | 0.261 | 0.356 |
+| pretrain (weak labels only) | 0.407 | 0.579 | 0.245 | 0.337 |
+
+Twelve epochs over 4,096 chips -- 3,788 of them weak -- then thirty fine-tuning
+epochs on the 308 hand chips, produces 0.398 pooled. That is **worse than the
+incumbent and worse than the same architecture trained on hand labels alone.**
+
+**The training curve says why.** Training loss fell to 0.34 against 0.49 for the
+hand-only run: the model fitted the weak labels far better than it had ever fitted
+the hand ones. Held-out pooled IoU across the same run went 0.448, 0.445, 0.413,
+0.435 -- flat to slightly down while the loss kept falling. That is the signature
+of learning the *label generator* rather than the phenomenon. The weak labels
+encode where a Sentinel-2 spectral index says water is, and the model became good
+at predicting that index from SAR; thirty epochs of fine-tuning on 308 chips did
+not undo it.
+
+**What this closes.** Volume is no longer the binding constraint, so D14's
+diagnosis does not extend indefinitely: more *weakly* labelled data is not the
+route past 0.44, and the remaining hand-labelled set is 46 chips. The next lever
+is not data.
+
+**The JRC permanent-water prior is unproven.** `hand-only-v2` adds it and is +0.014
+pooled over the incumbent, -0.005 on the per-chip mean -- the two aggregations
+disagree, the margins are small, and there is no seed-variance estimate, so no
+claim is made either way. It is not evidence the prior works; it is evidence it
+does not hurt.
+
+**A measurement trap worth recording.** `train_unet.py` scores on the chip's
+native grid; `generate_report.py` reprojects to an area-safe CRS first. The
+baseline -- identical code in both -- reads 0.186 from training and 0.204 from the
+report on the same 92 chips. Every number in this table comes from the report
+path. Comparing a training console figure against a committed one is invalid, and
+the two were nearly compared before the discrepancy in the baseline gave it away.
+
+**Still open, and deliberately not fixed under deadline:** `ModelRegistry.default()`
+ranks on the per-chip mean recorded in metrics.json, which is the native-grid
+figure, while this table ranks on reprojected pooled IoU. The two disagree here --
+the registry would serve `flood-unet` where the report's winner is `hand-only-v2`.
+Both beat the baseline and the gap is 0.014, so the operational cost is small, but
+it is the same defect class as D18 and should be closed by recording reprojected
+scores at training time.
+
 ## Open questions
 
 These do not block this commit. Each blocks something later.
