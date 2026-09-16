@@ -1,6 +1,5 @@
 [importlinter]
 root_packages =
-    apps
     services
     packages
     ml
@@ -8,8 +7,7 @@ root_packages =
 [importlinter:contract:layers]
 name = Layered architecture
 type = layers
-layers = apps
-         services
+layers = services
          ml
          packages
 # Deliberate cross-layer import: this regression test exists to pin the
