@@ -1,14 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/**
- * P5-17.
- *
- * The suite runs against the deterministic demo (NEXT_PUBLIC_DEMO_MODE=1), because
- * that is the path the judges will see and the only one whose figures are constants
- * rather than tolerances. It needs no backend: the console is expected to report the
- * gateway as unreachable, and one of the tests asserts exactly that.
- */
-
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE = `http://127.0.0.1:${PORT}`;
 

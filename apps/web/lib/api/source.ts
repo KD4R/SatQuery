@@ -41,7 +41,3 @@ export function isFixture<T>(s: Sourced<T>): boolean {
   return s.source === "fixture";
 }
 
-/** True when the app is running the deterministic demo (P5-17). */
-export function demoModeEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEMO_MODE === "1";
-}
