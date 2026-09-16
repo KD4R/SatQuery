@@ -1,0 +1,1 @@
+export default function Loading(){return <main className="app-state"><div className="state-orbit"/><div className="state-content"><span className="state-kicker">SATQUERY AI / SYSTEM</span><h1>Preparing mission workspace</h1><p>Loading the command center without blocking navigation.</p><div className="state-progress"><i/></div></div></main>}
