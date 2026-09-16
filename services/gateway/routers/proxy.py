@@ -27,17 +27,24 @@ from packages.auth.models import AuthContext, Role
 from packages.shared.client import CircuitBreakerOpenError, InternalClient, InternalClientError
 
 # Import schemas to enrich Gateway OpenAPI
-from typing import List
 from services.mission.domain.schemas import (
-    MissionCreate, MissionUpdate, MissionResponse, MissionListResponse,
-    JobSubmitResponse, JobStatusResponse
+    MissionCreate,
+    MissionUpdate,
+    MissionResponse,
+    MissionListResponse,
+    JobSubmitResponse,
+    JobStatusResponse,
 )
 from services.agent.schemas import (
-    PlanRequest, PlanResponse,
-    ExecuteRequest, ExecuteResponse,
-    SensorDecisionRequest, SensorDecisionResponse,
-    ConfidenceRequest, ConfidenceResponse,
-    MissionState
+    PlanRequest,
+    PlanResponse,
+    ExecuteRequest,
+    ExecuteResponse,
+    SensorDecisionRequest,
+    SensorDecisionResponse,
+    ConfidenceRequest,
+    ConfidenceResponse,
+    MissionState,
 )
 
 logger = logging.getLogger(__name__)
@@ -205,7 +212,9 @@ async def proxy_delete_mission(
     )
 
 
-@router.post("/api/v1/missions/{mission_id}/runs", status_code=202, response_model=JobSubmitResponse)
+@router.post(
+    "/api/v1/missions/{mission_id}/runs", status_code=202, response_model=JobSubmitResponse
+)
 async def proxy_submit_run(
     mission_id: str,
     request: Request,
