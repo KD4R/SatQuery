@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError } from "./api/gateway";
-import { executeMission, getJob } from "./api/client";
+import { executeMission, getJob, getAgentRun } from "./api/client";
 import { DEMO_STAGES, type StageState } from "./fixtures/script";
 import type { ErrorResponse, GeoJSONPolygon, JobStatus } from "./api/types";
 
@@ -39,6 +39,8 @@ export interface MissionRun {
   jobId: string | null;
   traceId: string | null;
   error: ErrorResponse | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  agentState: any | null; // using any for now, will map to backend MissionState
   start: (query: string, aoi: GeoJSONPolygon | null) => void;
   reset: () => void;
 }
@@ -98,6 +100,8 @@ export function useMissionRun(demo: boolean): MissionRun {
   const [jobId, setJobId] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
   const [error, setError] = useState<ErrorResponse | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [agentState, setAgentState] = useState<any | null>(null);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const abort = useRef<AbortController | null>(null);
@@ -118,6 +122,7 @@ export function useMissionRun(demo: boolean): MissionRun {
     setJobId(null);
     setTraceId(null);
     setError(null);
+    setAgentState(null);
   }, [clearAll, demo]);
 
   /* ── demo ───────────────────────────────────────────────────────────────── */
@@ -172,6 +177,13 @@ export function useMissionRun(demo: boolean): MissionRun {
             setStages(liveStages(status, null));
 
             if (status === "completed") {
+              // Fetch the final agent run state
+              try {
+                const agentResult = await getAgentRun(submitted.data.job_id, controller.signal);
+                setAgentState(agentResult.data);
+              } catch (e) {
+                console.warn("Failed to fetch agent state", e);
+              }
               setPhase("complete");
               return;
             }
@@ -230,5 +242,5 @@ export function useMissionRun(demo: boolean): MissionRun {
     [demo, startDemo, startLive],
   );
 
-  return { phase, stages, jobId, traceId, error, start, reset };
+  return { phase, stages, jobId, traceId, error, agentState, start, reset };
 }

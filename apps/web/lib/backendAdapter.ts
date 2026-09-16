@@ -1,0 +1,75 @@
+import type { MissionState as BackendMissionState } from "./api/types";
+import type { MissionState as UIMissionState, Stage, Evidence, MissionDecision } from "./types";
+import type { RunStageView } from "./useMissionRun";
+
+export function toUIStages(runStages: RunStageView[]): Stage[] {
+  return runStages.map((rs) => {
+    let status: "done" | "active" | "error" | "pending" = "pending";
+    if (rs.state === "completed") status = "done";
+    else if (rs.state === "running") status = "active";
+    else if (rs.state === "failed") status = "error";
+    
+    return {
+      key: rs.key,
+      label: rs.label,
+      detail: rs.detail,
+      status,
+    };
+  });
+}
+
+export function toUIMissionState(
+  query: string,
+  agentState: BackendMissionState | null,
+  runStages: RunStageView[]
+): UIMissionState {
+  const stages = toUIStages(runStages);
+
+  // Extract evidence from agentState if available
+  const evidence: Evidence[] = [];
+  if (agentState?.evidence_graph) {
+    const nodes = agentState.evidence_graph.nodes || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    nodes.forEach((n: any, idx: number) => {
+      evidence.push({
+        id: n.id || `e${idx}`,
+        kind: n.type || "observation",
+        title: n.title || `Evidence ${idx + 1}`,
+        source: n.source || "System",
+        detail: n.summary || "Verified data point.",
+        status: n.confidence && n.confidence > 0.8 ? "verified" : "supporting",
+        provenance: n.provenance || "Gateway run",
+      });
+    });
+  }
+
+  // Extract decision if available
+  const decision: MissionDecision = {
+    winner: "Optical / SAR",
+    reason: "Awaiting sensor arbitration...",
+    optical: "Pending",
+    sar: "Pending"
+  };
+  
+  if (agentState?.selected_sensors && agentState.selected_sensors.length > 0) {
+    decision.winner = agentState.selected_sensors.join(", ");
+    decision.reason = "Selected by sensor arbitrator";
+    decision.optical = agentState.selected_sensors.includes("optical") ? "Selected" : "Omitted";
+    decision.sar = agentState.selected_sensors.includes("sar") ? "Selected" : "Omitted";
+  }
+
+  return {
+    missionId: agentState?.mission_id || "Awaiting submission...",
+    runId: agentState?.run_id || "Awaiting run...",
+    status: agentState?.status || (runStages.some(s => s.state === 'running') ? 'running' : 'completed'),
+    query: agentState?.query || query,
+    location: "AOI Target (Resolved from query)",
+    aoiArea: agentState?.aoi ? "Polygon resolved" : "Pending",
+    confidence: agentState?.confidence_score || 0,
+    stages,
+    observations: agentState?.observation_ids || [],
+    evidence,
+    decision,
+    summary: agentState?.metadata?.summary || "Mission complete. Evidence assembled."
+  };
+}

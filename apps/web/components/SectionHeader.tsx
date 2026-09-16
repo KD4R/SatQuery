@@ -1,0 +1,2 @@
+import Link from 'next/link';
+export default function SectionHeader({eyebrow,title,description,action}:{eyebrow:string;title:string;description:string;action?:{label:string;href:string}}){return <div className="page-head compact"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p className="subtitle">{description}</p></div>{action&&<Link className="primary-btn" href={action.href}>{action.label}</Link>}</div>}

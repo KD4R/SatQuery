@@ -1,41 +1,4 @@
-"use client";
-import { BellRing, CalendarClock, Pause, Play, RadioTower } from "lucide-react";
-import { useState } from "react";
-export default function MonitoringCard() {
-  const [on, setOn] = useState(false);
-  return (
-    <section className="card monitoring-card">
-      <div className="card-head">
-        <div>
-          <div className="title-row">
-            <RadioTower size={14} />
-            <div className="card-title">PERSISTENT MONITORING</div>
-          </div>
-          <div className="card-sub">Turn one mission into a watch</div>
-        </div>
-        <span className={`status-dot-label ${on ? "on" : ""}`}>
-          <i />
-          {on ? "Active" : "Paused"}
-        </span>
-      </div>
-      <div className="monitor-row">
-        <div>
-          <b>Flood watch · Guntur</b>
-          <span>Next observation window · 24 Sep 2026</span>
-        </div>
-        <button className="primary-small" onClick={() => setOn(!on)}>
-          {on ? <Pause size={13} /> : <Play size={13} />}{" "}
-          {on ? "Pause" : "Start watch"}
-        </button>
-      </div>
-      <div className="monitor-meta">
-        <span>
-          <CalendarClock size={12} /> Every 7 days
-        </span>
-        <span>
-          <BellRing size={12} /> Alert on material change
-        </span>
-      </div>
-    </section>
-  );
-}
+'use client';
+import {BellRing,CalendarClock,Pause,Play,RadioTower} from 'lucide-react';
+import {useState} from 'react';
+export default function MonitoringCard(){const [on,setOn]=useState(false);return <section className="card monitoring-card"><div className="card-head"><div><div className="title-row"><RadioTower size={14}/><div className="card-title">PERSISTENT MONITORING</div></div><div className="card-sub">Turn one mission into a watch</div></div><span className={`status-dot-label ${on?'on':''}`}><i/>{on?'Active':'Paused'}</span></div><div className="monitor-row"><div><b>Flood watch · Guntur</b><span>Next observation window · 24 Sep 2026</span></div><button className="primary-small" onClick={()=>setOn(!on)}>{on?<Pause size={13}/>:<Play size={13}/>} {on?'Pause':'Start watch'}</button></div><div className="monitor-meta"><span><CalendarClock size={12}/> Every 7 days</span><span><BellRing size={12}/> Alert on material change</span></div></section>}

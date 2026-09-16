@@ -113,6 +113,83 @@ services:
       - ../..:/app
     restart: unless-stopped
 
+  mission:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+      args:
+        APP_MODULE: services.mission.implementation:app
+    image: satquery-mission
+    container_name: satquery-mission
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-mission
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile
+      args:
+        APP_MODULE: services.agent.app.api.implementation:app
+    image: satquery-agent
+    container_name: satquery-agent
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      PYTHONPATH: /app
+      ENVIRONMENT: development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: satquery-agent
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - satquery
+    volumes:
+      - ../..:/app
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../../apps/web
+      dockerfile: Dockerfile
+    image: satquery-web
+    container_name: satquery-web
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1"
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    depends_on:
+      - api
+    networks:
+      - satquery
+    restart: unless-stopped
+
   worker-ingest:
     build:
       context: ../..

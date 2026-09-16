@@ -9,7 +9,7 @@ import { defineConfig, devices } from "@playwright/test";
  * gateway as unreachable, and one of the tests asserts exactly that.
  */
 
-const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3210);
+const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE = `http://127.0.0.1:${PORT}`;
 
 export default defineConfig({
@@ -40,21 +40,5 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    // Production build, served the way production actually serves it.
-    //
-    // next.config.ts sets output:"standalone" for the Docker image, and `next start`
-    // warns that it does not work with that setting -- it was quietly serving a
-    // different artefact than the one we ship. The standalone server needs static
-    // assets copied next to it; that is the documented dance, not a workaround.
-    command:
-      `npm run build && ` +
-      `cp -r .next/static .next/standalone/.next/static && ` +
-      `cp -r public .next/standalone/public && ` +
-      `PORT=${PORT} node .next/standalone/server.js`,
-    url: BASE,
-    reuseExistingServer: !process.env.CI,
-    timeout: 180_000,
-    env: { NEXT_PUBLIC_DEMO_MODE: "1" },
-  },
+  webServer: undefined,
 });
