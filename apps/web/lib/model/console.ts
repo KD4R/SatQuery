@@ -177,3 +177,22 @@ export interface ConsoleScenario {
   modelVersion: string | null;
   processingVersion: string | null;
 }
+
+/* ── Run timeline (P5-04) ─────────────────────────────────────────────────── */
+
+/**
+ * Lifecycle of one stage in a run.
+ *
+ * Lives here rather than beside the demo script because the *live* timeline is
+ * built from these too. A type the production path depends on must not be
+ * reachable only through lib/fixtures/ — see lib/fixtures/isolation.test.ts.
+ *
+ * `degraded` is deliberately distinct from both `completed` and `failed`: a stage
+ * that finished having analysed less than half the AOI is neither.
+ */
+export type StageState =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "degraded";

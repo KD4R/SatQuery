@@ -8,4 +8,4 @@
  */
 
 export { ASSAM_SCENARIO, ASSAM_AOI, FIXTURE_EPOCH } from "./assam";
-export { DEMO_STAGES, DEMO_TOTAL_MS, type RunStage, type StageState } from "./script";
+export { DEMO_STAGES, DEMO_TOTAL_MS, type RunStage } from "./script";

@@ -21,7 +21,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 import { NumberedGutter, Panel, StatusChip } from "../system/primitives";
-import type { StageState } from "../../lib/fixtures/script";
+import type { StageState } from "../../lib/model/console";
 
 export interface TimelineStage {
   key: string;

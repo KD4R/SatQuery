@@ -21,7 +21,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError } from "./api/gateway";
 import { executeMission, getJob } from "./api/client";
-import { DEMO_STAGES, type StageState } from "./fixtures/script";
+import { DEMO_STAGES } from "./fixtures";
+import type { StageState } from "./model/console";
 import type { ErrorResponse, GeoJSONPolygon, JobStatus } from "./api/types";
 
 export interface RunStageView {

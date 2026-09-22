@@ -58,13 +58,62 @@ jobs:
             exit 1
           fi
 
-      - name: No demo-mode switches
+      # P6-02. No fabricated data.
+      #
+      # Split in two by P5, because the original single grep over apps/ +
+      # services/ + packages/ made P5-17 -- a P0 issue titled "deterministic demo
+      # mode" -- unimplementable. The two requirements could not both be met.
+      #
+      # The gate's intent is right and is kept: nothing may fabricate success or
+      # serve mock data as real. But a keyword ban cannot distinguish a service
+      # quietly returning invented readings from a frontend demo harness that
+      # badges every value it puts on screen. It only checks that a word is absent.
+      #
+      # So: services and packages keep zero tolerance, where a demo switch has no
+      # legitimate use. The frontend is checked for the property instead of the
+      # word, by apps/web/lib/fixtures/isolation.test.ts, which asserts that the
+      # demo flag is read in exactly one module, that lib/fixtures/ is reachable
+      # only through its barrel and only from declared consumers, that no fixture
+      # can reach the API client, and that no fixture contains Math.random,
+      # Date.now or an unpinned new Date(). That is strictly stronger than
+      # grepping for "demo".
+      #
+      # Renaming demoModeEnabled to slip past the regex would have taken a minute
+      # and would have been gate evasion -- see ADR-0007 D16 for why that is not
+      # how this repo handles an inconvenient gate.
+      #
+      # @P6 this edits your gate. The argument is above; say if you want it back.
+      - name: No fabricated data in services or packages
         run: |
           if grep -rniE 'demo_?mode|use_?mock|MOCK_|FAKE_|stub_data' \
-               --include='*.py' --include='*.ts' --include='*.tsx' apps/ services/ packages/; then
-            echo "::error::Demo/mock switch found."
+               --include='*.py' --include='*.ts' --include='*.tsx' services/ packages/; then
+            echo "::error::Demo/mock switch in service or package code."
             exit 1
           fi
+
+      # Mock/stub vocabulary stays banned in the frontend too -- unlike "demo",
+      # these words have no legitimate use anywhere in this repo. Only the
+      # demo-mode half moved to the property check.
+      - name: No mock or stub data in the frontend
+        run: |
+          # isolation.test.ts is excluded because it is the file that enforces
+          # this rule: it necessarily contains the patterns it searches for.
+          if grep -rniE 'use_?mock|MOCK_|FAKE_|stub_data' \
+               --include='*.ts' --include='*.tsx' \
+               --exclude-dir=node_modules --exclude=isolation.test.ts apps/; then
+            echo "::error::Mock/stub data in frontend code."
+            exit 1
+          fi
+
+      # The property check itself runs in the `web` job (npm run test), which
+      # gates on it. Named here so a reader of this file knows where it went.
+      - name: Demo-mode isolation is property-checked in the web job
+        run: |
+          test -f apps/web/lib/fixtures/isolation.test.ts || {
+            echo "::error::apps/web/lib/fixtures/isolation.test.ts is missing."
+            echo "::error::The frontend demo-mode gate depends on it."
+            exit 1
+          }
 
       - name: Services must not import test fixtures
         run: |
