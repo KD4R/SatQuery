@@ -89,6 +89,14 @@ class SearchService:
 
                 observations = normalize_pipeline(provider_name, raw_items)
 
+                # P4 Data Quality Intelligence: Report rejection back to the agent
+                if raw_items and not observations:
+                    raise ValueError(
+                        "All discovered STAC assets were rejected due to poor Data Quality "
+                        "Intelligence (excessive cloud cover, missing bands, or poor geometry). "
+                        "Please search for a different date range."
+                    )
+
                 if observations and redis_client:
                     try:
                         dumped = [obs.model_dump(mode="json") for obs in observations]

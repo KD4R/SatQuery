@@ -58,14 +58,28 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
         cloud_cover=cloud_cover,
     )
 
+    # Data Quality Intelligence (P4-XX)
+    # Reject unsuitable images to save compute downstream
+    if cloud_cover is not None and cloud_cover > 80.0:
+        raise ValueError(
+            f"Excessive cloud cover ({cloud_cover}% > 80%). Rejected for poor quality."
+        )
+
+    geometry = item.get("geometry", {})
+    if not geometry or not geometry.get("coordinates"):
+        raise ValueError("Poor geometry: missing coordinates. Rejected for poor quality.")
+
+    # Check for missing bands/assets. We expect some assets to be present.
     assets = {k: v.get("href", "") for k, v in item.get("assets", {}).items() if "href" in v}
+    if not assets:
+        raise ValueError("Missing bands/assets. Rejected for poor quality.")
 
     quality_score = max(0, 100 - (cloud_cover if cloud_cover is not None else 0.0))
 
     observation = Observation(
         observation_id=str(uuid.uuid4()),
         scene=scene_ref,
-        geometry=item.get("geometry", {}),
+        geometry=geometry,
         assets=assets,
         normalized_properties={
             "original_id": item.get("id"),

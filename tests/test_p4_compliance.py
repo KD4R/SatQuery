@@ -315,14 +315,15 @@ def test_observation_normalization_pipeline_invalid_input():
     svc.bhoonidhi.search.return_value = malformed_fixture["features"]
 
     with patch("services.eo_data.search.redis_client", None):
-        results = svc.search_observations(
-            {"type": "Polygon", "coordinates": [[]]},
-            datetime.now(timezone.utc),
-            datetime.now(timezone.utc),
-            {},
-        )
-    # All malformed items should be skipped gracefully (no crash, empty result)
-    assert isinstance(results, list)
+        import pytest
+
+        with pytest.raises(ValueError, match="rejected due to poor Data Quality"):
+            results = svc.search_observations(
+                {"type": "Polygon", "coordinates": [[]]},
+                datetime.now(timezone.utc),
+                datetime.now(timezone.utc),
+                {},
+            )
 
 
 def test_p4_05_service_boundary():
