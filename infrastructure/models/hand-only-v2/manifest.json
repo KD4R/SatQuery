@@ -1,0 +1,83 @@
+{
+  "architecture": {
+    "base_channels": 8,
+    "depth": 4,
+    "in_channels": 3
+  },
+  "artifact": {
+    "bytes": 1965841,
+    "file": "best.pt",
+    "sha256": "668054317880ee291a09a08f4dcb38d1d4eef6202e219b2bf6d83d0bceb819aa",
+    "uri": "s3://satquery/models/hand-only-v2/668054317880ee291a09a08f4dcb38d1d4eef6202e219b2bf6d83d0bceb819aa/best.pt"
+  },
+  "calibration": {
+    "bar": 0.05,
+    "bins": 10,
+    "ece_calibrated": 0.0583007141957317,
+    "ece_raw": 0.08956129203513331,
+    "fitted_on": [
+      "Somalia"
+    ],
+    "max_gap_calibrated": 0.24743108716965972,
+    "method": "temperature_scaling",
+    "passes_bar": false,
+    "report": "reports/calibration.md",
+    "reported_on": [
+      "India"
+    ],
+    "temperature": 0.7486364047029431
+  },
+  "manifest_version": 1,
+  "metrics": {
+    "baseline_iou_per_chip_native": 0.18912051837784433,
+    "report": "reports/evaluation.md",
+    "validation_iou_per_chip_native": 0.24980582148408964
+  },
+  "name": "hand-only-v2",
+  "preprocessing": {
+    "bands": [
+      "VV",
+      "VH"
+    ],
+    "normalisation": {
+      "mean": [
+        -10.497554173759967,
+        -17.421950731445477
+      ],
+      "std": [
+        4.058215391449611,
+        4.829867316144567
+      ]
+    },
+    "normalisation_sha256": "0a744cb39386dfa5979ec513a02413a007ded288b4ff86225d1eedc1ab676a9a",
+    "scale": "decibel",
+    "uses_permanent_water_prior": true
+  },
+  "sidecars": {
+    "calibration.json": "d057190abe4187f184acc2e3885a1a7bc40a6e9c61ac41a0c89a7fa938f5943b",
+    "metrics.json": "e78b186d79ace463b477fe347eb31dc6c0d56877dcf2197639b4ce7fcab229d7"
+  },
+  "training": {
+    "epoch_selected": 19,
+    "epochs_trained": 30,
+    "initialised_from": null,
+    "labelling": "hand",
+    "parameters": 486553,
+    "seed": 0,
+    "train_regions": [
+      "Ghana",
+      "Mekong",
+      "Nigeria",
+      "Pakistan",
+      "Paraguay",
+      "Spain",
+      "Sri-Lanka",
+      "USA"
+    ],
+    "validation_regions": [
+      "India",
+      "Somalia"
+    ]
+  },
+  "version": "e30-s0"
+}

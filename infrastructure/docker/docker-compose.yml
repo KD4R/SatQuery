@@ -242,6 +242,8 @@ services:
       dockerfile: infrastructure/docker/Dockerfile
       args:
         APP_MODULE: services.inference.implementation:app
+        # P3: CPU torch in this image only. See the Dockerfile.
+        INSTALL_ML: "1"
     image: satquery-inference
     container_name: satquery-inference
     deploy:
@@ -256,6 +258,12 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
+      # P3: weights live at <root>/<name>/best.pt beside metrics.json and
+      # calibration.json. The repo is mounted at /app below, so a local
+      # `artifacts/` is picked up in development; production fetches by checksum.
+      SATQUERY_MODEL_ROOT: /app/artifacts
+      # Refuse any checkpoint without a committed manifest whose sha256 matches.
+      SATQUERY_REQUIRE_MANIFEST: "1"
     ports:
       - "${INFERENCE_PORT:-8003}:8000"
     healthcheck:

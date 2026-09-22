@@ -27,10 +27,11 @@ which is every CI runner, and possibly the demo laptop.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,15 @@ logger = logging.getLogger(__name__)
 #: Where checkpoints live. Overridable so a deployment can mount them elsewhere,
 #: and so tests can point at a temporary directory rather than the real one.
 MODEL_ROOT = Path(os.environ.get("SATQUERY_MODEL_ROOT", "artifacts"))
+
+#: Where the committed manifests live (infrastructure/models/<name>/manifest.json).
+MANIFEST_ROOT = Path(os.environ.get("SATQUERY_MANIFEST_ROOT", "infrastructure/models"))
+
+#: When set, a checkpoint with no manifest is refused rather than loaded unverified.
+#: Off by default so a freshly trained model can be tried locally before anyone has
+#: written its manifest; the inference image turns it on, because production must
+#: never serve weights nobody can identify.
+REQUIRE_MANIFEST = os.environ.get("SATQUERY_REQUIRE_MANIFEST", "") == "1"
 
 #: The identifier used when no learned model ran. Not a model name -- it is the
 #: absence of one, and it appears in `degraded_from` rather than in `produced_by`.
@@ -86,6 +96,17 @@ class ModelCard:
     calibration_ece: float | None = None
     calibration_passes: bool | None = None
     calibration_report: str | None = None
+    #: The fitted temperature and the ECE bar it was judged against. Needed at
+    #: serving time, not just in the report: a calibrated probability is the raw
+    #: logit divided by this temperature, and "did not pass" means nothing without
+    #: the bar it did not pass.
+    calibration_temperature: float | None = None
+    calibration_bar: float | None = None
+    #: Set by load(), never by discovery: True when the checkpoint's sha256 matched
+    #: its committed manifest, False when it was loaded with no manifest to check
+    #: against, None before anyone has tried. A mismatch never gets this far --
+    #: load() refuses the checkpoint.
+    checksum_verified: bool | None = None
 
     @property
     def beats_baseline(self) -> bool | None:
@@ -118,6 +139,9 @@ class ModelCard:
             "calibration_ece": self.calibration_ece,
             "calibration_passes": self.calibration_passes,
             "calibration_report": self.calibration_report,
+            "calibration_temperature": self.calibration_temperature,
+            "calibration_bar": self.calibration_bar,
+            "checksum_verified": self.checksum_verified,
         }
 
 
@@ -130,8 +154,16 @@ class ModelRegistry:
     rather than an assumption.
     """
 
-    def __init__(self, root: Path | None = None) -> None:
+    def __init__(
+        self,
+        root: Path | None = None,
+        *,
+        manifest_root: Path | None = None,
+        require_manifest: bool | None = None,
+    ) -> None:
         self.root = Path(root) if root is not None else MODEL_ROOT
+        self.manifest_root = Path(manifest_root) if manifest_root is not None else MANIFEST_ROOT
+        self.require_manifest = REQUIRE_MANIFEST if require_manifest is None else require_manifest
         self._loaded: dict[str, Any] = {}
 
     def cards(self) -> tuple[ModelCard, ...]:
@@ -142,8 +174,13 @@ class ModelRegistry:
         cards: list[ModelCard] = []
         for checkpoint in sorted(self.root.glob("*/best.pt")):
             card = self._read_card(checkpoint)
-            if card is not None:
-                cards.append(card)
+            if card is None:
+                continue
+            # A model already loaded carries its verification result; the card
+            # re-read from disk does not. Report the loaded one, or /models would
+            # say "not yet checked" about a checkpoint verified at startup.
+            loaded = self._loaded.get(card.name)
+            cards.append(loaded[2] if loaded is not None else card)
         return tuple(cards)
 
     def _read_card(self, checkpoint: Path) -> ModelCard | None:
@@ -224,6 +261,8 @@ class ModelRegistry:
             "calibration_ece": payload.get("ece_calibrated"),
             "calibration_passes": payload.get("passes_bar"),
             "calibration_report": payload.get("report"),
+            "calibration_temperature": payload.get("temperature"),
+            "calibration_bar": payload.get("bar"),
         }
 
     def load(self, name: str) -> tuple[Any, Any, ModelCard]:
@@ -244,6 +283,11 @@ class ModelRegistry:
         card = next((c for c in self.cards() if c.name == name), None)
         if card is None:
             raise ModelUnavailable(f"no model named {name!r} under {self.root}")
+
+        # Verified before torch ever opens the file. A checkpoint is a zip of
+        # pickles; weights_only=True limits what it can execute, but the cheapest
+        # defence is not to deserialise a file that is not the one we pinned.
+        card = replace(card, checksum_verified=self._verify(card))
 
         try:
             import torch  # noqa: PLC0415 -- lazy on purpose; see module docstring
@@ -282,6 +326,47 @@ class ModelRegistry:
         self._loaded[name] = loaded
         return loaded
 
+    def _verify(self, card: ModelCard) -> bool:
+        """Check the checkpoint against its committed manifest.
+
+        Returns True when the sha256 matches, False when there is no manifest and
+        unverified loading is allowed. Raises ModelUnavailable on a mismatch, a
+        malformed manifest, or a missing manifest when one is required -- all of
+        which mean the same thing operationally: this file is not something we can
+        vouch for, so fall back to the baseline and say so.
+        """
+        manifest_path = self.manifest_root / card.name / "manifest.json"
+
+        if not manifest_path.is_file():
+            if self.require_manifest:
+                raise ModelUnavailable(
+                    f"{card.name!r} has no manifest at {manifest_path} and "
+                    "SATQUERY_REQUIRE_MANIFEST is set; refusing to serve weights "
+                    "that cannot be identified"
+                )
+            logger.warning(
+                "model %s has no manifest at %s; loading it UNVERIFIED", card.name, manifest_path
+            )
+            return False
+
+        try:
+            manifest = json.loads(manifest_path.read_text())
+            expected = str(manifest["artifact"]["sha256"]).lower()
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+            raise ModelUnavailable(
+                f"manifest for {card.name!r} is unreadable ({type(error).__name__}); "
+                "cannot verify the checkpoint"
+            ) from error
+
+        actual = _sha256(card.checkpoint)
+        if actual != expected:
+            raise ModelUnavailable(
+                f"checkpoint for {card.name!r} does not match its manifest: expected "
+                f"sha256 {expected[:16]}..., found {actual[:16]}... -- the file is "
+                "truncated, corrupted, or not the model that was pinned"
+            )
+        return True
+
     def default(self) -> str | None:
         """The model to use when the caller does not name one.
 
@@ -295,3 +380,11 @@ class ModelRegistry:
         if not candidates:
             return None
         return max(candidates, key=lambda c: c.validation_iou or 0.0).name
+
+
+def _sha256(path: Path, chunk: int = 1 << 20) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(chunk), b""):
+            digest.update(block)
+    return digest.hexdigest()
