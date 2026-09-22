@@ -318,7 +318,7 @@ def test_observation_normalization_pipeline_invalid_input():
         import pytest
 
         with pytest.raises(ValueError, match="rejected due to poor Data Quality"):
-            results = svc.search_observations(
+            svc.search_observations(
                 {"type": "Polygon", "coordinates": [[]]},
                 datetime.now(timezone.utc),
                 datetime.now(timezone.utc),
