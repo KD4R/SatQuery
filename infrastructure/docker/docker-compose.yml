@@ -224,6 +224,8 @@ services:
   titiler:
     image: ghcr.io/developmentseed/titiler:latest
     container_name: satquery-titiler
+    ports:
+      - "127.0.0.1:${TITILER_PORT:-8081}:80"
     environment:
       TITILER_API_KEY: ${TITILER_API_KEY:-}
       CORS_ORIGINS: "http://localhost:3000,http://localhost:8080"
