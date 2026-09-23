@@ -24,6 +24,16 @@ class Role(str, Enum):
     SYSTEM = "system"  # machine-to-machine service accounts
 
 
+#: Privilege order, low to high. The single place the hierarchy is written down.
+_ROLE_RANK: dict["Role", int] = {
+    Role.VIEWER: 0,
+    Role.ANALYST: 1,
+    Role.OPERATOR: 2,
+    Role.ADMIN: 3,
+    Role.SYSTEM: 4,
+}
+
+
 class Permission(str, Enum):
     """Fine-grained permissions checked at the handler level."""
 
@@ -77,7 +87,23 @@ class AuthContext(BaseModel):
         return Role.SYSTEM in self.roles
 
     def has_role(self, role: Role) -> bool:
-        """Return True if the context contains at least this role."""
-        return role in self.roles
+        """Return True if the context holds *at least* this role.
+
+        Ranked, not exact membership. Role's own docstring says the roles are
+        "ordered from least to most privileged" and that each "implicitly inherits
+        the permissions of all roles below it", and require_role() promises "at
+        least *minimum_role*" -- but this was a plain `role in self.roles`, so an
+        analyst was refused every VIEWER route: /agent/tools, /agent/runs/{id},
+        GET /missions, and the inference registry among them. Service-to-service
+        calls were unaffected, because S2S tokens carry `system` and is_admin lets
+        those through, which is why the proxy chain worked and this did not show up
+        until a human token was used end to end.
+
+        An unknown role ranks below everything rather than raising: a token minted
+        by a future service with a role this build has not heard of must not be
+        able to satisfy a check by accident.
+        """
+        held = max((_ROLE_RANK.get(r, -1) for r in self.roles), default=-1)
+        return held >= _ROLE_RANK[role]
 
     model_config = {"use_enum_values": False}
