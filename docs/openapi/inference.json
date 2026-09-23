@@ -1,0 +1,967 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "SatQuery Inference Service",
+    "description": "Turns analysis-ready satellite rasters into measurements that carry their provenance. Every endpoint returns Analysis | Abstention; no code path fabricates a result.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/inference/analyses": {
+      "post": {
+        "tags": [
+          "inference"
+        ],
+        "summary": "Analyse one scene for surface water",
+        "description": "Run one analysis.\n\nReturns 200 for both outcomes. An abstention is a successful answer to the\nquestion \"can you measure this?\" \u2014 the answer is no, and the reason is\nmachine-readable. Returning 4xx or 5xx would make the caller treat a correct,\nconsidered refusal as a transport failure and retry it.",
+        "operationId": "create_analysis_api_v1_inference_analyses_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "An Analysis carrying measurements with full provenance, or an Abstention carrying a machine-readable reason. There is no third outcome and no empty result with zeroed values.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/Analysis"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Abstention"
+                    }
+                  ],
+                  "title": "Response Create Analysis Api V1 Inference Analyses Post",
+                  "discriminator": {
+                    "propertyName": "outcome",
+                    "mapping": {
+                      "analysed": "#/components/schemas/Analysis",
+                      "abstained": "#/components/schemas/Abstention"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/inference/models": {
+      "get": {
+        "tags": [
+          "inference"
+        ],
+        "summary": "List registered models and their held-out scores",
+        "description": "What models exist, what they scored, and which one runs by default.\n\nAn empty list is a valid, meaningful answer: it means every analysis will use\nthe deterministic baseline, and each result will say so via `degraded_from`.",
+        "operationId": "list_models_api_v1_inference_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/inference/analyses/{trace_id}/extent": {
+      "get": {
+        "tags": [
+          "inference"
+        ],
+        "summary": "The water extent an analysis measured, as GeoJSON (EPSG:4326)",
+        "description": "The polygons behind an analysis's hectare figure.\n\nExists so the browser can draw them. ``Analysis.geometry_ref`` is an object-\nstorage key, and the browser may only talk to the gateway -- so the extent is\nserved through the service that wrote it, behind the same auth, instead of by\nhanding out bucket URLs.\n\n``trace_id`` is typed as a UUID, which is what the analysis endpoint issues.\nFastAPI rejects anything else with a 422 before this runs, so no caller-supplied\nstring ever reaches a storage key.",
+        "operationId": "get_extent_api_v1_inference_analyses__trace_id__extent_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              },
+              "application/geo+json": {}
+            }
+          },
+          "404": {
+            "description": "No stored extent for this analysis"
+          },
+          "503": {
+            "description": "No artifact store is configured"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "description": "Liveness only.\n\nDeliberately does not check whether a model is loadable. Model availability is\na degradation, not an outage -- reporting unhealthy would take the service out\nof rotation when it is perfectly able to serve baseline analyses. Ask\n/api/v1/inference/models if you want to know what is loaded.",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Abstention": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "abstained",
+            "title": "Outcome",
+            "default": "abstained"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/AbstentionReason"
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "nearest_usable": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nearest Usable"
+          },
+          "scenes_seen": {
+            "items": {
+              "$ref": "#/components/schemas/SceneRef"
+            },
+            "type": "array",
+            "title": "Scenes Seen"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Trace Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "reason",
+          "explanation",
+          "nearest_usable",
+          "scenes_seen",
+          "trace_id"
+        ],
+        "title": "Abstention",
+        "description": "A declined answer, with enough detail to be actionable.\n\n``scenes_seen`` matters: showing what was examined before declining is what\ndistinguishes a considered refusal from a failure. A user who is told\n\"no Sentinel-1 acquisition over this AOI between 12 and 26 August; nearest is\n3 September\" can act. A user who is told \"error\" cannot."
+      },
+      "AbstentionReason": {
+        "type": "string",
+        "enum": [
+          "no_scenes_in_window",
+          "cloud_exceeds_threshold",
+          "sensor_cannot_answer",
+          "orbit_mismatch",
+          "aoi_outside_coverage",
+          "product_offline",
+          "models_disagree",
+          "aoi_too_large",
+          "input_failed_preflight",
+          "no_separable_threshold"
+        ],
+        "title": "AbstentionReason",
+        "description": "Machine-readable reasons the subsystem may decline to answer.\n\nDeliberately a closed set: a new way of failing requires adding a member here,\nwhich forces a decision about how the UI should present it and gives the\nobservability layer a stable label to count. A free-text reason would make the\nabstention-rate-by-reason dashboard -- the single most informative health\nsignal this subsystem has -- useless."
+      },
+      "Analysis": {
+        "properties": {
+          "outcome": {
+            "type": "string",
+            "const": "analysed",
+            "title": "Outcome",
+            "default": "analysed"
+          },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/Measurement"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Measurements"
+          },
+          "geometry_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Geometry Ref"
+          },
+          "raster_refs": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Raster Refs"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Confidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "scenes": {
+            "items": {
+              "$ref": "#/components/schemas/SceneRef"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Scenes"
+          },
+          "degraded_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Degraded From"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Caveats"
+          },
+          "trace_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Trace Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "measurements",
+          "geometry_ref",
+          "raster_refs",
+          "confidence",
+          "scenes",
+          "degraded_from",
+          "caveats",
+          "trace_id"
+        ],
+        "title": "Analysis",
+        "description": "A completed analysis.\n\n``measurements`` and ``scenes`` both have ``min_length=1``: an analysis that\nmeasured nothing, or that cannot say which observations it used, is not an\nanalysis. Those two constraints are what make this type unable to represent a\nfabricated result.\n\n``confidence`` may be ``None`` -- see :mod:`packages.contracts.ml`.\nA missing confidence is honest; an invented one is not.\n\n``degraded_from`` records when this result came from a fallback path (for\nexample, the learned model timed out and the deterministic baseline produced\nthis instead). It is surfaced to the user rather than hidden, because a result\nproduced by a simpler method is still a real result but the reader should know."
+      },
+      "AnalysisRequest": {
+        "properties": {
+          "scene": {
+            "$ref": "#/components/schemas/SceneRef",
+            "description": "Provenance for the scene being analysed. Travels through to every Measurement's derived_from, so the answer can name its input."
+          },
+          "scene_href": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Scene Href",
+            "description": "Where the raster is. Checked against the provider allowlist before anything dereferences it."
+          },
+          "permanent_water_href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Permanent Water Href",
+            "description": "Optional mask of water present before the event. Strongly recommended: without it, rivers and lakes are counted as flooding, which is the most damaging false positive this service can emit."
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "Model to use. Omit for the best model that beats the deterministic baseline on held-out regions, or 'baseline' to force the deterministic path."
+          },
+          "min_mapping_unit_ha": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Min Mapping Unit Ha",
+            "description": "Smallest patch reported as a distinct flood, in hectares. Expressed as area rather than pixels because pixel size varies by provider.",
+            "default": 0.5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scene",
+          "scene_href"
+        ],
+        "title": "AnalysisRequest",
+        "description": "Ask for one scene to be analysed for surface water.\n\n``extra=\"forbid\"`` so a caller that misspells a field is told, rather than\nsilently getting default behaviour. P2 and P5 both generate clients against\nthis; a typo that validates is a bug discovered at demo time."
+      },
+      "Confidence": {
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/ConfidenceBasis"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "interval": {
+            "anyOf": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                  },
+                  {
+                    "type": "string",
+                    "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Interval"
+          },
+          "calibration_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Ref"
+          },
+          "agreement_iou": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement Iou"
+          },
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Caveats"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "basis",
+          "value",
+          "interval",
+          "calibration_ref",
+          "agreement_iou",
+          "caveats"
+        ],
+        "title": "Confidence",
+        "description": "A confidence value together with the evidence that justifies it."
+      },
+      "ConfidenceBasis": {
+        "type": "string",
+        "enum": [
+          "model_agreement",
+          "calibrated_probability",
+          "not_calibrated"
+        ],
+        "title": "ConfidenceBasis"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthStatus": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "service": {
+            "type": "string",
+            "title": "Service"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "service"
+        ],
+        "title": "HealthStatus"
+      },
+      "Measurement": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name"
+          },
+          "value": {
+            "type": "string",
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Value"
+          },
+          "unit": {
+            "$ref": "#/components/schemas/MeasurementUnit"
+          },
+          "produced_by": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Produced By"
+          },
+          "code_version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Code Version"
+          },
+          "crs": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Crs"
+          },
+          "derived_from": {
+            "items": {
+              "$ref": "#/components/schemas/SceneRef"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Derived From"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "unit",
+          "produced_by",
+          "code_version",
+          "crs",
+          "derived_from"
+        ],
+        "title": "Measurement",
+        "description": "A single number a user may see, with everything needed to audit it."
+      },
+      "MeasurementUnit": {
+        "type": "string",
+        "enum": [
+          "ha",
+          "km2",
+          "m",
+          "km",
+          "count",
+          "fraction"
+        ],
+        "title": "MeasurementUnit",
+        "description": "Units a measurement may be expressed in.\n\nSplit deliberately into physical units (which require a projected CRS) and\ndimensionless ones (which do not). ``_reject_geographic_crs`` relies on this\ndistinction."
+      },
+      "ModelListResponse": {
+        "properties": {
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelSummary"
+            },
+            "type": "array",
+            "title": "Models"
+          },
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default",
+            "description": "Selected when a request names no model. null when no registered model beats the baseline, in which case the deterministic path is used and the result is labelled as degraded."
+          }
+        },
+        "type": "object",
+        "required": [
+          "models",
+          "default"
+        ],
+        "title": "ModelListResponse"
+      },
+      "ModelSummary": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "parameters": {
+            "type": "integer",
+            "title": "Parameters"
+          },
+          "validation_iou": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation Iou"
+          },
+          "validation_f1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validation F1"
+          },
+          "validation_regions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Validation Regions"
+          },
+          "train_regions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Train Regions"
+          },
+          "baseline_iou": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Iou"
+          },
+          "beats_baseline": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Beats Baseline",
+            "description": "Whether this model outscored the deterministic baseline on the same held-out split. null means it was not measured \u2014 which is a different claim from 'it lost', and they must not be collapsed."
+          },
+          "stratified_iou": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Stratified Iou",
+            "description": "IoU by how much water the chip contains. A single mean says as much about the sample's wet/dry mix as about the method."
+          },
+          "in_channels": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Channels",
+            "description": "3 means the JRC permanent-water prior is a model input; 2 means SAR alone. Changes what an analysis request should supply."
+          },
+          "uses_permanent_water_prior": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uses Permanent Water Prior"
+          },
+          "training_labelling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Training Labelling",
+            "description": "\"hand\", \"weak\" or \"all\": which labels the weights were fitted on."
+          },
+          "calibration_ece": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Ece",
+            "description": "Expected calibration error after temperature scaling, on a held-out region. null means never measured, not zero."
+          },
+          "calibration_passes": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Passes",
+            "description": "Whether calibration_ece is under calibration_bar. Only a passing model may report its score as a probability."
+          },
+          "calibration_bar": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Bar"
+          },
+          "calibration_temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Temperature"
+          },
+          "calibration_report": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calibration Report"
+          },
+          "checksum_verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checksum Verified",
+            "description": "true once the checkpoint's sha256 has matched its committed manifest. null until the model is first loaded."
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "version",
+          "parameters",
+          "validation_iou",
+          "validation_f1",
+          "validation_regions",
+          "train_regions",
+          "baseline_iou",
+          "beats_baseline"
+        ],
+        "title": "ModelSummary",
+        "description": "One registered model and the evidence for using it."
+      },
+      "PassDirection": {
+        "type": "string",
+        "enum": [
+          "ASCENDING",
+          "DESCENDING"
+        ],
+        "title": "PassDirection",
+        "description": "Orbit pass direction."
+      },
+      "Provider": {
+        "type": "string",
+        "enum": [
+          "asf_hyp3",
+          "copernicus_dataspace",
+          "planetary_computer",
+          "bhoonidhi",
+          "sen1floods11",
+          "senforflood"
+        ],
+        "title": "Provider",
+        "description": "Where a scene came from.\n\nKept as a closed set so that an unknown provider is a validation error\nrather than an untracked data source appearing in provenance."
+      },
+      "SceneRef": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "collection": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Collection"
+          },
+          "item_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Item Id"
+          },
+          "acquired_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Acquired At"
+          },
+          "platform": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Platform"
+          },
+          "instrument": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Instrument"
+          },
+          "relative_orbit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relative Orbit"
+          },
+          "pass_direction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PassDirection"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "href": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Href"
+          },
+          "cloud_cover": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cloud Cover"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "provider",
+          "collection",
+          "item_id",
+          "acquired_at",
+          "platform",
+          "instrument",
+          "relative_orbit",
+          "pass_direction",
+          "href"
+        ],
+        "title": "SceneRef",
+        "description": "Identifies exactly one satellite observation.\n\nEvery user-visible number must be traceable to at least one of these.\nThere are no defaults: a SceneRef cannot be constructed without saying\nwhat it refers to.\n\nField notes\n-----------\n``href``\n    Canonical download URL for the asset. Validated against the SSRF\n    allowlist in services/inference before it is ever dereferenced.\n    (Previously ``href`` in the P4 branch \u2014 renamed for clarity.)\n``cloud_cover``\n    Tile-level cloud cover percentage [0, 100]. Required by the eo-data\n    search pipeline for optical filtering. None for SAR (cloud-blind).\n``relative_orbit`` / ``pass_direction``\n    Optional because not every provider exposes them, but ScenePair\n    refuses to pair two scenes when either is missing."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

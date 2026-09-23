@@ -396,3 +396,90 @@ def test_real_checkpoint_matches_its_committed_manifest() -> None:
     )
     card = next(c for c in registry.cards() if c.name == "hand-only-v2")
     assert registry._verify(card) is True
+
+
+# ── the extent route: how the browser gets the polygons ──────────────────────
+
+
+@pytest.fixture
+def extent_client(tmp_path: Path):
+    """The real app with a real local sink, no model needed."""
+    from fastapi.testclient import TestClient
+
+    from services.inference.dependencies import get_artifact_sink, get_registry
+    from services.inference.implementation import app
+
+    store = tmp_path / "store"
+    sink = LocalArtifactSink(store)
+    # An empty registry: the extent route must not need a model, and this keeps
+    # the lifespan warm-up a no-op so the test runs without torch.
+    app.dependency_overrides[get_registry] = lambda: ModelRegistry(tmp_path / "none")
+    app.dependency_overrides[get_artifact_sink] = lambda: sink
+    try:
+        with TestClient(app) as client:
+            yield client, sink
+    finally:
+        app.dependency_overrides.clear()
+
+
+def _viewer() -> dict[str, str]:
+    from services.inference.tests.test_api import auth
+
+    return auth("viewer")
+
+
+TRACE = "8f1bc78d-ad93-4942-bcf2-f3e8d499a429"
+
+
+def test_extent_serves_the_stored_geojson(extent_client) -> None:
+    client, sink = extent_client
+    sink.put(
+        f"analyses/{TRACE}/water_extent.geojson",
+        b'{"type":"FeatureCollection","features":[]}',
+        "application/geo+json",
+    )
+
+    response = client.get(f"/api/v1/inference/analyses/{TRACE}/extent", headers=_viewer())
+
+    assert response.status_code == 200
+    # geo+json, not application/json: the map consumes it directly.
+    assert response.headers["content-type"].startswith("application/geo+json")
+    assert response.json()["type"] == "FeatureCollection"
+
+
+def test_extent_is_404_when_nothing_was_stored(extent_client) -> None:
+    client, _ = extent_client
+    response = client.get(f"/api/v1/inference/analyses/{TRACE}/extent", headers=_viewer())
+    assert response.status_code == 404
+
+
+def test_extent_requires_a_token(extent_client) -> None:
+    client, _ = extent_client
+    assert client.get(f"/api/v1/inference/analyses/{TRACE}/extent").status_code == 401
+
+
+@pytest.mark.parametrize("bad", ["../../etc/passwd", "not-a-uuid", "..", "%2e%2e"])
+def test_extent_refuses_anything_that_is_not_a_uuid(extent_client, bad: str) -> None:
+    """The trace id becomes part of a storage key, so the route types it as a UUID
+    and FastAPI rejects everything else before the handler runs. No caller-supplied
+    string ever reaches the sink."""
+    client, _ = extent_client
+    response = client.get(f"/api/v1/inference/analyses/{bad}/extent", headers=_viewer())
+    assert response.status_code in (404, 422), response.status_code
+
+
+def test_extent_says_so_when_no_store_is_configured(tmp_path: Path) -> None:
+    from fastapi.testclient import TestClient
+
+    from services.inference.dependencies import get_artifact_sink, get_registry
+    from services.inference.implementation import app
+
+    app.dependency_overrides[get_registry] = lambda: ModelRegistry(tmp_path / "none")
+    app.dependency_overrides[get_artifact_sink] = lambda: None
+    try:
+        with TestClient(app) as client:
+            response = client.get(f"/api/v1/inference/analyses/{TRACE}/extent", headers=_viewer())
+        assert response.status_code == 503
+        assert response.json()["detail"]["code"] == "NO_ARTIFACT_STORE"
+    finally:
+        app.dependency_overrides.clear()

@@ -38,9 +38,17 @@ class ArtifactWriteError(RuntimeError):
     """The store refused or failed a write. Callers degrade, not fail."""
 
 
+class ArtifactNotFound(LookupError):
+    """No artifact under that key. The route turns this into a 404."""
+
+
 class ArtifactSink(Protocol):
     def put(self, key: str, data: bytes, content_type: str) -> str:  # pragma: no cover
         """Store ``data`` under ``key`` and return the ref to put in the Analysis."""
+        ...
+
+    def get(self, key: str) -> bytes:  # pragma: no cover
+        """Read back what ``put`` stored. Raises ArtifactNotFound if absent."""
         ...
 
 
@@ -66,6 +74,12 @@ class LocalArtifactSink:
         except OSError as error:
             raise ArtifactWriteError(f"could not write {key}: {error}") from error
         return key
+
+    def get(self, key: str) -> bytes:
+        target = (self.root / _checked(key)).resolve()
+        if self.root not in target.parents or not target.is_file():
+            raise ArtifactNotFound(key)
+        return target.read_bytes()
 
 
 class S3ArtifactSink:
@@ -104,3 +118,12 @@ class S3ArtifactSink:
                 f"could not write s3://{self.bucket}/{key}: {error}"
             ) from error
         return f"s3://{self.bucket}/{key}"
+
+    def get(self, key: str) -> bytes:
+        key = _checked(key)
+        try:
+            response = self.client.get_object(Bucket=self.bucket, Key=key)
+        except Exception as error:  # noqa: BLE001 -- botocore raises many types
+            raise ArtifactNotFound(key) from error
+        body: bytes = response["Body"].read()
+        return body
