@@ -47,13 +47,26 @@ export default defineConfig({
     // warns that it does not work with that setting -- it was quietly serving a
     // different artefact than the one we ship. The standalone server needs static
     // assets copied next to it; that is the documented dance, not a workaround.
+    //
+    // rm -rf before each copy because `cp -r a b/a` nests instead of replacing once
+    // the destination exists, and a second local run would otherwise serve
+    // .next/standalone/.next/static/static -- i.e. no chunks at all.
     command:
       `npm run build && ` +
+      `rm -rf .next/standalone/.next/static .next/standalone/public && ` +
       `cp -r .next/static .next/standalone/.next/static && ` +
       `cp -r public .next/standalone/public && ` +
       `PORT=${PORT} node .next/standalone/server.js`,
     url: BASE,
-    reuseExistingServer: !process.env.CI,
+    // Never adopt a server this run did not start, even locally.
+    //
+    // `npm run build` deletes .next/standalone, so a server leaked by an
+    // interrupted run keeps listening on the port with its own document root
+    // already unlinked. Playwright would reuse it, skip the build, and serve a
+    // page whose JS chunks 404 -- the HTML still renders, so text assertions pass
+    // while every hydration-dependent test times out. That cost an afternoon
+    // once; a 40-second rebuild is cheaper than diagnosing it twice.
+    reuseExistingServer: false,
     timeout: 180_000,
     env: { NEXT_PUBLIC_DEMO_MODE: "1" },
   },
