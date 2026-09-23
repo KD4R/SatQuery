@@ -21,6 +21,7 @@ import { GATEWAY_ROUTES } from "../../lib/api/routes";
 import { Label, Panel, Readout, StatusChip } from "../system/primitives";
 import { ModelRegistryPanel } from "../models/ModelRegistryPanel";
 import { RouteChrome } from "../shell/RouteChrome";
+import { CredentialUnavailable, SessionCredential } from "./SessionCredential";
 
 interface Control {
   name: string;
@@ -171,12 +172,17 @@ export function AdminScreen() {
                 value={null}
                 reason="Derived from the verified token at the gateway; the browser never sees or sends it."
               />
-              <Readout
-                label="Role"
-                value={null}
-                reason="The gateway publishes no identity route; RBAC is enforced server-side per call."
-              />
+              {/* There is deliberately no "Role" readout here. The gateway publishes
+                  no identity route, so the browser cannot state the role the server
+                  will apply -- and the credential block below already shows the roles
+                  the token *claims*, labelled as unverified. Two adjacent fields, one
+                  reading NOT AVAILABLE and the other "analyst", read as a bug. */}
               <Readout label="Environment" value={demo ? "DEMO (fixtures)" : "LIVE"} />
+              {demo ? (
+                <CredentialUnavailable />
+              ) : (
+                <SessionCredential onChange={() => setToken(hasAccessToken())} />
+              )}
             </div>
           </Panel>
 

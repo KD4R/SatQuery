@@ -145,6 +145,10 @@ test.describe("routes", () => {
     await expect(page.getByText(/Token storage/i)).toBeVisible();
     // The session must never claim a persisted token.
     await expect(page.getByText("No — by design")).toBeVisible();
+    // And demo mode must not offer a credential box: it makes no gateway calls, so
+    // a sign-in there would authenticate nothing.
+    await expect(page.getByLabel(/bearer token/i)).toHaveCount(0);
+    await expect(page.getByText(/nothing to authenticate/i)).toBeVisible();
   });
 
   test("report generates asynchronously and carries its caveats", async ({
