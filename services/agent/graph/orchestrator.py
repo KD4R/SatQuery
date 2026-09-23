@@ -4,6 +4,7 @@ graph/orchestrator.py — LangGraph state machine & run orchestrator for SatQuer
 
 from typing import Dict, List, Optional
 import uuid
+from datetime import datetime, timezone
 from langgraph.graph import StateGraph, START, END
 from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 from services.agent.nodes.intent_extractor import extract_intent_and_plan
@@ -80,40 +81,34 @@ def acquire_data(state: MissionState) -> dict:
         budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
 
     try:
-
-        def _primary_fn():
-            res = executor.execute_tool(
-                "stac_search",
-                args={
-                    "bbox": bbox,
-                    "start_date": "2026-09-01T00:00:00Z",
-                    "end_date": "2026-09-05T00:00:00Z",
-                    "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
-                    "max_cloud_cover": 30.0,
-                },
-                auth_context=ctx,
-                budget=budget,
-            )
-            if res.success and res.output:
-                return [obs["asset_id"] for obs in res.output]
-            return []
-
-        def _fallback_fn():
-            # Deterministic fallback scene
-            return ["S1A_IW_GRDH_1SDV_FALLBACK"]
-
-        recovery_result = execute_with_recovery(
-            action_name="stac_search_acquisition",
-            primary_fn=_primary_fn,
-            fallback_fn=_fallback_fn,
-            max_retries=2,
+        res = executor.execute_tool(
+            "stac_search",
+            args={
+                "bbox": bbox,
+                "start_date": "2026-09-01T00:00:00Z",
+                "end_date": "2026-09-05T00:00:00Z",
+                "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
+                "max_cloud_cover": 30.0,
+            },
+            auth_context=ctx,
+            budget=budget,
         )
-        obs_ids = recovery_result.data
+        if res.success and res.output:
+            observations = res.output
+            obs_ids = [obs.get("asset_id") for obs in observations if "asset_id" in obs]
+        else:
+            observations = []
+            obs_ids = []
     except Exception:
+        observations = []
         obs_ids = []
 
     new_meta = dict(state.metadata)
     new_meta["budget"] = budget.model_dump()
+    new_meta["observations"] = observations
+
+    if not obs_ids:
+        return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
 
     return {"status": "ACQUIRING", "observation_ids": obs_ids, "metadata": new_meta}
 
@@ -142,22 +137,24 @@ def analyze_data(state: MissionState) -> dict:
         return {"status": "FAILED", "metadata": state.metadata}
 
     scene_id = state.observation_ids[0]
-    # Reconstruct fake href for STAC or use real one. In Bhoonidhi we need the href.
-    # The stac_search executor returns just the asset_id. Let's just pass it as scene_href.
-    scene_href = f"s3://satquery/{scene_id}.tif"
+    observations = state.metadata.get("observations", [])
+    obs = next((o for o in observations if o.get("asset_id") == scene_id), {})
+    scene_href = obs.get("href", f"s3://satquery/{scene_id}.tif")
+    
+    acquired_at = obs.get("datetime")
+    if not acquired_at:
+        acquired_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    client = InternalClient(
-        base_url=settings.inference_service_url, caller_service="agent", scopes=["inference:run"]
-    )
-
+    import concurrent.futures
+    
     payload = {
         "scene": {
-            "provider": "BHOONIDHI",
-            "collection": "sentinel-1-grd",
+            "provider": obs.get("provider", "BHOONIDHI"),
+            "collection": obs.get("collection", "sentinel-1-grd"),
             "item_id": scene_id,
-            "acquired_at": "2026-09-02T00:00:00Z",
-            "platform": "Sentinel-1A",
-            "instrument": "SAR-C",
+            "acquired_at": acquired_at,
+            "platform": obs.get("platform", "Sentinel-1A"),
+            "instrument": obs.get("instrument", "SAR-C"),
             "href": scene_href,
         },
         "scene_href": scene_href,
@@ -166,6 +163,9 @@ def analyze_data(state: MissionState) -> dict:
     }
 
     async def _call_inference():
+        client = InternalClient(
+            base_url=settings.inference_service_url, caller_service="agent", scopes=["inference:run"]
+        )
         try:
             resp = await client.post("/api/v1/inference/analyses", auth_context=ctx, json=payload)
             return resp.json()
@@ -173,8 +173,10 @@ def analyze_data(state: MissionState) -> dict:
             await client.aclose()
 
     try:
-        # Run async client in synchronous LangGraph node
-        outcome_data = asyncio.run(_call_inference())
+        # Run async client in a separate thread to avoid "event loop already running" in test/eager environments
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(asyncio.run, _call_inference())
+            outcome_data = future.result()
 
         new_meta = dict(state.metadata)
         new_meta["inference_outcome"] = outcome_data
@@ -182,16 +184,6 @@ def analyze_data(state: MissionState) -> dict:
         return {"status": "ANALYZING", "metadata": new_meta}
     except Exception as e:
         logger.error(f"Inference call failed: {e}")
-        import os
-
-        if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
-            outcome_data = {
-                "degraded_from": "baseline",
-                "measurements": [{"name": "inundation_area_ha", "value": 14250.0, "unit": "ha"}],
-            }
-            new_meta = dict(state.metadata)
-            new_meta["inference_outcome"] = outcome_data
-            return {"status": "ANALYZING", "metadata": new_meta}
         return {"status": "FAILED", "metadata": state.metadata}
 
 
@@ -207,11 +199,16 @@ def gate_check(state: MissionState) -> dict:
         # Assuming the first measurement is the flood extent in hectares, convert to sqkm
         inundated_sqkm = measurements[0].get("value", 0.0) / 100.0
 
-    obs_id = (
-        state.observation_ids[0]
-        if state.observation_ids
-        else f"S1A_IW_GRDH_1SDV_{uuid.uuid4().hex[:6].upper()}"
-    )
+    if not state.observation_ids:
+        return {"status": "FAILED", "confidence_score": 0.0, "evidence_graph": {}}
+
+    obs_id = state.observation_ids[0]
+
+    observations = state.metadata.get("observations", [])
+    obs_dict = next((o for o in observations if o.get("asset_id") == obs_id), {})
+    obs_time = obs_dict.get("datetime")
+    if not obs_time:
+        obs_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Heuristically detect sensor from observation_ids or state
     sensor = "S1_SAR"
@@ -222,7 +219,7 @@ def gate_check(state: MissionState) -> dict:
         {
             "asset_id": obs_id,
             "sensor": sensor,
-            "datetime": "2026-09-02T00:35:12Z",
+            "datetime": obs_time,
         }
     )
 
