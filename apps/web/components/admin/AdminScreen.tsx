@@ -19,6 +19,7 @@ import { hasAccessToken } from "../../lib/api/gateway";
 import { demoModeEnabled } from "../../lib/api/source";
 import { GATEWAY_ROUTES } from "../../lib/api/routes";
 import { Label, Panel, Readout, StatusChip } from "../system/primitives";
+import { ModelRegistryPanel } from "../models/ModelRegistryPanel";
 import { RouteChrome } from "../shell/RouteChrome";
 
 interface Control {
@@ -195,6 +196,10 @@ export function AdminScreen() {
               ))}
             </div>
           </Panel>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <ModelRegistryPanel />
         </div>
 
         <div style={{ marginTop: 16 }}>

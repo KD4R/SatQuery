@@ -25,6 +25,10 @@ export const GATEWAY_ROUTES = {
   agentSensorDecision: "/api/v1/agent/sensor-decision",
   agentRun: "/api/v1/agent/runs/{job_id}",
   agentTools: "/api/v1/agent/tools",
+
+  inferenceAnalyses: "/api/v1/inference/analyses",
+  inferenceModels: "/api/v1/inference/models",
+  inferenceExtent: "/api/v1/inference/analyses/{trace_id}/extent",
 } as const;
 
 export type RouteName = keyof typeof GATEWAY_ROUTES;

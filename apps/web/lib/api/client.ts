@@ -13,11 +13,14 @@ import type {
   ExecuteRequest,
   ExecuteResponse,
   HealthStatus,
+  InferenceAnalysisRequest,
+  InferenceOutcome,
   JobStatusResponse,
   JobSubmitResponse,
   MissionCreate,
   MissionResponse,
   MissionState,
+  ModelListResponse,
   PlanRequest,
   PlanResponse,
   SensorDecisionRequest,
@@ -156,3 +159,38 @@ export function listTools(
 ): Promise<GatewayResult<{ tools?: unknown[] }>> {
   return request<{ tools?: unknown[] }>(GATEWAY_ROUTES.agentTools, { signal });
 }
+
+/* ── Inference (P3, via the gateway) ──────────────────────────────────────── */
+
+/**
+ * Run one analysis. Resolves for BOTH outcomes -- an abstention is a considered
+ * answer, not an error -- so callers must branch on `outcome`, not on success.
+ */
+export function analyseScene(
+  body: InferenceAnalysisRequest,
+  signal?: AbortSignal,
+): Promise<GatewayResult<InferenceOutcome>> {
+  return request<InferenceOutcome>(GATEWAY_ROUTES.inferenceAnalyses, {
+    method: "POST",
+    body,
+    signal,
+    timeoutMs: 35_000,
+  });
+}
+
+/** The model registry: held-out scores, calibration, checksum verification. */
+export function listModels(signal?: AbortSignal): Promise<GatewayResult<ModelListResponse>> {
+  return request<ModelListResponse>(GATEWAY_ROUTES.inferenceModels, { signal });
+}
+
+/** The polygons an analysis measured, as a GeoJSON FeatureCollection in EPSG:4326. */
+export function getAnalysisExtent(
+  traceId: string,
+  signal?: AbortSignal,
+): Promise<GatewayResult<GeoJSON.FeatureCollection>> {
+  return request<GeoJSON.FeatureCollection>(
+    buildPath(GATEWAY_ROUTES.inferenceExtent, { trace_id: traceId }),
+    { signal },
+  );
+}
+

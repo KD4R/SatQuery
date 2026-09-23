@@ -245,3 +245,146 @@ export interface ErrorResponse {
   details?: unknown[];
   trace_id?: string | null;
 }
+
+/* ── inference.json (P3, reached through the gateway) ─────────────────────── */
+
+/** inference.json # ConfidenceBasis */
+export type ConfidenceBasis = "model_agreement" | "calibrated_probability" | "not_calibrated";
+
+/**
+ * inference.json # Confidence
+ *
+ * `value` is null whenever `basis` is not_calibrated -- the backend contract rejects
+ * anything else. The UI must render that as NOT AVAILABLE with the caveats, never
+ * as 0% and never as a guessed number.
+ */
+export interface InferenceConfidence {
+  basis: ConfidenceBasis;
+  /** Decimal serialised as a string by pydantic, or null. */
+  value: string | null;
+  interval: [string, string] | null;
+  calibration_ref: string | null;
+  agreement_iou: string | null;
+  caveats: string[];
+}
+
+/** inference.json # MeasurementUnit */
+export type MeasurementUnit = "ha" | "km2" | "m" | "km" | "count" | "fraction";
+
+/** inference.json # Measurement */
+export interface Measurement {
+  name: string;
+  /** Decimal serialised as a string. */
+  value: string;
+  unit: MeasurementUnit;
+  produced_by: string;
+  code_version: string;
+  crs: string;
+  derived_from: InferenceSceneRef[];
+}
+
+/** inference.json # Provider */
+export type Provider =
+  | "asf_hyp3"
+  | "copernicus_dataspace"
+  | "planetary_computer"
+  | "bhoonidhi"
+  | "sen1floods11"
+  | "senforflood";
+
+/** inference.json # SceneRef */
+export interface InferenceSceneRef {
+  provider: Provider;
+  collection: string;
+  item_id: string;
+  acquired_at: string;
+  platform: string;
+  instrument: string;
+  relative_orbit: number | null;
+  pass_direction: string | null;
+  href: string;
+  cloud_cover?: number | null;
+}
+
+/** inference.json # AnalysisRequest */
+export interface InferenceAnalysisRequest {
+  scene: InferenceSceneRef;
+  scene_href: string;
+  permanent_water_href?: string | null;
+  model?: string | null;
+  min_mapping_unit_ha?: number;
+}
+
+/** inference.json # Analysis */
+export interface InferenceAnalysis {
+  outcome: "analysed";
+  measurements: Measurement[];
+  /** Storage key. Draw it via GET /inference/analyses/{trace_id}/extent. */
+  geometry_ref: string | null;
+  raster_refs: string[];
+  confidence: InferenceConfidence | null;
+  scenes: InferenceSceneRef[];
+  /** Set when a fallback produced this. The UI must show it. */
+  degraded_from: string | null;
+  caveats: string[];
+  trace_id: string;
+}
+
+/** inference.json # AbstentionReason */
+export type AbstentionReason =
+  | "no_scenes_in_window"
+  | "cloud_exceeds_threshold"
+  | "sensor_cannot_answer"
+  | "orbit_mismatch"
+  | "aoi_outside_coverage"
+  | "product_offline"
+  | "models_disagree"
+  | "aoi_too_large"
+  | "input_failed_preflight"
+  | "no_separable_threshold";
+
+/** inference.json # Abstention */
+export interface InferenceAbstention {
+  outcome: "abstained";
+  reason: AbstentionReason;
+  explanation: string;
+  nearest_usable: InferenceSceneRef | null;
+  scenes_seen: InferenceSceneRef[];
+  trace_id: string;
+}
+
+/** The analysis endpoint returns one or the other, both with HTTP 200. */
+export type InferenceOutcome = InferenceAnalysis | InferenceAbstention;
+
+/** inference.json # ModelSummary */
+export interface ModelSummary {
+  name: string;
+  version: string;
+  parameters: number;
+  validation_iou: number | null;
+  validation_f1: number | null;
+  validation_regions: string[];
+  train_regions: string[];
+  baseline_iou: number | null;
+  /** null = not measured. Not the same as false. */
+  beats_baseline: boolean | null;
+  stratified_iou?: Record<string, number>;
+  in_channels?: number | null;
+  uses_permanent_water_prior?: boolean | null;
+  training_labelling?: string | null;
+  calibration_ece?: number | null;
+  calibration_passes?: boolean | null;
+  calibration_bar?: number | null;
+  calibration_temperature?: number | null;
+  calibration_report?: string | null;
+  /** true once the checkpoint's sha256 matched its committed manifest. */
+  checksum_verified?: boolean | null;
+}
+
+/** inference.json # ModelListResponse */
+export interface ModelListResponse {
+  models: ModelSummary[];
+  /** null means every analysis will run the deterministic baseline. */
+  default: string | null;
+}
+
