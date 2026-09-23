@@ -95,6 +95,7 @@ services:
       # Upstream service discovery for the gateway proxy (proxy.py).
       MISSION_SERVICE_URL: http://mission:8000
       AGENT_SERVICE_URL: http://agent:8000
+      INFERENCE_SERVICE_URL: http://inference:8000
       CORS_ALLOW_ORIGINS: http://localhost:3000,http://localhost:8080
       RATE_LIMIT_REQUESTS: "200"
       RATE_LIMIT_WINDOW_S: "60"
