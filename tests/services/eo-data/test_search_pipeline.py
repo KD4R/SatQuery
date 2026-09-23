@@ -82,7 +82,7 @@ def test_search_service_cache_hit(mock_stac, mock_bhoonidhi, mock_redis):
         ]
     )
 
-    obs_list = service.search_observations("bhoonidhi", {}, datetime.now(), datetime.now())
+    obs_list = service.search_observations({}, datetime.now(), datetime.now(), {"trace_id": "test"}, provider_name="bhoonidhi")
 
     assert len(obs_list) == 1
     assert obs_list[0].observation_id == "1"
