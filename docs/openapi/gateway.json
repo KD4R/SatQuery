@@ -446,6 +446,103 @@
         ]
       }
     },
+    "/api/v1/inference/analyses": {
+      "post": {
+        "tags": [
+          "proxy"
+        ],
+        "summary": "Proxy Inference Analyse",
+        "description": "Proxy POST /api/v1/inference/analyses \u2192 Inference service (ANALYST+).\n\nReturns ``Analysis | Abstention`` unchanged. Both are 200: an abstention is a\nconsidered answer, not a transport failure.",
+        "operationId": "proxy_inference_analyse_api_v1_inference_analyses_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/inference/models": {
+      "get": {
+        "tags": [
+          "proxy"
+        ],
+        "summary": "Proxy Inference Models",
+        "description": "Proxy GET /api/v1/inference/models \u2192 Inference service.\n\nThe registry: each model's held-out score, calibration, and whether its\ncheckpoint has been verified against its committed manifest.",
+        "operationId": "proxy_inference_models_api_v1_inference_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/inference/analyses/{trace_id}/extent": {
+      "get": {
+        "tags": [
+          "proxy"
+        ],
+        "summary": "Proxy Inference Extent",
+        "description": "Proxy GET .../analyses/{trace_id}/extent \u2192 Inference service.\n\nGeoJSON, not JSON-wrapped: the map consumes it directly. ``trace_id`` is parsed\nas a UUID here as well as downstream, so the path forwarded is always one this\ngateway built -- A10 above -- never a caller's string.",
+        "operationId": "proxy_inference_extent_api_v1_inference_analyses__trace_id__extent_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health Check",

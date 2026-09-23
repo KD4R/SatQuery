@@ -1,56 +1,67 @@
-# SatQuery AI — SIH 2026 Frontend
+# SatQuery — Web (P5)
 
-Final P5 frontend foundation for the SatQuery AI geospatial command center, aligned to the supplied P5 and P4 engineering PRDs.
+Map-first mission console for SatQuery AI. Next.js 15 · React 19 · MapLibre ·
+Framer Motion · TypeScript.
 
-## Included
-
-- Next.js + React + TypeScript + Tailwind-compatible CSS architecture
-- Map-first Mission Control with MapLibre
-- Mission Copilot with keyboard shortcut, templates and running state
-- AOI / change / confidence map controls and AOI draw-mode UX
-- Before/after-ready observation workspace surface
-- Sensor arbitration: Optical vs SAR with route rationale
-- Confidence / uncertainty + human-in-loop gate
-- WHY? evidence chain with provenance fields
-- Auditable run timeline and trace drawer
-- Mission history / monitoring / report navigation states
-- Persistent monitoring control
-- Decision brief + GeoJSON/report/export action surfaces
-- Responsive desktop/tablet/mobile layouts
-- Full dark + light mode with persisted preference
-- Gateway-only API adapter under `lib/api.ts`
-- Explicit failure-aware API helper; no private service calls
-
-## Run
+## Run it locally
 
 ```bash
-npm install
-npm run dev
+cd apps/web
+npm install          # required — node_modules is not portable between machines
+cp .env.example .env.local
+echo "NEXT_PUBLIC_DEMO_MODE=1" >> .env.local   # deterministic demo, no backend needed
+npm run dev          # http://localhost:3000
 ```
 
-Open http://localhost:3000.
+`/` is the landing page, `/console` is the mission console.
 
-## Backend
+With `NEXT_PUBLIC_DEMO_MODE=1` the whole flow runs with no backend: the console is
+fed from `lib/fixtures/` and every panel carries a **DEMO FIXTURE** badge, with
+`ENV: DEMO` in the telemetry bar. Set it to `0` to talk to a real gateway at
+`NEXT_PUBLIC_GATEWAY_URL`.
 
-Set:
+## Checks
 
-```env
-NEXT_PUBLIC_GATEWAY_URL=https://your-gateway.example/api/v1
+```bash
+npm run typecheck    # tsc --noEmit
+npm run test         # vitest — unit + the gateway route contract test
+npm run build        # next build
+npm run test:e2e     # playwright
 ```
 
-The browser integration is intentionally routed through the Gateway only, matching the P5 PRD. Wire the generated TypeScript contracts to the exact team Gateway DTOs when they are frozen.
+## Layout
 
-## Demo mode
+| Path | Holds |
+|---|---|
+| `app/` | Routes. `/` landing, `/console` mission console. |
+| `components/shell/` | `MissionShell`, `TopTelemetryBar` |
+| `components/console/` | Query panel, run timeline |
+| `components/map/` | `MapWorkspace` — MapLibre, AOI draw/edit, layers |
+| `components/observe/` | `BeforeAfterViewer` |
+| `components/evidence/` | `IntelligencePanel` — change, confidence, WHY, sensors |
+| `components/landing/` | `OrbitalGlobe` and the landing page |
+| `components/system/` | Primitives, error boundary, failure states |
+| `lib/api/` | Gateway client. See its README for why it is hand-written. |
+| `lib/geo/` | AOI validation, coordinate and area formatting |
+| `lib/model/` | View models for surfaces the gateway does not yet expose |
+| `lib/fixtures/` | The demo scenario. The only source of non-backend data. |
 
-The UI contains deterministic presentation fixtures for the flagship flood flow so the frontend is runnable before the other services are available. These values are **demo fixtures**, not claims from a live backend. Replace them with Gateway responses for a real judging deployment.
+## Two rules the code enforces
 
-## Flagship flow
+**Demo data is never passed off as backend data.** `Sourced<T>` carries its origin
+to the component that renders it, every fixture-fed panel shows a badge, and a
+failed live call renders a failure state — it never falls back to a fixture,
+because doing that silently is fabricating success.
 
-Query → Mission Plan → AOI → Observation Discovery → Optical/SAR Decision → Analysis → Evidence → Map → Confidence → Report.
+**A value that is not known says so.** The `NotAvailable` component renders
+`NOT AVAILABLE` with the reason. `grep -rn "NotAvailable" components` is the list
+of places the system admits a gap; that list is what makes the WHY panel worth
+reading.
 
-## Important integration notes
+## Demo fixture provenance
 
-- Long-running work should consume backend 202/job IDs and WebSocket/SSE progress rather than inventing progress in the client.
-- Preserve `trace_id`, `mission_id`, `run_id`, `job_id`, `organization_id`, `model_version`, and `dataset_id` wherever supplied by the Gateway.
-- Keep secrets and private service URLs out of the browser.
-- Do not render arbitrary HTML from model output.
+`public/fixtures/*.png` are renderings of Sen1Floods11 hand-labelled chip
+`India_533192` — a real Sentinel-1 acquisition over the Brahmaputra floodplain near
+Nagaon, Assam (93.873–93.919 E, 26.768–26.814 N). Observed water 35.8% of analysed
+pixels, permanent water 3.3%, new water 33.3%, 46% of the chip inside the swath.
+Details and the reason each null field is null are in `lib/fixtures/assam.ts`.

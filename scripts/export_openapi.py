@@ -57,6 +57,7 @@ sys.meta_path.insert(0, _HyphenServiceFinder())
 
 from services.agent.app.api.implementation import app as agent_app  # noqa: E402
 from services.gateway.implementation import app as gateway_app  # noqa: E402
+from services.inference.implementation import app as inference_app  # noqa: E402
 from services.mission.implementation import app as mission_app  # noqa: E402
 
 
@@ -73,3 +74,4 @@ if __name__ == "__main__":
     export_openapi(gateway_app, "docs/openapi/gateway.json")
     export_openapi(mission_app, "docs/openapi/mission.json")
     export_openapi(agent_app, "docs/openapi/agent.json")
+    export_openapi(inference_app, "docs/openapi/inference.json")

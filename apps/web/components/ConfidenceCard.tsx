@@ -1,4 +1,4 @@
-import { AlertTriangle, Scale, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 export default function ConfidenceCard({
   confidence,
 }: {

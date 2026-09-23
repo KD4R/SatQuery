@@ -155,3 +155,47 @@ def test_tenant_isolation_org_id_is_always_set():
     c = ctx([Role.VIEWER], org_id="org-001")
     assert c.organisation_id
     assert len(c.organisation_id) > 0
+
+
+# ── Role hierarchy ─────────────────────────────────────────────────────────────
+#
+# Role's docstring says the roles are ordered and each inherits the ones below it,
+# and require_role() promises "at least" the minimum. has_role() was exact
+# membership, so an analyst was refused every VIEWER route -- /agent/tools,
+# /agent/runs/{id}, GET /missions, the inference model registry. It surfaced only
+# when a human token was used end to end: S2S tokens carry `system`, and is_admin
+# waves those through, so the proxy chain worked throughout.
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "held,required,expected",
+    [
+        (Role.ANALYST, Role.VIEWER, True),
+        (Role.OPERATOR, Role.ANALYST, True),
+        (Role.OPERATOR, Role.VIEWER, True),
+        (Role.ADMIN, Role.OPERATOR, True),
+        (Role.SYSTEM, Role.ADMIN, True),
+        (Role.VIEWER, Role.ANALYST, False),
+        (Role.ANALYST, Role.OPERATOR, False),
+        (Role.OPERATOR, Role.ADMIN, False),
+        (Role.ADMIN, Role.SYSTEM, False),
+    ],
+)
+def test_role_hierarchy_inherits_downward_only(held, required, expected) -> None:
+    assert ctx([held]).has_role(required) is expected
+
+
+@pytest.mark.unit
+def test_every_role_satisfies_itself() -> None:
+    for role in Role:
+        assert ctx([role]).has_role(role) is True
+
+
+@pytest.mark.unit
+def test_an_unrecognised_role_grants_nothing() -> None:
+    """A token from a future service carrying a role this build does not know must
+    not satisfy a check by accident. It ranks below everything, including VIEWER."""
+    c = ctx([])
+    c.roles = ["wizard"]  # type: ignore[list-item]
+    assert c.has_role(Role.VIEWER) is False

@@ -5,3 +5,7 @@ out
 !.env.example
 *.log
 .DS_Store
+*.tsbuildinfo
+/test-results/
+/playwright-report/
+/blob-report/

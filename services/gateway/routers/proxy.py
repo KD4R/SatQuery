@@ -1,9 +1,9 @@
 """
 services/gateway/routers/proxy.py — Reverse-proxy routes (P1-05).
 
-Routes all /api/v1/missions/* and /api/v1/agent/* calls to the respective
-downstream microservices via the InternalClient (S2S auth, circuit-breaker,
-retries, telemetry).
+Routes all /api/v1/missions/*, /api/v1/agent/* and /api/v1/inference/* calls to
+the respective downstream microservices via the InternalClient (S2S auth,
+circuit-breaker, retries, telemetry).
 
 OWASP mitigations:
   A01 — Token verified by get_current_user before any proxy call.
@@ -16,11 +16,12 @@ OWASP mitigations:
 
 import logging
 import os
+import uuid
 from typing import Any, Dict, Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 
 from packages.auth.dependencies import require_role
 from packages.auth.models import AuthContext, Role
@@ -34,10 +35,17 @@ router = APIRouter(tags=["proxy"])
 # Resolved once at import time; never constructed from user input.
 _MISSION_URL = os.getenv("MISSION_SERVICE_URL", "http://localhost:8001")
 _AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
+_INFERENCE_URL = os.getenv("INFERENCE_SERVICE_URL", "http://localhost:8003")
+
+#: One analysis reads, reprojects, runs the model and writes two artefacts. Measured
+#: under a second for a 512x512 chip, but the shared client's 5 s default leaves no
+#: room for a larger scene, and a timeout there is retried -- re-running inference.
+_INFERENCE_TIMEOUT_S = float(os.getenv("INFERENCE_TIMEOUT_S", "30"))
 
 # ── InternalClient singletons (lazy-init, reused across requests) ─────────────
 _mission_client: Optional[InternalClient] = None
 _agent_client: Optional[InternalClient] = None
+_inference_client: Optional[InternalClient] = None
 
 
 def _get_mission_client() -> InternalClient:
@@ -60,6 +68,18 @@ def _get_agent_client() -> InternalClient:
             scopes=["agent:read", "agent:write"],
         )
     return _agent_client
+
+
+def _get_inference_client() -> InternalClient:
+    global _inference_client
+    if _inference_client is None:
+        _inference_client = InternalClient(
+            base_url=_INFERENCE_URL,
+            caller_service="gateway",
+            scopes=["inference:read", "inference:write"],
+        )
+        _inference_client.client.timeout = httpx.Timeout(_INFERENCE_TIMEOUT_S)
+    return _inference_client
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -279,3 +299,86 @@ async def proxy_agent_tools(
 ):
     """Proxy GET /api/v1/agent/tools → Agent service."""
     return await _proxy(_get_agent_client(), "GET", "/api/v1/agent/tools", ctx, request)
+
+
+# ── Inference proxy routes (P3) ──────────────────────────────────────────────
+#
+# Without these the browser could not reach the model at all: it may only call the
+# gateway, and the gateway had no route to the inference service. The roles match
+# the inference service's own -- ANALYST to run an analysis, VIEWER to read -- so
+# the user's role is enforced here, and inference trusts the gateway's S2S token.
+
+
+@router.post("/api/v1/inference/analyses")
+async def proxy_inference_analyse(
+    request: Request,
+    ctx: AuthContext = Depends(require_role(Role.ANALYST)),
+):
+    """Proxy POST /api/v1/inference/analyses → Inference service (ANALYST+).
+
+    Returns ``Analysis | Abstention`` unchanged. Both are 200: an abstention is a
+    considered answer, not a transport failure.
+    """
+    body = await request.body()
+    return await _proxy(
+        _get_inference_client(), "POST", "/api/v1/inference/analyses", ctx, request, body
+    )
+
+
+@router.get("/api/v1/inference/models")
+async def proxy_inference_models(
+    request: Request,
+    ctx: AuthContext = Depends(require_role(Role.VIEWER)),
+):
+    """Proxy GET /api/v1/inference/models → Inference service.
+
+    The registry: each model's held-out score, calibration, and whether its
+    checkpoint has been verified against its committed manifest.
+    """
+    return await _proxy(_get_inference_client(), "GET", "/api/v1/inference/models", ctx, request)
+
+
+@router.get("/api/v1/inference/analyses/{trace_id}/extent")
+async def proxy_inference_extent(
+    trace_id: uuid.UUID,
+    request: Request,
+    ctx: AuthContext = Depends(require_role(Role.VIEWER)),
+):
+    """Proxy GET .../analyses/{trace_id}/extent → Inference service.
+
+    GeoJSON, not JSON-wrapped: the map consumes it directly. ``trace_id`` is parsed
+    as a UUID here as well as downstream, so the path forwarded is always one this
+    gateway built -- A10 above -- never a caller's string.
+    """
+    path = f"/api/v1/inference/analyses/{trace_id}/extent"
+    client = _get_inference_client()
+    try:
+        response = await client._request("GET", path, ctx, headers=_safe_headers(request))
+    except CircuitBreakerOpenError:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "SERVICE_UNAVAILABLE",
+                "message": "Inference service is temporarily unavailable.",
+                "retryable": True,
+            },
+        )
+    except InternalClientError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={
+                "code": exc.error.code,
+                "message": exc.error.message,
+                "retryable": exc.error.retryable,
+            },
+        )
+    except (httpx.TimeoutException, httpx.NetworkError):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "GATEWAY_TIMEOUT",
+                "message": "Inference service did not respond in time.",
+                "retryable": True,
+            },
+        )
+    return Response(content=response.content, media_type="application/geo+json")
