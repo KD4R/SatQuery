@@ -27,6 +27,27 @@ from packages.auth.dependencies import require_role
 from packages.auth.models import AuthContext, Role
 from packages.shared.client import CircuitBreakerOpenError, InternalClient, InternalClientError
 
+# Import schemas to enrich Gateway OpenAPI
+from services.mission.domain.schemas import (
+    MissionCreate,
+    MissionUpdate,
+    MissionResponse,
+    MissionListResponse,
+    JobSubmitResponse,
+    JobStatusResponse,
+)
+from services.agent.schemas import (
+    PlanRequest,
+    PlanResponse,
+    ExecuteRequest,
+    ExecuteResponse,
+    SensorDecisionRequest,
+    SensorDecisionResponse,
+    ConfidenceRequest,
+    ConfidenceResponse,
+    MissionState,
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["proxy"])
@@ -151,7 +172,7 @@ async def _proxy(
 # ── Mission proxy routes ──────────────────────────────────────────────────────
 
 
-@router.get("/api/v1/missions")
+@router.get("/api/v1/missions", response_model=MissionListResponse)
 async def proxy_list_missions(
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.VIEWER)),
@@ -162,8 +183,9 @@ async def proxy_list_missions(
     return await _proxy(_get_mission_client(), "GET", path, ctx, request)
 
 
-@router.post("/api/v1/missions", status_code=201)
+@router.post("/api/v1/missions", status_code=201, response_model=MissionResponse)
 async def proxy_create_mission(
+    payload: MissionCreate,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):
@@ -172,7 +194,7 @@ async def proxy_create_mission(
     return await _proxy(_get_mission_client(), "POST", "/api/v1/missions", ctx, request, body)
 
 
-@router.get("/api/v1/missions/{mission_id}")
+@router.get("/api/v1/missions/{mission_id}", response_model=MissionResponse)
 async def proxy_get_mission(
     mission_id: str,
     request: Request,
@@ -184,9 +206,10 @@ async def proxy_get_mission(
     )
 
 
-@router.patch("/api/v1/missions/{mission_id}")
+@router.patch("/api/v1/missions/{mission_id}", response_model=MissionResponse)
 async def proxy_update_mission(
     mission_id: str,
+    payload: MissionUpdate,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):
@@ -209,7 +232,9 @@ async def proxy_delete_mission(
     )
 
 
-@router.post("/api/v1/missions/{mission_id}/runs", status_code=202)
+@router.post(
+    "/api/v1/missions/{mission_id}/runs", status_code=202, response_model=JobSubmitResponse
+)
 async def proxy_submit_run(
     mission_id: str,
     request: Request,
@@ -227,7 +252,7 @@ async def proxy_submit_run(
     )
 
 
-@router.get("/api/v1/jobs/{job_id}")
+@router.get("/api/v1/jobs/{job_id}", response_model=JobStatusResponse)
 async def proxy_get_job(
     job_id: str,
     request: Request,
@@ -240,8 +265,9 @@ async def proxy_get_job(
 # ── Agent proxy routes ────────────────────────────────────────────────────────
 
 
-@router.post("/api/v1/agent/plan")
+@router.post("/api/v1/agent/plan", response_model=PlanResponse)
 async def proxy_agent_plan(
+    payload: PlanRequest,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):
@@ -250,8 +276,9 @@ async def proxy_agent_plan(
     return await _proxy(_get_agent_client(), "POST", "/api/v1/agent/plan", ctx, request, body)
 
 
-@router.post("/api/v1/agent/execute", status_code=202)
+@router.post("/api/v1/agent/execute", status_code=202, response_model=ExecuteResponse)
 async def proxy_agent_execute(
+    payload: ExecuteRequest,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):
@@ -260,7 +287,7 @@ async def proxy_agent_execute(
     return await _proxy(_get_agent_client(), "POST", "/api/v1/agent/execute", ctx, request, body)
 
 
-@router.get("/api/v1/agent/runs/{job_id}")
+@router.get("/api/v1/agent/runs/{job_id}", response_model=MissionState)
 async def proxy_agent_run_status(
     job_id: str,
     request: Request,
@@ -270,8 +297,9 @@ async def proxy_agent_run_status(
     return await _proxy(_get_agent_client(), "GET", f"/api/v1/agent/runs/{job_id}", ctx, request)
 
 
-@router.post("/api/v1/agent/sensor-decision")
+@router.post("/api/v1/agent/sensor-decision", response_model=SensorDecisionResponse)
 async def proxy_agent_sensor_decision(
+    payload: SensorDecisionRequest,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):
@@ -282,8 +310,9 @@ async def proxy_agent_sensor_decision(
     )
 
 
-@router.post("/api/v1/agent/confidence")
+@router.post("/api/v1/agent/confidence", response_model=ConfidenceResponse)
 async def proxy_agent_confidence(
+    payload: ConfidenceRequest,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):

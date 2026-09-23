@@ -27,7 +27,10 @@ modules = services.agent
 # canonical JWT helper instead of minting a second token format, so they
 # break if the auth contract changes (same rationale as the ml.io.tests
 # exemption above). Reads a helper; no runtime dependency.
-ignore_imports = services.inference.tests.test_api -> services.agent.tests.helpers.test_tokens
+ignore_imports =
+    services.inference.tests.test_api -> services.agent.tests.helpers.test_tokens
+    services.gateway.routers.proxy -> services.mission.domain.schemas
+    services.gateway.routers.proxy -> services.agent.schemas
 # Placeholder dirs (monitoring/notifications/reporting) lack __init__.py
 # until their owners land code — re-add them here when implemented.
 # services.eo_data is omitted: the physical dir 'services/eo-data' is
