@@ -12,17 +12,17 @@
 import { useState, useEffect } from "react";
 import { Globe2, Menu, PanelRightClose, PanelRightOpen, RefreshCw } from "lucide-react";
 
-import { Sidebar } from "./Sidebar";
-import { Topbar } from "./Topbar";
-import { MapCanvas } from "./MapCanvas";
-import { QueryConsole } from "./QueryConsole";
-import { ConfidenceCard } from "./ConfidenceCard";
-import { EvidencePanel } from "./EvidencePanel";
-import { RunTimeline } from "./RunTimeline";
-import { SensorCard } from "./SensorCard";
-import { MonitoringCard } from "./MonitoringCard";
-import { ReportCard } from "./ReportCard";
-import { TraceDrawer } from "./TraceDrawer";
+import Sidebar from "./Sidebar";
+import Topbar from "./Topbar";
+import MapCanvas from "./MapCanvas";
+import QueryConsole from "./QueryConsole";
+import ConfidenceCard from "./ConfidenceCard";
+import EvidencePanel from "./EvidencePanel";
+import RunTimeline from "./RunTimeline";
+import SensorCard from "./SensorCard";
+import MonitoringCard from "./MonitoringCard";
+import ReportCard from "./ReportCard";
+import TraceDrawer from "./TraceDrawer";
 
 import { useMissionRun } from "../lib/useMissionRun";
 import type { Stage, Evidence } from "../lib/types";
