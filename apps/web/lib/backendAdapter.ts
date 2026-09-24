@@ -28,17 +28,18 @@ export function toUIMissionState(
   // Extract evidence from agentState if available
   const evidence: Evidence[] = [];
   if (agentState?.evidence_graph) {
-    const nodes = agentState.evidence_graph.nodes || [];
+    // nodes is a Record<string, node>, not an array — use Object.values()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    nodes.forEach((n: any, idx: number) => {
+    const nodesMap = agentState.evidence_graph.nodes as Record<string, any> || {};
+    Object.entries(nodesMap).forEach(([id, n]: [string, any], idx: number) => {
       evidence.push({
-        id: n.id || `e${idx}`,
-        kind: n.type || "observation",
-        title: n.title || `Evidence ${idx + 1}`,
-        source: n.source || "System",
-        detail: n.summary || "Verified data point.",
-        status: n.confidence && n.confidence > 0.8 ? "verified" : "supporting",
-        provenance: n.provenance || "Gateway run",
+        id: (n.id as string) || id || `e${idx}`,
+        kind: (n.node_type as string) || (n.type as string) || "observation",
+        title: (n.label as string) || (n.title as string) || `Evidence ${idx + 1}`,
+        source: (n.source as string) || "System",
+        detail: (n.detail as string) || (n.summary as string) || "Verified data point.",
+        status: typeof n.confidence_score === "number" && n.confidence_score > 0.8 ? "verified" : "supporting",
+        provenance: (n.provenance as string) || `trace: ${agentState.trace_id ?? "—"}`,
       });
     });
   }
