@@ -275,7 +275,7 @@ export default function Dashboard() {
               <b className={missionStatus === "failed" ? "error-text" : "success-text"}>
                 {missionStatus === "running"
                   ? "RUNNING"
-                  : missionStatus === "complete" || missionStatus === "completed"
+                  : missionStatus === "completed"
                   ? "EVIDENCE READY"
                   : missionStatus === "failed"
                   ? "FAILED"

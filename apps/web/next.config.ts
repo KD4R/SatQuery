@@ -2,6 +2,12 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  eslint: {
+    // The generated OpenAPI client has eslint-disable headers that Next.js flags
+    // as unused. Ignore that directory during builds; it is linted separately.
+    ignoreDuringBuilds: false,
+    dirs: ["app", "components", "lib/api/gateway.ts", "lib/api/client.ts", "lib/api/source.ts", "lib/api/types.ts", "lib/api/claims.ts", "lib/api/routes.ts"],
+  },
   async headers() {
     return [
       {
