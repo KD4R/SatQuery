@@ -23,12 +23,15 @@ import type {
   MapMouseEvent,
   Map as MapLibreMap,
 } from "maplibre-gl";
+import { useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatArea, formatLat, formatLon, formatZoom } from "../../lib/geo/format";
 import { validateAOI, type ValidationResult } from "../../lib/geo/validate";
+import { epochOpacities, type TimeMachineModel } from "../../lib/map/timeLayers";
 import type { GeoJSONPolygon } from "../../lib/api/types";
 import { Label, StatusChip } from "../system/primitives";
+import { TimeMachine } from "./TimeMachine";
 
 export type LayerId = "observation" | "baseline" | "change" | "confidence" | "aoi";
 
@@ -46,6 +49,8 @@ export interface MapWorkspaceProps {
   onAoiChange: (aoi: GeoJSONPolygon | null) => void;
   overlays: RasterOverlay[];
   changeGeoJsonUrl: string | null;
+  /** When present, renders the Earth Time Machine rail and its epoch layers. */
+  timeMachine?: TimeMachineModel | null;
   visible: Record<LayerId, boolean>;
   onToggleLayer: (id: LayerId) => void;
   onSelectChange?: (featureId: string | null) => void;
@@ -75,6 +80,7 @@ export function MapWorkspace({
   onAoiChange,
   overlays,
   changeGeoJsonUrl,
+  timeMachine = null,
   visible,
   onToggleLayer,
   onSelectChange,
@@ -90,6 +96,11 @@ export function MapWorkspace({
 
   const [drawing, setDrawing] = useState(false);
   const [draft, setDraft] = useState<number[][]>([]);
+
+  // Which time machine epoch is on screen; owned here so the map can tween the
+  // raster opacities while the rail only reports indices.
+  const [tmIndex, setTmIndex] = useState(0);
+  const reduce = useReducedMotion();
 
   /* ── init ───────────────────────────────────────────────────────────────── */
 
@@ -162,6 +173,96 @@ export function MapWorkspace({
     }
   }, [overlays, ready]);
 
+  /* ── time machine epochs (PRD §2A) ─────────────────────────────────────── */
+
+  // A newly-arrived model resets the scrubber to the run's opening epoch, so
+  // the map never shows index 0 of a model the rail opened in the middle of.
+  useEffect(() => {
+    if (timeMachine) setTmIndex(timeMachine.initialIndex);
+  }, [timeMachine]);
+
+  // Epoch rasters get their own sources/layers so the crossfade runs between
+  // neighbouring states without touching the operator's layer toggles. They
+  // start at opacity 0 — 0, not visibility:none, is what makes the fade possible.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready || !timeMachine) return;
+
+    for (const e of timeMachine.epochs) {
+      const srcId = `src-${e.id}`;
+      const layerId = `lyr-${e.id}`;
+      const [w, s, ea, n] = e.bbox;
+      if (!m.getSource(srcId)) {
+        m.addSource(srcId, {
+          type: "image",
+          url: e.url,
+          // MapLibre wants the corners clockwise from top-left.
+          coordinates: [
+            [w, n],
+            [ea, n],
+            [ea, s],
+            [w, s],
+          ],
+        });
+      }
+      if (!m.getLayer(layerId)) {
+        m.addLayer({
+          id: layerId,
+          type: "raster",
+          source: srcId,
+          paint: {
+            "raster-opacity": 0,
+            "raster-fade-duration": 0,
+            "raster-resampling": "nearest",
+          },
+        });
+      }
+    }
+  }, [timeMachine, ready]);
+
+  // The crossfade itself. MapLibre does not tween paint properties, so the
+  // walk toward the target opacities is done here, one rAF tick at a time.
+  // Reduced motion cuts instead of tweens (the rail sets data-reduce too, so
+  // both halves of the transition agree).
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready || !timeMachine) return;
+
+    const targets = epochOpacities(timeMachine, tmIndex);
+    const layerIds = Object.keys(targets).filter((id) => m.getLayer(`lyr-${id}`));
+    if (layerIds.length === 0) return;
+
+    if (reduce) {
+      for (const id of layerIds) {
+        m.setPaintProperty(`lyr-${id}`, "raster-opacity", targets[id]!);
+      }
+      return;
+    }
+
+    const from = new Map<string, number>(
+      layerIds.map((id) => [
+        id,
+        (m.getPaintProperty(`lyr-${id}`, "raster-opacity") as number | undefined) ?? 0,
+      ]),
+    );
+    const DURATION = 380;
+    const start = performance.now();
+    let raf = 0;
+
+    const tick = (now: number) => {
+      const t = Math.min((now - start) / DURATION, 1);
+      const eased = t * (2 - t); // ease-out quad
+      for (const id of layerIds) {
+        const a = from.get(id)!;
+        const b = targets[id]!;
+        m.setPaintProperty(`lyr-${id}`, "raster-opacity", a + (b - a) * eased);
+      }
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [timeMachine, tmIndex, ready, reduce]);
+
   /* ── layer visibility ───────────────────────────────────────────────────── */
 
   useEffect(() => {
@@ -180,6 +281,19 @@ export function MapWorkspace({
           "visibility",
           visible[key] ? "visible" : "none",
         );
+      }
+    }
+    // Time machine epochs are gated by the same category toggles: Before is a
+    // baseline scene, After an observation, Change the change layer. The rail
+    // controls *time*; these still own *what*.
+    const tm_: Record<string, boolean> = {
+      "lyr-tm-baseline": visible.baseline,
+      "lyr-tm-observed": visible.observation,
+      "lyr-tm-change": visible.change,
+    };
+    for (const [layerId, on] of Object.entries(tm_)) {
+      if (m.getLayer(layerId)) {
+        m.setLayoutProperty(layerId, "visibility", on ? "visible" : "none");
       }
     }
     for (const id of ["aoi-fill", "aoi-line", "aoi-vertices"]) {
@@ -523,6 +637,14 @@ export function MapWorkspace({
           )}
         </div>
       )}
+
+      {/* Earth Time Machine — bottom centre, above the telemetry strip (PRD §2A). */}
+      {timeMachine ? (
+        <TimeMachine
+          model={timeMachine}
+          onChange={setTmIndex}
+        />
+      ) : null}
 
       {/* Coordinate telemetry — bottom left */}
       <div

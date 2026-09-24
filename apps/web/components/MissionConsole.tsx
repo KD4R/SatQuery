@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
+import { buildTimeMachine } from "../lib/map/timeLayers";
 import { demoModeEnabled, type DataSource } from "../lib/api/source";
 import { getHealth } from "../lib/api/client";
 import { useMissionRun } from "../lib/useMissionRun";
@@ -51,7 +52,9 @@ const MapWorkspace = dynamic(
 
 const ALL_LAYERS: Record<LayerId, boolean> = {
   observation: true,
-  baseline: false,
+  // The demo's Time Machine epochs fall under this category; the rail needs it
+  // on to show "Before". Live mode keeps it off until the operator asks.
+  baseline: demoModeEnabled(),
   change: true,
   confidence: false,
   aoi: true,
@@ -90,17 +93,23 @@ export default function MissionConsole() {
     setLayers((l) => ({ ...l, [id]: !l[id] }));
   }, []);
 
+  // Only the pre-run backdrop lives here now: once a run completes the Time
+  // Machine owns the baseline/observed/change rasters as crossfade epochs, so
+  // listing them as static overlays too would draw every scene twice.
   const overlays = useMemo(() => {
     if (!demo) return [];
     const s = ASSAM_SCENARIO.overlays;
-    return [
-      { id: "s1-vv", url: s["s1-vv"]!.url, bbox: s["s1-vv"]!.bbox },
-      { id: "baseline", url: s.baseline!.url, bbox: s.baseline!.bbox, opacity: 1 },
-      { id: "observed", url: s.observed!.url, bbox: s.observed!.bbox },
-    ];
+    return [{ id: "s1-vv", url: s["s1-vv"]!.url, bbox: s["s1-vv"]!.bbox }];
   }, [demo]);
 
   const complete = run.phase === "complete";
+
+  // PRD §2A: the scrub rail appears with the run's result, built from the same
+  // scenario — one source of truth for the map's temporal states.
+  const timeMachine = useMemo(
+    () => (demo && complete ? buildTimeMachine(ASSAM_SCENARIO) : null),
+    [demo, complete],
+  );
   const scenario = demo && complete ? ASSAM_SCENARIO : null;
 
   const systemState: SystemState =
@@ -187,10 +196,11 @@ export default function MissionConsole() {
             zoom={12.4}
             aoi={aoi}
             onAoiChange={setAoi}
-            overlays={complete ? overlays : overlays.slice(0, 1)}
+            overlays={overlays}
             changeGeoJsonUrl={
               complete && demo ? ASSAM_SCENARIO.changeGeoJsonUrl : null
             }
+            timeMachine={timeMachine}
             visible={layers}
             onToggleLayer={toggleLayer}
           />

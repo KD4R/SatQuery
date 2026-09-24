@@ -138,6 +138,43 @@ test.describe("console — demo run", () => {
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
+  test("the time machine scrubs the temporal states and never invents dates", async ({
+    page,
+  }) => {
+    await page.goto("/console");
+    await page.getByRole("button", { name: /run analysis/i }).click();
+    await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
+
+    const slider = page.getByRole("slider", { name: /earth time machine/i });
+    await expect(slider).toBeVisible();
+    // A completed run opens on the observed scene — the latest thing the
+    // sensor actually saw — not on the first epoch.
+    await expect(slider).toHaveValue("1");
+
+    // Keyboard scrubbing (ARIA slider pattern): left arrow steps back a state.
+    await slider.focus();
+    await page.keyboard.press("ArrowLeft");
+    await expect(slider).toHaveValue("0");
+    await expect(
+      page.getByRole("button", { name: "Before", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // End jumps to the derived change map; Home/End are part of the pattern.
+    await page.keyboard.press("End");
+    await expect(slider).toHaveValue("2");
+    await expect(
+      page.getByRole("button", { name: "Change", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // Sen1Floods11 publishes no per-chip timestamps, so the rail must say so
+    // rather than dressing the states up as a Jan → Feb → Mar calendar.
+    const rail = page.locator(".tm");
+    await expect(rail.getByText(/date not published/i)).toBeVisible();
+    // And no plausible-looking date may appear on the rail. (Scrubbed to .tm:
+    // the intelligence panel legitimately formats its own UTC readouts.)
+    await expect(rail.getByText(/UTC/)).toHaveCount(0);
+  });
+
   test("marks every fixture-fed surface as a fixture", async ({ page }) => {
     await page.goto("/console");
     // text-transform is CSS; the DOM says "Env".

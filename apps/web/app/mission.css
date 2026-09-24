@@ -816,3 +816,172 @@ a {
   font-family: var(--mono);
   font-size: 9.5px;
 }
+
+/* ═══ Earth Time Machine (PRD §2A) ═══════════════════════════════════════ */
+
+/* A floating scrub rail under the map: one range input across the run's
+   temporal states, tick marks per epoch, and the active epoch's name + date.
+   Dates render only when the backend supplies them; on a single-date dataset
+   the rail says so rather than inventing a calendar. */
+
+.tm {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100vw - 560px));
+  padding: 7px 12px 6px;
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  backdrop-filter: blur(4px);
+}
+
+.tm-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.tm-title {
+  letter-spacing: 0.08em;
+  color: var(--ink-dim);
+}
+
+.tm-epoch {
+  color: var(--ink);
+}
+
+.tm-date {
+  margin-left: 6px;
+  color: var(--ink-faint);
+  font-size: 9.5px;
+}
+
+.tm-count {
+  color: var(--ink-faint);
+  font-size: 9.5px;
+}
+
+.tm-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 14px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.tm-slider:focus-visible {
+  outline: 1px solid var(--hairline-signal);
+  outline-offset: 3px;
+}
+
+/* The track is the hairline; the filled part left of the thumb is the signal
+   colour, drawn with a gradient sized from the value. */
+.tm-slider::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    var(--signal) 0% var(--tm-fill, 50%),
+    var(--hairline-bright) var(--tm-fill, 50%) 100%
+  );
+}
+
+.tm-slider::-moz-range-track {
+  height: 2px;
+  background: var(--hairline-bright);
+}
+
+.tm-slider::-moz-range-progress {
+  height: 2px;
+  background: var(--signal);
+}
+
+.tm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 11px;
+  height: 11px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 2px solid var(--signal);
+}
+
+.tm-slider::-moz-range-thumb {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 2px solid var(--signal);
+}
+
+.tm-ticks {
+  position: relative;
+  height: 0;
+}
+
+.tm-tick {
+  position: absolute;
+  top: -12px;
+  width: 1px;
+  height: 5px;
+  transform: translateX(-0.5px);
+  background: var(--hairline-bright);
+}
+
+.tm-tick-on {
+  background: var(--signal);
+}
+
+.tm-states {
+  display: flex;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.tm-state {
+  padding: 2px 9px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--t-reveal), border-color var(--t-reveal);
+}
+
+.tm-state:hover,
+.tm-state:focus-visible {
+  color: var(--ink);
+  border-color: var(--hairline-bright);
+}
+
+.tm-state-on {
+  color: var(--signal);
+  border-color: var(--hairline-signal);
+}
+
+.tm-note {
+  margin: 7px 0 0;
+  color: var(--amber);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+/* Reduced motion: no crossfade on the map (the component cuts via rAF skip)
+   and no transition on the rail. */
+.tm[data-reduce="true"] .tm-state {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-state {
+    transition: none;
+  }
+}
