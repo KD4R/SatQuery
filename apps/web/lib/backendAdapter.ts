@@ -70,6 +70,8 @@ export function toUIMissionState(
     observations: agentState?.observation_ids || [],
     evidence,
     decision,
-    summary: agentState?.metadata?.summary || "Mission complete. Evidence assembled."
+    summary: agentState?.metadata?.summary || "Mission complete. Evidence assembled.",
+    cogUrl: agentState?.metadata?.inference_outcome?.scene_href || agentState?.metadata?.observations?.[0]?.href,
+    aoiGeoJson: agentState?.aoi,
   };
 }

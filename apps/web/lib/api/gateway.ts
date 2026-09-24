@@ -33,6 +33,20 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+export function buildWsUrl(path: string): string {
+  const tokenParams = accessToken ? `?token=${encodeURIComponent(accessToken)}` : '';
+  if (BASE.startsWith("http")) {
+    const wsBase = BASE.replace(/^http/, "ws").replace(/\/api\/v1\/?$/, "");
+    return `${wsBase}${path}${tokenParams}`;
+  }
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}${path}${tokenParams}`;
+}
+
 export function hasAccessToken(): boolean {
   return accessToken !== null;
 }

@@ -58,4 +58,6 @@ export interface MissionState {
   evidence: Evidence[];
   decision: MissionDecision;
   summary: string;
+  cogUrl?: string;
+  aoiGeoJson?: any;
 }
