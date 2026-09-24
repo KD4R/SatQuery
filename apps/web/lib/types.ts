@@ -59,5 +59,5 @@ export interface MissionState {
   decision: MissionDecision;
   summary: string;
   cogUrl?: string;
-  aoiGeoJson?: any;
+  aoiGeoJson?: unknown;
 }

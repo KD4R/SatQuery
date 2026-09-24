@@ -20,7 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError, buildWsUrl } from "./api/gateway";
-import { executeMission, getJob, getAgentRun } from "./api/client";
+import { executeMission, getAgentRun } from "./api/client";
 import { DEMO_STAGES, type StageState } from "./fixtures/script";
 import type { ErrorResponse, GeoJSONPolygon, JobStatus } from "./api/types";
 
@@ -45,8 +45,7 @@ export interface MissionRun {
   reset: () => void;
 }
 
-const POLL_START_MS = 1000;
-const POLL_MAX_MS = 5000;
+
 
 function demoStages(completedCount: number, runningIndex: number): RunStageView[] {
   return DEMO_STAGES.map((s, i) => ({
@@ -252,7 +251,7 @@ export function useMissionRun(demo: boolean): MissionRun {
         setPhase("failed");
       }
     },
-    [clearAll],
+    [clearAll, phase],
   );
 
   const start = useCallback(
