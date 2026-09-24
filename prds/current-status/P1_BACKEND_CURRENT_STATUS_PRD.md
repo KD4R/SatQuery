@@ -1,6 +1,6 @@
 # P1 Backend & Gateway — Current Status PRD
 
-Status: **PARTIAL / BLOCKED for release**  
+Status: **IMPLEMENTED LOCALLY / STACK VERIFICATION BLOCKED**
 Owner: P1 backend team  
 Merge target: `integration`
 
@@ -13,14 +13,13 @@ Merge target: `integration`
 ## Remaining before sign-off
 
 - Make proxy routes cover every live P2/P3/P4 request used by the generated frontend client.
-- Make the mission WebSocket consume live Redis/Celery events and emit a deterministic terminal `done` event.
-- Remove or strictly isolate mock WebSocket sequences from production configuration.
-- Verify JWT/S2S authentication across Gateway → Mission → Agent → Inference.
-- Verify error responses and trace/idempotency propagation end to end.
+- Run the authenticated workflow against live Redis/Celery and the complete Compose stack.
+- Verify JWT/S2S authentication across Gateway → Mission → Agent → Inference against running services.
+- Verify trace/idempotency propagation end to end against running services.
 
 ## Evidence
 
-The WebSocket integration test currently receives `status_update` where it expects `done`. Docker-backed chaos tests cannot run while the Docker API is unavailable.
+The Gateway no longer emits a synthetic success sequence when Redis is unavailable. It now emits a typed `STATUS_STREAM_UNAVAILABLE` error followed by terminal `done: failed`; terminal statuses are normalized for the browser. Proxy errors now use the canonical top-level `ErrorResponse` shape. Docker-backed chaos tests still require an accessible Docker API.
 
 ## Acceptance criteria
 

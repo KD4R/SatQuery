@@ -133,31 +133,36 @@ async def _proxy(
 
     except CircuitBreakerOpenError:
         logger.warning("Circuit breaker open for path=%s", path)
-        raise HTTPException(
+        return JSONResponse(
             status_code=503,
-            detail={
+            content={
                 "code": "SERVICE_UNAVAILABLE",
                 "message": "Downstream service is temporarily unavailable.",
+                "details": [],
                 "retryable": True,
             },
         )
     except InternalClientError as exc:
-        raise HTTPException(
+        return JSONResponse(
             status_code=exc.status_code,
-            detail={
+            content={
                 "code": exc.error.code,
                 "message": exc.error.message,
+                "details": [detail.model_dump() for detail in exc.error.details],
                 "retryable": exc.error.retryable,
+                "trace_id": ctx.trace_id,
             },
         )
     except (httpx.TimeoutException, httpx.NetworkError) as exc:
         logger.error("Network error proxying %s %s: %s", method, path, exc)
-        raise HTTPException(
+        return JSONResponse(
             status_code=503,
-            detail={
+            content={
                 "code": "GATEWAY_TIMEOUT",
                 "message": "Upstream service did not respond in time.",
+                "details": [],
                 "retryable": True,
+                "trace_id": ctx.trace_id,
             },
         )
 
