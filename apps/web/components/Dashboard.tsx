@@ -59,6 +59,7 @@ function extractEvidence(agentState: any): Evidence[] {
   if (!agentState) return [];
   const raw = agentState.evidence ?? agentState.evidence_graph?.nodes ?? {};
   if (Array.isArray(raw)) return raw as Evidence[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return Object.entries(raw).map(([id, node]: [string, any]) => ({
     id,
     kind: node.node_type ?? "observation",
