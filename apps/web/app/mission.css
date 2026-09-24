@@ -676,3 +676,143 @@ a {
     break-inside: avoid;
   }
 }
+
+/* ═══ Evidence graph (P5-09 → PRD §2B) ═══════════════════════════════════ */
+
+/* Lazy-loaded React Flow styles are imported from the component module. The
+   classes below restyle the canvas with the mission design tokens. */
+
+.egraph-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--ink-dim);
+  background: transparent;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--t-reveal), border-color var(--t-reveal);
+}
+
+.egraph-trigger:hover,
+.egraph-trigger:focus-visible {
+  color: var(--signal);
+  border-color: var(--hairline-signal);
+}
+
+.egraph-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--void) 86%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.egraph-drawer-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.egraph-canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+.egraph-canvas .react-flow {
+  --xy-background-color: transparent;
+  font-family: var(--mono);
+}
+
+.egraph-loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.egraph-card {
+  min-width: 210px;
+  max-width: 260px;
+  padding: 9px 11px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.egraph-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.egraph-glyph {
+  color: var(--signal);
+  font-size: 10px;
+}
+
+.egraph-score {
+  margin-left: auto;
+  font-size: 10px;
+}
+
+.egraph-value {
+  margin: 5px 0 0;
+  color: var(--ink);
+}
+
+.egraph-prov {
+  margin: 4px 0 0;
+  color: var(--ink-faint);
+  font-size: 9.5px;
+}
+
+.egraph-card-insight {
+  border-color: var(--hairline-signal);
+  box-shadow: 0 0 0 1px var(--hairline-signal);
+}
+
+.egraph-card-gate {
+  border-left: 2px solid var(--amber);
+}
+
+.egraph-card-model {
+  border-left: 2px solid var(--earth);
+}
+
+.egraph-handle {
+  width: 6px;
+  height: 6px;
+  background: var(--hairline-bright);
+  border: none;
+}
+
+.egraph-edge-primary {
+  filter: drop-shadow(0 0 3px var(--signal-dim));
+}
+
+.egraph-controls {
+  box-shadow: none;
+}
+
+.egraph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--hairline);
+  background: var(--surface-1);
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 9.5px;
+}

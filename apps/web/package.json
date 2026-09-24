@@ -15,6 +15,7 @@
     "@turf/turf": "^7.2.0",
     "@types/d3-geo": "^3.1.1",
     "@types/topojson-client": "^3.1.5",
+    "@xyflow/react": "^12.11.6",
     "d3-geo": "^3.1.1",
     "framer-motion": "^13.3.0",
     "lucide-react": "^0.468.0",

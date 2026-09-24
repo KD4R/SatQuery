@@ -13,13 +13,16 @@
  * coverage, and the named factors holding it down.
  */
 
+import dynamic from "next/dynamic";
 import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   confidenceBand,
   formatPercent,
   formatUTC,
 } from "../../lib/geo/format";
+import { buildEvidenceGraph } from "../../lib/evidence/graph";
 import {
   Label,
   NotAvailable,
@@ -32,6 +35,23 @@ import {
 import { BeforeAfterViewer } from "../observe/BeforeAfterViewer";
 import type { ConsoleScenario } from "../../lib/model/console";
 import type { DataSource } from "../../lib/api/source";
+
+/**
+ * React Flow is ~100 kB of canvas code. Like MapWorkspace, it is loaded on demand
+ * and only when the operator opens the drawer, so the console's first-load budget
+ * is untouched (P5-16). ssr:false because it measures the DOM.
+ */
+const EvidenceGraphDrawer = dynamic(
+  () => import("./EvidenceGraphDrawer").then((m) => m.EvidenceGraphDrawer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="egraph-loading">
+        <span className="label label-faint">Loading evidence graph…</span>
+      </div>
+    ),
+  },
+);
 
 export function IntelligencePanel({
   scenario,
@@ -46,6 +66,21 @@ export function IntelligencePanel({
   revealed: boolean;
 }) {
   const reduce = useReducedMotion();
+  const [graphOpen, setGraphOpen] = useState(false);
+
+  // Escape closes the drawer. Owned here so the trigger keeps focus semantics in
+  // one place rather than reaching into the lazily loaded canvas.
+  useEffect(() => {
+    if (!graphOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setGraphOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [graphOpen]);
+
+  const openGraph = useCallback(() => setGraphOpen(true), []);
+  const closeGraph = useCallback(() => setGraphOpen(false), []);
 
   if (!scenario || !revealed) {
     return (
@@ -177,8 +212,21 @@ export function IntelligencePanel({
           </div>
         </PanelSection>
 
-        {/* ── WHY (P5-09) ────────────────────────────────────────────────── */}
-        <PanelSection title="Why this was flagged">
+        {/* ── WHY (P5-09, PRD §2B) ────────────────────────────────────────── */}
+        <PanelSection
+          title="Why this was flagged"
+          actions={
+            <button
+              type="button"
+              className="egraph-trigger"
+              onClick={openGraph}
+              aria-haspopup="dialog"
+              aria-expanded={graphOpen}
+            >
+              ▣ WHY GRAPH
+            </button>
+          }
+        >
           {evidence.map((node, i) => (
             <div
               key={node.id}
@@ -215,6 +263,16 @@ export function IntelligencePanel({
             </div>
           ))}
         </PanelSection>
+
+        {/* The drawer lives after the sections so its fixed overlay mounts above
+            the panel content; the graph is derived from the same scenario. */}
+        {graphOpen && scenario ? (
+          <EvidenceGraphDrawer
+            graph={buildEvidenceGraph(scenario)}
+            open={graphOpen}
+            onClose={closeGraph}
+          />
+        ) : null}
 
         {/* ── Sensor arbitration (P5-10) ─────────────────────────────────── */}
         <PanelSection

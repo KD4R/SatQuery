@@ -90,6 +90,54 @@ test.describe("console — demo run", () => {
     await expect(page.getByText("NOT AVAILABLE").first()).toBeVisible();
   });
 
+  test("the WHY GRAPH drawer renders the evidence chain and closes on Escape", async ({
+    page,
+  }) => {
+    await page.goto("/console");
+    await page.getByRole("button", { name: /run analysis/i }).click();
+    await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
+
+    const trigger = page.getByRole("button", { name: /why graph/i });
+    await expect(trigger).toBeVisible();
+    // A drawer behind a collapsed trigger would be unreadable by screen readers.
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("dialog", { name: /evidence graph/i })).toHaveCount(0);
+
+    await trigger.click();
+
+    const drawer = page.getByRole("dialog", { name: /evidence graph/i });
+    await expect(drawer).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+    // The chain the builder is required to produce, in order of trust: the
+    // insight, the gate with its score, and the AOI the measurement is grounded
+    // in. React Flow renders node text inside the flow canvas.
+    // exact:true — the legend also says "★ insight" and getByText matches
+    // case-insensitively by default, which would trip strict mode.
+    await expect(drawer.getByText("Insight", { exact: true })).toBeVisible();
+    await expect(drawer.getByText("Confidence gate", { exact: true })).toBeVisible();
+    // The gate node carries the confidence score; React Flow stamps stable
+    // rf__node-<id> testids, which scope the assertion to the card itself.
+    await expect(
+      drawer.locator('[data-testid="rf__node-node-gate"]').getByText("0.87"),
+    ).toBeVisible();
+    await expect(
+      drawer.getByText("Brahmaputra floodplain — Nagaon, Assam · 26.2 km²"),
+    ).toBeVisible();
+
+    // The gate passed for this fixture; a BELOW label here would mean the graph
+    // is not reading the scenario's gate state.
+    await expect(drawer.getByText(/gate · above/i)).toBeVisible();
+
+    // The null-valued "Acquired" evidence row must survive into the graph.
+    await expect(drawer.getByText("Acquired")).toBeVisible();
+    await expect(drawer.getByText("NOT AVAILABLE").first()).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(drawer).toHaveCount(0);
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  });
+
   test("marks every fixture-fed surface as a fixture", async ({ page }) => {
     await page.goto("/console");
     // text-transform is CSS; the DOM says "Env".
