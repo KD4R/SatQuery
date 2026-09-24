@@ -1,5 +1,52 @@
-'use client';
-import {Bell, Command, HelpCircle, Moon, Search, Sun} from 'lucide-react';
-export default function Topbar({theme,onTheme,runId}:{theme:'dark'|'light';onTheme:()=>void;runId:string}){
- return <header className="topbar"><div className="top-context"><div className="eyebrow">SATQUERY / MISSION CONTROL</div><div className="top-title"><span className="top-title-mark">SQ</span>Earth Observation Intelligence <span className="live-pill"><i/> LIVE</span></div></div><div className="top-actions"><div className="run-pill"><span>RUN</span>{runId}</div><button className="icon-btn" aria-label="Search"><Search size={16}/></button><button className="icon-btn" aria-label="Command palette"><Command size={16}/></button><button className="icon-btn" aria-label="Notifications"><Bell size={16}/></button><button className="icon-btn" onClick={onTheme} aria-label="Toggle theme">{theme==='dark'?<Sun size={16}/>:<Moon size={16}/>}</button><button className="help-btn" aria-label="Help"><HelpCircle size={15}/><span>Help</span></button><div className="avatar">SQ</div></div></header>
+"use client";
+import { Bell, Command, HelpCircle, Moon, Search, Sun } from "lucide-react";
+export default function Topbar({
+  theme,
+  onTheme,
+  runId,
+}: {
+  theme: "dark" | "light";
+  onTheme: () => void;
+  runId: string;
+}) {
+  return (
+    <header className="topbar">
+      <div className="top-context">
+        <div className="eyebrow">SATQUERY / MISSION CONTROL</div>
+        <div className="top-title">
+          Earth Observation Intelligence{" "}
+          <span className="live-pill">
+            <i /> LIVE
+          </span>
+        </div>
+      </div>
+      <div className="top-actions">
+        <div className="run-pill">
+          <span>RUN</span>
+          {runId}
+        </div>
+        <button className="icon-btn" aria-label="Search">
+          <Search size={16} />
+        </button>
+        <button className="icon-btn" aria-label="Command palette">
+          <Command size={16} />
+        </button>
+        <button className="icon-btn" aria-label="Notifications">
+          <Bell size={16} />
+        </button>
+        <button
+          className="icon-btn"
+          onClick={onTheme}
+          aria-label="Toggle theme"
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button className="help-btn" aria-label="Help">
+          <HelpCircle size={15} />
+          <span>Help</span>
+        </button>
+        <div className="avatar">SQ</div>
+      </div>
+    </header>
+  );
 }
