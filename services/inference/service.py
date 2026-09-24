@@ -40,9 +40,12 @@ from ml.geo.area import area_hectares, pixel_area_m2
 from ml.io.preflight import PreflightError
 from ml.io.raster import Raster, RasterReadError, read_raster, reproject_to_area_safe_crs
 from ml.pipeline.baseline import detect_water_single_date, water_mask_single_date
-from ml.pipeline.learned import predict_water_mask
+from ml.pipeline.learned import predict_water_probability
 from ml.pipeline.postprocess import postprocess_water_mask
 from ml.sar.change import ThresholdError
+from services.inference.artifacts import ArtifactSink, ArtifactWriteError
+from services.inference.confidence import confidence_for
+from services.inference.outputs import mask_geojson, mask_geotiff
 from services.inference.registry import BASELINE_METHOD, ModelRegistry, ModelUnavailable
 from services.inference.sources import RasterSource
 
@@ -65,6 +68,9 @@ class AnalysisService:
     registry: ModelRegistry
     source: RasterSource
     code_version: str
+    #: Where the mask and its polygons are written. None means no store is
+    #: configured: the analysis still returns, with empty refs and a caveat.
+    artifacts: ArtifactSink | None = None
 
     def analyse(
         self,
@@ -138,7 +144,7 @@ class AnalysisService:
             )
 
         try:
-            mask = self._predict(model, normalisation, raster, permanent_water)
+            probability = self._predict(model, normalisation, raster, permanent_water)
         except Exception as error:  # noqa: BLE001 -- see comment
             # Deliberately broad. Anything the model does wrong at inference time
             # is a reason to fall back to a working method, not a reason to fail
@@ -157,6 +163,7 @@ class AnalysisService:
                 degraded_from=requested,
             )
 
+        mask: npt.NDArray[np.bool_] = probability >= WATER_THRESHOLD
         return self._measure(
             mask,
             raster=raster,
@@ -167,6 +174,7 @@ class AnalysisService:
             produced_by=f"{card.name}@{card.version}",
             caveats=self._model_caveats(card),
             degraded_from=None,
+            confidence=confidence_for(card, probability, mask),
         )
 
     # -- loading ------------------------------------------------------------- #
@@ -216,7 +224,7 @@ class AnalysisService:
 
     def _predict(
         self, model, normalisation, raster: Raster, permanent_water=None
-    ) -> npt.NDArray[np.bool_]:
+    ) -> npt.NDArray[np.float32]:
         """Delegates to ml.pipeline.learned so the service and the evaluation
         report cannot drift apart. They did once: the report scored the model on
         the native grid and the baseline on the reprojected one, and only a shape
@@ -229,7 +237,7 @@ class AnalysisService:
         two-channel one ignores it, and neither the service nor this method has to
         know which -- ml.pipeline.learned reads the channel count off the
         checkpoint."""
-        return predict_water_mask(model, normalisation, raster, permanent_water)
+        return predict_water_probability(model, normalisation, raster, permanent_water)
 
     # -- outcomes ------------------------------------------------------------ #
 
@@ -275,6 +283,7 @@ class AnalysisService:
         produced_by: str,
         caveats: tuple[str, ...],
         degraded_from: str | None,
+        confidence: Confidence,
     ) -> MissionOutcome:
         """Postprocess a model mask and turn it into a measured Analysis.
 
@@ -303,24 +312,80 @@ class AnalysisService:
             code_version=self.code_version,
         )
 
+        # cleaned.mask, not `mask`: the artefacts must show exactly what was
+        # measured. See services/inference/outputs.py.
+        geometry_ref, raster_refs, storage_caveats = self._persist(
+            cleaned.mask,
+            raster=raster,
+            pixel_area_m2=per_pixel,
+            trace_id=trace_id,
+            produced_by=produced_by,
+            area_ha=float(measurement.value),
+        )
+
         return Analysis(
             outcome="analysed",
             measurements=(measurement,),
-            geometry_ref=None,
-            raster_refs=(),
-            # NOT_CALIBRATED, still. The model's sigmoid output is a normalised
-            # score, not a probability, and CALIBRATED_PROBABILITY requires a
-            # calibration report that does not exist yet (P3-11, D5). Presenting a
-            # softmax as a probability is the same class of defect as a fabricated
-            # hectare figure.
-            confidence=Confidence.not_calibrated(
-                caveats=("model output is uncalibrated; see P3-11",)
-            ),
+            geometry_ref=geometry_ref,
+            raster_refs=raster_refs,
+            # Decided by confidence_for() from what calibration actually measured.
+            # This used to be hardcoded NOT_CALIBRATED with the caveat "see P3-11"
+            # -- written when no calibration existed. P3-11 then ran, measured, and
+            # failed its bar, and the caveat went on claiming the report did not
+            # exist. A true statement that goes stale is still a false one.
+            confidence=confidence,
             scenes=(scene,),
             degraded_from=degraded_from,
-            caveats=(f"produced by {produced_by}",) + caveats + cleaned.caveats,
+            caveats=(f"produced by {produced_by}",) + caveats + cleaned.caveats + storage_caveats,
             trace_id=trace_id,
         )
+
+    def _persist(
+        self,
+        mask: npt.NDArray[np.bool_],
+        *,
+        raster: Raster,
+        pixel_area_m2: float,
+        trace_id: str,
+        produced_by: str,
+        area_ha: float,
+    ) -> tuple[str | None, tuple[str, ...], tuple[str, ...]]:
+        """Write the mask and its polygons. Never raises.
+
+        Returns ``(geometry_ref, raster_refs, caveats)``. A failure leaves the refs
+        empty and says why; the measurement it accompanies is still correct.
+        """
+        if self.artifacts is None:
+            return (
+                None,
+                (),
+                ("mask and polygons were not persisted: no artifact store is configured",),
+            )
+
+        prefix = f"analyses/{trace_id}"
+        try:
+            tif = mask_geotiff(mask, transform=raster.transform, crs=raster.spec.crs)
+            geojson = mask_geojson(
+                mask,
+                transform=raster.transform,
+                crs=raster.spec.crs,
+                pixel_area_m2=pixel_area_m2,
+                properties={
+                    "trace_id": trace_id,
+                    "produced_by": produced_by,
+                    "area_ha": area_ha,
+                    "crs_measured": str(raster.spec.crs),
+                },
+            )
+            raster_ref = self.artifacts.put(f"{prefix}/water_mask.tif", tif, "image/tiff")
+            geometry_ref = self.artifacts.put(
+                f"{prefix}/water_extent.geojson", geojson, "application/geo+json"
+            )
+        except (ArtifactWriteError, ValueError, OSError) as error:
+            logger.warning("analysis %s: outputs not persisted: %s", trace_id, error)
+            return None, (), (f"mask and polygons could not be persisted: {error}",)
+
+        return geometry_ref, (raster_ref,), ()
 
     @staticmethod
     def _model_caveats(card) -> tuple[str, ...]:
@@ -330,6 +395,11 @@ class AnalysisService:
         good the method is. If the number is worth reporting, so is its accuracy.
         """
         caveats = []
+        if card.checksum_verified is False:
+            caveats.append(
+                "checkpoint was not verified against a committed manifest; its "
+                "identity rests on the file name alone"
+            )
         if card.validation_iou is not None:
             regions = ", ".join(card.validation_regions) or "unspecified regions"
             caveats.append(
