@@ -75,6 +75,7 @@ export interface EvidenceGraph {
  * inference provenance. Edges always exist (insight→gate→model), so the chain is
  * never disconnected even when the backend supplies nothing.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function buildEvidenceGraph(backendState: any): EvidenceGraph {
   const nodes: EvidenceGraphNode[] = [];
   const edges: EvidenceGraphEdge[] = [];
@@ -88,6 +89,7 @@ export function buildEvidenceGraph(backendState: any): EvidenceGraph {
   
   let rootId = "node-insight";
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   for (const [nid, n] of Object.entries(backendNodes) as any) {
     const type = n.node_type || "observation";
     let kind: EvidenceGraphNodeKind = "context";
