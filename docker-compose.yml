@@ -37,17 +37,17 @@ services:
     networks:
     - satquery
   minio:
-    image: minio/minio:latest
+    image: bitnami/minio:2024
     container_name: satquery-minio
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_DEFAULT_BUCKETS: satquery
     ports:
     - ${MINIO_API_PORT:-9000}:9000
     - ${MINIO_CONSOLE_PORT:-9001}:9001
     volumes:
-    - minio_data:/data
-    command: server /data --console-address ":9001"
+    - minio_data:/bitnami/minio/data
     healthcheck:
       test:
       - CMD
@@ -403,7 +403,7 @@ services:
     networks:
     - satquery
   prometheus:
-    image: quay.io/prometheus/prometheus:v2.54.1
+    image: prom/prometheus:v2.54.1
     container_name: satquery-prometheus
     volumes:
     - ./infrastructure/docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
@@ -413,7 +413,7 @@ services:
     networks:
     - satquery
   grafana:
-    image: docker.io/grafana/grafana:11.2.2
+    image: grafana/grafana:11.2.2
     container_name: satquery-grafana
     environment:
       GF_SECURITY_ADMIN_USER: admin
