@@ -36,24 +36,22 @@ services:
       retries: 5
     networks:
     - satquery
-  minio:
-    image: bitnami/minio:2024
-    container_name: satquery-minio
+  s3:
+    image: adobe/s3mock:latest
+    container_name: satquery-s3
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      MINIO_DEFAULT_BUCKETS: satquery
+      initialBuckets: satquery
     ports:
-    - ${MINIO_API_PORT:-9000}:9000
-    - ${MINIO_CONSOLE_PORT:-9001}:9001
+    - ${MINIO_API_PORT:-9000}:9090
     volumes:
-    - minio_data:/bitnami/minio/data
+    - minio_data:/s3mockroot
     healthcheck:
       test:
       - CMD
-      - curl
-      - -f
-      - http://localhost:9000/minio/health/live
+      - wget
+      - --spider
+      - -q
+      - http://localhost:9090
       interval: 10s
       timeout: 5s
       retries: 5
@@ -76,7 +74,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
@@ -123,7 +121,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
@@ -173,7 +171,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
@@ -237,7 +235,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
@@ -278,7 +276,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
@@ -315,7 +313,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
       REDIS_URL: redis://redis:6379/0
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
@@ -371,7 +369,7 @@ services:
     environment:
       PYTHONPATH: /app
       ENVIRONMENT: development
-      S3_ENDPOINT: http://minio:9000
+      S3_ENDPOINT: http://s3:9090
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
