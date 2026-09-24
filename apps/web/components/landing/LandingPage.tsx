@@ -132,7 +132,7 @@ export default function LandingPage() {
         </Reveal>
         <div className="band-spacer" />
         <Reveal delay={0.2}>
-          <Link href="/console" className="label" style={{ color: "var(--ink)" }}>
+          <Link href="/dashboard" className="label" style={{ color: "var(--ink)" }}>
             MISSION CONSOLE →
           </Link>
         </Reveal>
@@ -194,7 +194,7 @@ export default function LandingPage() {
 
         <Reveal delay={0.8}>
           <div style={{ pointerEvents: "auto" }}>
-            <Link href="/console" className="btn btn-primary" style={{ height: 34 }}>
+            <Link href="/dashboard" className="btn btn-primary" style={{ height: 34 }}>
               Enter mission console
             </Link>
           </div>
