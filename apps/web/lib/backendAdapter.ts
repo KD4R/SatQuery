@@ -30,8 +30,10 @@ export function toUIMissionState(
   if (agentState?.evidence_graph) {
     // nodes is a Record<string, node>, not an array — use Object.values()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const nodesMap = agentState.evidence_graph.nodes as Record<string, any> || {};
-    Object.entries(nodesMap).forEach(([id, n]: [string, any], idx: number) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nodesMap = agentState.evidence_graph.nodes as Record<string, unknown> || {};
+    Object.entries(nodesMap).forEach(([id, nUnk]: [string, unknown], idx: number) => {
+      const n = nUnk as Record<string, unknown>;
       evidence.push({
         id: (n.id as string) || id || `e${idx}`,
         kind: (n.node_type as string) || (n.type as string) || "observation",
@@ -71,8 +73,8 @@ export function toUIMissionState(
     observations: agentState?.observation_ids || [],
     evidence,
     decision,
-    summary: (agentState?.metadata as any)?.summary || "Mission complete. Evidence assembled.",
-    cogUrl: (agentState?.metadata as any)?.inference_outcome?.scene_href || (agentState?.metadata as any)?.observations?.[0]?.href,
+    summary: (agentState?.metadata as Record<string, unknown>)?.summary as string || "Mission complete. Evidence assembled.",
+    cogUrl: ((agentState?.metadata as Record<string, unknown>)?.inference_outcome as Record<string, unknown>)?.scene_href as string || (((agentState?.metadata as Record<string, unknown>)?.observations as unknown[])?.[0] as Record<string, unknown>)?.href as string,
     aoiGeoJson: agentState?.aoi,
   };
 }

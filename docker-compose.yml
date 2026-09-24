@@ -205,22 +205,7 @@ services:
     volumes:
     - .:/app
     restart: unless-stopped
-  web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-    container_name: satquery-web
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-      NEXT_PUBLIC_GATEWAY_URL: /api/v1
-    ports:
-    - ${WEB_PORT:-3000}:3000
-    depends_on:
-      api:
-        condition: service_healthy
-    networks:
-    - satquery
-    restart: unless-stopped
+
   worker-ingest:
     build:
       context: .
