@@ -174,35 +174,42 @@ async def mission_status_stream(
                         payload = {"status": data}
 
                     status_val = payload.get("status", "unknown")
+                    node_name = payload.get("node", "unknown")
+                    agent_state = payload.get("agent_state", {})
+                    
                     await websocket.send_json(
                         {
                             "event": "status_update",
                             "mission_id": mission_id,
                             "status": status_val,
+                            "node": node_name,
+                            "agent_state": agent_state,
                             "org_id": org_id,
                         }
                     )
 
-                    if status_val in ("completed", "failed", "cancelled"):
+                    if status_val in ("COMPLETED", "FAILED", "cancelled"):
                         await websocket.send_json(
                             {"event": "done", "mission_id": mission_id, "final_status": status_val}
                         )
                         break
         else:
             # Fallback mock sequence for tests without Redis
-            statuses = ["queued", "running", "completed"]
+            statuses = ["queued", "PLANNING", "ARBITRATING", "ACQUIRING", "ANALYZING", "GATE_CHECK", "COMPLETED"]
             for status in statuses:
-                await asyncio.sleep(0)
+                await asyncio.sleep(0.1)
                 await websocket.send_json(
                     {
                         "event": "status_update",
                         "mission_id": mission_id,
                         "status": status,
+                        "node": status.lower(),
+                        "agent_state": {"status": status},
                         "org_id": org_id,
                     }
                 )
             await websocket.send_json(
-                {"event": "done", "mission_id": mission_id, "final_status": "completed"}
+                {"event": "done", "mission_id": mission_id, "final_status": "COMPLETED"}
             )
 
         await websocket.close(code=WS_CLOSE_NORMAL)

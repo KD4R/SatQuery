@@ -55,10 +55,12 @@ router = APIRouter(tags=["proxy"])
 # Resolved once at import time; never constructed from user input.
 _MISSION_URL = os.getenv("MISSION_SERVICE_URL", "http://localhost:8001")
 _AGENT_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
+_INFERENCE_URL = os.getenv("INFERENCE_SERVICE_URL", "http://localhost:8003")
 
 # ── InternalClient singletons (lazy-init, reused across requests) ─────────────
 _mission_client: Optional[InternalClient] = None
 _agent_client: Optional[InternalClient] = None
+_inference_client: Optional[InternalClient] = None
 
 
 def _get_mission_client() -> InternalClient:
@@ -81,6 +83,17 @@ def _get_agent_client() -> InternalClient:
             scopes=["agent:read", "agent:write"],
         )
     return _agent_client
+
+
+def _get_inference_client() -> InternalClient:
+    global _inference_client
+    if _inference_client is None:
+        _inference_client = InternalClient(
+            base_url=_INFERENCE_URL,
+            caller_service="gateway",
+            scopes=["inference:read", "inference:run"],
+        )
+    return _inference_client
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -308,3 +321,29 @@ async def proxy_agent_tools(
 ):
     """Proxy GET /api/v1/agent/tools → Agent service."""
     return await _proxy(_get_agent_client(), "GET", "/api/v1/agent/tools", ctx, request)
+
+# -- Inference proxy routes --------------------------------------------------
+
+@router.post("/api/v1/inference/analyses")
+async def proxy_inference_analyses(
+    request: Request,
+    ctx: AuthContext = Depends(require_role(Role.ANALYST)),
+):
+    body = await request.body()
+    return await _proxy(_get_inference_client(), "POST", "/api/v1/inference/analyses", ctx, request, body)
+
+@router.get("/api/v1/inference/models")
+async def proxy_inference_models(
+    request: Request,
+    ctx: AuthContext = Depends(require_role(Role.VIEWER)),
+):
+    return await _proxy(_get_inference_client(), "GET", "/api/v1/inference/models", ctx, request)
+
+@router.get("/api/v1/inference/analyses/{trace_id}/extent")
+async def proxy_inference_extent(
+    trace_id: str,
+    request: Request,
+    ctx: AuthContext = Depends(require_role(Role.VIEWER)),
+):
+    return await _proxy(_get_inference_client(), "GET", f"/api/v1/inference/analyses/{trace_id}/extent", ctx, request)
+
