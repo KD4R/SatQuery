@@ -49,6 +49,7 @@ Thumbs.db
 
 # Misc
 *.log
+prds/
 
 # Testing & Coverage
 .coverage
