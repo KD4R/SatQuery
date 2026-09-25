@@ -9,9 +9,22 @@ from services.agent.tools.asset_selector import AssetSelectorTool
 from services.agent.tools.stac_search import STACSearchTool
 
 
+from unittest.mock import patch, MagicMock
+
 @pytest.mark.unit
-def test_observation_search_and_asset_selection_tools_valid():
+@patch("services.agent.tools.stac_search.search_service.search_observations")
+def test_observation_search_and_asset_selection_tools_valid(mock_search):
     """STAC search finds scenes and asset selector filters/ranks by sensor & cloud cover."""
+    mock_obs_1 = MagicMock()
+    mock_obs_1.sensor = "S1_SAR"
+    mock_obs_1.model_dump.return_value = {"sensor": "S1_SAR", "cloud_cover": 0.0, "asset_id": "1"}
+    
+    mock_obs_2 = MagicMock()
+    mock_obs_2.sensor = "S2_OPTICAL"
+    mock_obs_2.model_dump.return_value = {"sensor": "S2_OPTICAL", "cloud_cover": 10.0, "asset_id": "2"}
+    
+    mock_search.return_value = [mock_obs_1, mock_obs_2]
+
     stac_tool = STACSearchTool()
     search_res = stac_tool.execute(
         bbox=[92.0, 25.5, 94.0, 27.5],
