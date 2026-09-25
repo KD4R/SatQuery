@@ -250,7 +250,11 @@ def gate_check(state: MissionState) -> dict:
 def synthesize(state: MissionState) -> dict:
     if state.confidence_score is not None and state.confidence_score < 0.6:
         output_dict = {
-            "summary": f"Agent aborted execution: the confidence score ({state.confidence_score:.2f}) was below the acceptable threshold, indicating high uncertainty.",
+            "summary": (
+                f"Agent aborted execution: the confidence score "
+                f"({state.confidence_score:.2f}) was below the acceptable threshold, "
+                "indicating high uncertainty."
+            ),
             "inundation_area_sqkm": 0,
             "affected_structures_count": 0,
             "primary_sensor": "UNKNOWN",
@@ -273,7 +277,11 @@ def synthesize(state: MissionState) -> dict:
                 "primary_sensor": "UNKNOWN",
             }
     else:
-        reason = "No observations acquired." if not state.observation_ids else "No evidence graph available for synthesis."
+        reason = (
+            "No observations acquired."
+            if not state.observation_ids
+            else "No evidence graph available for synthesis."
+        )
         output_dict = {
             "summary": f"Mission failed to complete successfully. Reason: {reason}",
             "inundation_area_sqkm": 0,
@@ -281,7 +289,7 @@ def synthesize(state: MissionState) -> dict:
             "primary_sensor": "UNKNOWN",
         }
         return {"status": "FAILED", "synthesized_output": output_dict}
-        
+
     return {"status": "COMPLETED", "synthesized_output": output_dict}
 
 

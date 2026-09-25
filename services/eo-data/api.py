@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 # Import canonical models and adapters
 from packages.contracts import Observation
+from packages.contracts.ml import AssetRef
 from services.eo_data.search import search_service
 from services.eo_data.errors import ErrorResponse
 from packages.geo.validation import validate_geojson_geometry
@@ -111,7 +112,7 @@ def get_latest_cloud_free_api(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/assets/resolve")
+@router.post("/assets/resolve", response_model=AssetRef)
 def resolve_asset_api(
     req: ResolveRequest,
     trace_id: Optional[str] = Header(None),
@@ -131,7 +132,17 @@ def resolve_asset_api(
 
             adapter = BhoonidhiAdapter()
             s3_uri = adapter.get_asset(req.item_id, req.asset_key, context)
-            return {"status": "success", "s3_uri": s3_uri}
+
+            # P4-08: Complete AssetRef metadata
+            from packages.contracts.ml import AssetRef
+            from packages.providers.config import config
+
+            titiler_base = getattr(config, "titiler_url", "http://localhost:8081").rstrip("/")
+            titiler_url = f"{titiler_base}/cog/tiles/WebMercatorQuad/{{z}}/{{x}}/{{y}}?url={s3_uri}"
+
+            return AssetRef(
+                s3_uri=s3_uri, titiler_url=titiler_url, item_id=req.item_id, asset_key=req.asset_key
+            )
         else:
             raise ValueError(f"Provider {req.provider} resolution not implemented.")
     except Exception as e:

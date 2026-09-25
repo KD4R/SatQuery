@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from packages.observability import setup_logging, setup_telemetry
 from packages.shared.middleware import IdempotencyMiddleware
 from services.mission.database import init_db
+
 # Import model declarations so Base.metadata contains the Mission/AOI/Job tables
 # before the local Compose startup initializer runs.
 from services.mission.domain import db_models as _db_models  # noqa: F401
@@ -27,6 +28,7 @@ from services.mission.routers.jobs import router as jobs_router
 from services.mission.routers.missions import router as missions_router
 
 setup_logging("mission")
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:

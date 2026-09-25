@@ -38,22 +38,24 @@ def process_agent_run(self, job_id: str):
         return {"status": "failed", "reason": "run_not_found", "job_id": job_id}
 
     import json
+
     channel = f"mission:{state.mission_id}:status"
-    
+
     try:
         final_state = state
         for event in orchestrator._app.stream(state):
             node_name = list(event.keys())[0]
             node_state = event[node_name]
             status_val = node_state.get("status", node_name)
-            
+
             # Publish to Redis
             try:
-                redis_client.publish(channel, json.dumps({
-                    "status": status_val,
-                    "node": node_name,
-                    "agent_state": node_state
-                }))
+                redis_client.publish(
+                    channel,
+                    json.dumps(
+                        {"status": status_val, "node": node_name, "agent_state": node_state}
+                    ),
+                )
             except Exception as e:
                 logger.warning(f"Failed to publish status update: {e}")
 
@@ -64,7 +66,7 @@ def process_agent_run(self, job_id: str):
 
         if final_state.status != "FAILED":
             final_state.status = "COMPLETED"
-            
+
         orchestrator._runs[job_id] = final_state
         return {"status": "success", "job_id": job_id, "final_status": final_state.status}
     except Exception as e:

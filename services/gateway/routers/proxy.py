@@ -19,7 +19,7 @@ import os
 from typing import Any, Dict, Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
 from packages.auth.dependencies import require_role
@@ -327,7 +327,9 @@ async def proxy_agent_tools(
     """Proxy GET /api/v1/agent/tools → Agent service."""
     return await _proxy(_get_agent_client(), "GET", "/api/v1/agent/tools", ctx, request)
 
+
 # -- Inference proxy routes --------------------------------------------------
+
 
 @router.post("/api/v1/inference/analyses")
 async def proxy_inference_analyses(
@@ -335,7 +337,10 @@ async def proxy_inference_analyses(
     ctx: AuthContext = Depends(require_role(Role.ANALYST)),
 ):
     body = await request.body()
-    return await _proxy(_get_inference_client(), "POST", "/api/v1/inference/analyses", ctx, request, body)
+    return await _proxy(
+        _get_inference_client(), "POST", "/api/v1/inference/analyses", ctx, request, body
+    )
+
 
 @router.get("/api/v1/inference/models")
 async def proxy_inference_models(
@@ -344,11 +349,17 @@ async def proxy_inference_models(
 ):
     return await _proxy(_get_inference_client(), "GET", "/api/v1/inference/models", ctx, request)
 
+
 @router.get("/api/v1/inference/analyses/{trace_id}/extent")
 async def proxy_inference_extent(
     trace_id: str,
     request: Request,
     ctx: AuthContext = Depends(require_role(Role.VIEWER)),
 ):
-    return await _proxy(_get_inference_client(), "GET", f"/api/v1/inference/analyses/{trace_id}/extent", ctx, request)
-
+    return await _proxy(
+        _get_inference_client(),
+        "GET",
+        f"/api/v1/inference/analyses/{trace_id}/extent",
+        ctx,
+        request,
+    )

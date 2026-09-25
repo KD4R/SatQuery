@@ -578,6 +578,99 @@
         ]
       }
     },
+    "/api/v1/inference/analyses": {
+      "post": {
+        "tags": [
+          "proxy"
+        ],
+        "summary": "Proxy Inference Analyses",
+        "operationId": "proxy_inference_analyses_api_v1_inference_analyses_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/inference/models": {
+      "get": {
+        "tags": [
+          "proxy"
+        ],
+        "summary": "Proxy Inference Models",
+        "operationId": "proxy_inference_models_api_v1_inference_models_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/inference/analyses/{trace_id}/extent": {
+      "get": {
+        "tags": [
+          "proxy"
+        ],
+        "summary": "Proxy Inference Extent",
+        "operationId": "proxy_inference_extent_api_v1_inference_analyses__trace_id__extent_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "trace_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Trace Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/health": {
       "get": {
         "summary": "Health Check",

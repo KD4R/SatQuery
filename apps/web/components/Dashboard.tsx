@@ -23,6 +23,7 @@ import SensorCard from "./SensorCard";
 import MonitoringCard from "./MonitoringCard";
 import ReportCard from "./ReportCard";
 import TraceDrawer from "./TraceDrawer";
+import { demoModeEnabled } from "@/lib/api/source";
 
 import { useMissionRun } from "../lib/useMissionRun";
 import type { Stage, Evidence } from "../lib/types";
@@ -87,7 +88,7 @@ export default function Dashboard() {
 
   // ── Live backend wiring ──────────────────────────────────────────────────────
   // Pass `false` for LIVE mode. Set to `true` for demo/offline mode.
-  const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const DEMO_MODE = demoModeEnabled();
   const run = useMissionRun(DEMO_MODE);
 
   const confidence = run.agentState?.confidence_score ?? null;

@@ -17,6 +17,7 @@ from packages.contracts.ml import (  # noqa: F401
     Polarization,
     BackscatterScale,
     SceneRef,
+    AssetRef,
     Observation,
     RasterSpec,
     ScenePair,

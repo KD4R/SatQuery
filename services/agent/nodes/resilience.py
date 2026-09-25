@@ -18,12 +18,11 @@ class RecoveryResult(BaseModel):
 def execute_with_recovery(
     action_name: str,
     primary_fn: Callable[[], Any],
-    fallback_fn: Callable[[], Any],
     max_retries: int = 2,
 ) -> RecoveryResult:
     """
-    Executes an upstream operation with bounded retries and automatic fallback to
-    deterministic permitted fixtures on failure. Never silently fabricates success.
+    Executes an upstream operation with bounded retries. Upstream failure returns a clear failure.
+    Never silently fabricates success or uses fallbacks.
     """
     if max_retries < 0:
         raise ValueError("max_retries cannot be negative")
@@ -47,16 +46,12 @@ def execute_with_recovery(
             attempts += 1
             last_error = exc
 
-    # Primary failed after retries — activate fallback fixture
-    fallback_data = fallback_fn()
+    # Primary failed after retries — return clear failure
     return RecoveryResult(
-        success=True,
-        used_fallback=True,
+        success=False,
+        used_fallback=False,
         retries_attempted=attempts - 1,
-        data=fallback_data,
-        status="DEGRADED_FALLBACK",
-        warning=(
-            f"Upstream {action_name} failed after {max_retries} retries ({last_error}); "
-            "served deterministic permitted backup fixture."
-        ),
+        data=None,
+        status="FAILED",
+        warning=f"Upstream {action_name} failed after {max_retries} retries ({last_error})",
     )

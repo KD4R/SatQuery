@@ -181,6 +181,15 @@ class SceneRef(Strict):
     cloud_cover: float | None = Field(default=None, ge=0, le=100)
 
 
+class AssetRef(Strict):
+    """Metadata for a resolved and staged asset."""
+
+    s3_uri: str
+    titiler_url: str
+    item_id: str
+    asset_key: str
+
+
 class Observation(Strict):
     """A normalized EO observation ready for the ML pipeline.
 
@@ -612,6 +621,7 @@ __all__ = [
     "Polarization",
     "BackscatterScale",
     "SceneRef",
+    "AssetRef",
     "Observation",
     "RasterSpec",
     "ScenePair",

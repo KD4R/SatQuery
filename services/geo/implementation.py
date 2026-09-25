@@ -91,5 +91,3 @@ def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, cont
             redis_client.delete(lock_key)
             span.record_exception(e)
             raise self.retry(exc=e)
-
-

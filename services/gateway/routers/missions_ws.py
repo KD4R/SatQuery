@@ -146,7 +146,8 @@ async def mission_status_stream(
         await pubsub.subscribe(channel)
     except Exception as exc:
         logger.warning(
-            "Could not connect to Redis for websocket pub/sub: %s. Refusing synthetic status stream.",
+            "Could not connect to Redis for websocket pub/sub: %s. "
+            "Refusing synthetic status stream.",
             exc,
         )
         if redis_client:
