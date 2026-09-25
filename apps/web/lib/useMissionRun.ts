@@ -19,8 +19,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { GatewayError } from "./api/gateway";
-import { executeMission, getJob, getAgentRun } from "./api/client";
+import { GatewayError, buildWsUrl } from "./api/gateway";
+import { executeMission, getAgentRun } from "./api/client";
 import { DEMO_STAGES, type StageState } from "./fixtures/script";
 import type { ErrorResponse, GeoJSONPolygon, JobStatus } from "./api/types";
 
@@ -45,8 +45,7 @@ export interface MissionRun {
   reset: () => void;
 }
 
-const POLL_START_MS = 1000;
-const POLL_MAX_MS = 5000;
+
 
 function demoStages(completedCount: number, runningIndex: number): RunStageView[] {
   return DEMO_STAGES.map((s, i) => ({
@@ -168,54 +167,75 @@ export function useMissionRun(demo: boolean): MissionRun {
         setJobId(submitted.data.job_id);
         setTraceId(submitted.data.trace_id ?? submitted.traceId);
 
-        let delay = POLL_START_MS;
-        const poll = async () => {
-          if (controller.signal.aborted) return;
-          try {
-            const job = await getJob(submitted.data.job_id, controller.signal);
-            const status = job.data.status;
-            setStages(liveStages(status, null));
+        const missionId = submitted.data.mission_id;
+        if (!missionId) {
+          throw new Error("Missing mission_id in execute response");
+        }
 
-            if (status === "completed") {
-              // Fetch the final agent run state
-              try {
-                const agentResult = await getAgentRun(submitted.data.job_id, controller.signal);
-                setAgentState(agentResult.data);
-              } catch (e) {
-                console.warn("Failed to fetch agent state", e);
-              }
-              setPhase("complete");
-              return;
-            }
-            if (status === "failed" || status === "cancelled") {
-              setError({
-                code: `job_${status}`,
-                message: job.data.error_message ?? `The job ${status}.`,
-                details: [],
-                trace_id: job.data.trace_id,
-              });
-              setPhase("failed");
-              return;
-            }
+        const wsUrl = buildWsUrl(`/ws/v1/missions/${missionId}`);
+        const ws = new WebSocket(wsUrl);
 
-            delay = Math.min(delay * 1.5, POLL_MAX_MS);
-            timers.current.push(setTimeout(poll, delay));
-          } catch (caught) {
-            const body =
-              caught instanceof GatewayError
-                ? caught.body
-                : {
-                    code: "unknown",
-                    message: "Polling the job failed.",
-                    details: [],
-                    trace_id: null,
-                  };
-            setError(body);
-            setStages(liveStages(null, body));
-            setPhase("failed");
+        ws.onopen = () => {
+          if (controller.signal.aborted) {
+            ws.close();
           }
         };
-        timers.current.push(setTimeout(poll, delay));
+
+        ws.onmessage = async (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.event === "connected") {
+               // Initial connection established
+            } else if (payload.event === "status_update") {
+               const status = payload.status;
+               setStages(liveStages(status, null));
+            } else if (payload.event === "done") {
+               const status = payload.final_status;
+               setStages(liveStages(status, null));
+               if (status === "completed") {
+                 try {
+                   const agentResult = await getAgentRun(submitted.data.job_id, controller.signal);
+                   setAgentState(agentResult.data);
+                 } catch (e) {
+                   console.warn("Failed to fetch agent state", e);
+                 }
+                 setPhase("complete");
+               } else {
+                 setError({
+                    code: `job_${status}`,
+                    message: `The job ${status}.`,
+                    details: [],
+                    trace_id: submitted.data.trace_id,
+                 });
+                 setPhase("failed");
+               }
+            }
+          } catch (e) {
+            console.warn("Failed to parse websocket message", e);
+          }
+        };
+
+        ws.onerror = (e) => {
+          console.error("WebSocket error", e);
+          setError({
+            code: "websocket_error",
+            message: "WebSocket connection error.",
+            details: [],
+            trace_id: submitted.data.trace_id,
+          });
+          setPhase("failed");
+        };
+
+        ws.onclose = () => {
+          // If we are still running, it's an unexpected close
+          if (phase === "running") {
+             // Maybe retry or fail
+          }
+        };
+
+        controller.signal.addEventListener("abort", () => {
+           ws.close();
+        });
       } catch (caught) {
         const body =
           caught instanceof GatewayError
@@ -231,7 +251,7 @@ export function useMissionRun(demo: boolean): MissionRun {
         setPhase("failed");
       }
     },
-    [clearAll],
+    [clearAll, phase],
   );
 
   const start = useCallback(

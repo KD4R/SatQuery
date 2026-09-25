@@ -76,6 +76,39 @@ class ModelSummary(BaseModel):
         "as much about the sample's wet/dry mix as about the method.",
     )
 
+    # ModelCard has carried these since P3-11, but this model did not declare them,
+    # and BaseModel's default extra="ignore" dropped them without a word -- so
+    # /models never reported calibration at all. Declared now; see
+    # test_models_endpoint_reports_calibration.
+    in_channels: int | None = Field(
+        default=None,
+        description="3 means the JRC permanent-water prior is a model input; 2 "
+        "means SAR alone. Changes what an analysis request should supply.",
+    )
+    uses_permanent_water_prior: bool | None = None
+    training_labelling: str | None = Field(
+        default=None,
+        description='"hand", "weak" or "all": which labels the weights were fitted on.',
+    )
+    calibration_ece: float | None = Field(
+        default=None,
+        description="Expected calibration error after temperature scaling, on a "
+        "held-out region. null means never measured, not zero.",
+    )
+    calibration_passes: bool | None = Field(
+        default=None,
+        description="Whether calibration_ece is under calibration_bar. Only a "
+        "passing model may report its score as a probability.",
+    )
+    calibration_bar: float | None = None
+    calibration_temperature: float | None = None
+    calibration_report: str | None = None
+    checksum_verified: bool | None = Field(
+        default=None,
+        description="true once the checkpoint's sha256 has matched its committed "
+        "manifest. null until the model is first loaded.",
+    )
+
 
 class ModelListResponse(BaseModel):
     models: list[ModelSummary]

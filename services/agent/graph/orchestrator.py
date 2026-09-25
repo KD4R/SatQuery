@@ -84,24 +84,30 @@ def acquire_data(state: MissionState) -> dict:
         budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
 
     try:
-        res = executor.execute_tool(
-            "stac_search",
-            args={
-                "bbox": bbox,
-                "start_date": "2026-09-01T00:00:00Z",
-                "end_date": "2026-09-05T00:00:00Z",
-                "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
-                "max_cloud_cover": 30.0,
-            },
-            auth_context=ctx,
-            budget=budget,
+        def _primary_fn():
+            res = executor.execute_tool(
+                "stac_search",
+                args={
+                    "bbox": bbox,
+                    "start_date": "2026-09-01T00:00:00Z",
+                    "end_date": "2026-09-05T00:00:00Z",
+                    "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
+                    "max_cloud_cover": 30.0,
+                },
+                auth_context=ctx,
+                budget=budget,
+            )
+            if res.success and res.output:
+                return res.output
+            return []
+
+        recovery_result = execute_with_recovery(
+            action_name="stac_search_acquisition",
+            primary_fn=_primary_fn,
+            max_retries=2,
         )
-        if res.success and res.output:
-            observations = res.output
-            obs_ids = [obs.get("asset_id") for obs in observations if "asset_id" in obs]
-        else:
-            observations = []
-            obs_ids = []
+        observations = recovery_result.data if recovery_result.data else []
+        obs_ids = [obs.get("asset_id") for obs in observations if "asset_id" in obs]
     except Exception:
         observations = []
         obs_ids = []
@@ -276,20 +282,40 @@ def gate_check(state: MissionState) -> dict:
 
 
 def synthesize(state: MissionState) -> dict:
-    if state.evidence_graph:
-        graph = EvidenceGraph(**state.evidence_graph)
-        out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
-        output_dict = out.model_dump()
-        # Flatten metrics into top-level for backward compatibility
-        for k, v in out.metrics.items():
-            output_dict[k] = v
-    else:
+    if state.confidence_score is not None and state.confidence_score < 0.6:
         output_dict = {
-            "summary": "No evidence graph available for synthesis.",
+            "summary": f"Agent aborted execution: the confidence score ({state.confidence_score:.2f}) was below the acceptable threshold, indicating high uncertainty.",
             "inundation_area_sqkm": 0,
             "affected_structures_count": 0,
             "primary_sensor": "UNKNOWN",
         }
+        return {"status": "FAILED", "synthesized_output": output_dict}
+
+    if state.evidence_graph and state.observation_ids:
+        try:
+            graph = EvidenceGraph(**state.evidence_graph)
+            out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
+            output_dict = out.model_dump()
+            # Flatten metrics into top-level for backward compatibility
+            for k, v in out.metrics.items():
+                output_dict[k] = v
+        except ValueError as e:
+            output_dict = {
+                "summary": f"Evidence synthesis failed: {e}",
+                "inundation_area_sqkm": 0,
+                "affected_structures_count": 0,
+                "primary_sensor": "UNKNOWN",
+            }
+    else:
+        reason = "No observations acquired." if not state.observation_ids else "No evidence graph available for synthesis."
+        output_dict = {
+            "summary": f"Mission failed to complete successfully. Reason: {reason}",
+            "inundation_area_sqkm": 0,
+            "affected_structures_count": 0,
+            "primary_sensor": "UNKNOWN",
+        }
+        return {"status": "FAILED", "synthesized_output": output_dict}
+        
     return {"status": "COMPLETED", "synthesized_output": output_dict}
 
 

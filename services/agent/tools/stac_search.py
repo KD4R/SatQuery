@@ -58,6 +58,10 @@ class STACSearchTool(BaseTool):
                 ],
             }
 
+            auth_ctx = kwargs.get("auth_context")
+            trace_id = getattr(auth_ctx, "trace_id", "system") if auth_ctx else "system"
+            context = {"trace_id": trace_id}
+
             # Call P4 search service (defaults to bhoonidhi internally if not specified,
             # we will just use bhoonidhi for now)
             observations = search_service.search_observations(
@@ -66,6 +70,7 @@ class STACSearchTool(BaseTool):
                 start_date=start,
                 end_date=end,
                 cloud_cover=args.max_cloud_cover,
+                context=context,
             )
 
             for obs in observations:
