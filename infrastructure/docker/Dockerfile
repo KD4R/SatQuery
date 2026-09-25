@@ -15,6 +15,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
+# P3. torch for the inference image only. Off by default, so the gateway, mission
+# and agent images do not grow by the size of a deep-learning stack they never
+# import. docker-compose sets INSTALL_ML=1 for `inference`.
+#
+# The CPU wheel, deliberately. The default Linux wheel bundles the CUDA runtime
+# and is roughly ten times larger, for a 486K-parameter U-Net that infers a
+# 512x512 chip in ~120 ms on two CPU threads (measured; see the P3 PR). A GPU
+# would buy a tenth of a second at the cost of a multi-gigabyte image and a
+# host driver requirement.
+ARG INSTALL_ML=0
+RUN if [ "$INSTALL_ML" = "1" ]; then \
+        pip install --no-cache-dir --prefix=/install \
+            --index-url https://download.pytorch.org/whl/cpu "torch>=2.4"; \
+    fi
+
 # ─── Stage 2: Runtime ────────────────────────────────────────────────────────
 FROM public.ecr.aws/docker/library/python:3.10-slim AS runtime
 
@@ -54,6 +69,11 @@ COPY services/ ./services/
 COPY ml/ ./ml/
 COPY data/ ./data/
 COPY .importlinter .
+
+# Model manifests (checksums, architecture, calibration). A few KB. The weights
+# themselves are not in the image; they are mounted or fetched by checksum --
+# see infrastructure/models/README.md and ml/scripts/fetch_model.py.
+COPY infrastructure/models/ ./infrastructure/models/
 
 # Runtime import alias for the hyphenated services/eo-data directory —
 # Python auto-imports sitecustomize in every container process. Mirrors

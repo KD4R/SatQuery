@@ -34,12 +34,18 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import Response
 
 from packages.contracts import MissionOutcome
 from packages.auth import require_role
 from packages.auth.models import AuthContext, Role
-from services.inference.dependencies import get_analysis_service, get_registry
+from services.inference.artifacts import ArtifactNotFound, ArtifactSink
+from services.inference.dependencies import (
+    get_analysis_service,
+    get_artifact_sink,
+    get_registry,
+)
 from services.inference.registry import ModelRegistry
 from services.inference.schemas import (
     AnalysisRequest,
@@ -115,3 +121,51 @@ async def list_models(
         models=[ModelSummary(**card.to_dict()) for card in registry.cards()],
         default=registry.default(),
     )
+
+
+@router.get(
+    "/analyses/{trace_id}/extent",
+    summary="The water extent an analysis measured, as GeoJSON (EPSG:4326)",
+    responses={
+        200: {"content": {"application/geo+json": {}}},
+        404: {"description": "No stored extent for this analysis"},
+        503: {"description": "No artifact store is configured"},
+    },
+)
+async def get_extent(
+    trace_id: uuid.UUID,
+    context: AuthContext = Depends(require_role(Role.VIEWER)),
+    sink: ArtifactSink | None = Depends(get_artifact_sink),
+) -> Response:
+    """The polygons behind an analysis's hectare figure.
+
+    Exists so the browser can draw them. ``Analysis.geometry_ref`` is an object-
+    storage key, and the browser may only talk to the gateway -- so the extent is
+    served through the service that wrote it, behind the same auth, instead of by
+    handing out bucket URLs.
+
+    ``trace_id`` is typed as a UUID, which is what the analysis endpoint issues.
+    FastAPI rejects anything else with a 422 before this runs, so no caller-supplied
+    string ever reaches a storage key.
+    """
+    if sink is None:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "NO_ARTIFACT_STORE",
+                "message": "This inference service is not configured to keep outputs.",
+                "retryable": False,
+            },
+        )
+    try:
+        body = sink.get(f"analyses/{trace_id}/water_extent.geojson")
+    except ArtifactNotFound:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "EXTENT_NOT_FOUND",
+                "message": "No stored extent for this analysis.",
+                "retryable": False,
+            },
+        )
+    return Response(content=body, media_type="application/geo+json")

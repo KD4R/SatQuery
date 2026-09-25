@@ -41,3 +41,11 @@ export function isFixture<T>(s: Sourced<T>): boolean {
   return s.source === "fixture";
 }
 
+/**
+ * Returns true when the app is running in demo/fixture mode.
+ * Controlled by the NEXT_PUBLIC_DEMO_MODE environment variable.
+ * When true, components should use fixture data instead of live gateway calls.
+ */
+export function demoModeEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+}

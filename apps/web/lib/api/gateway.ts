@@ -37,6 +37,23 @@ export function hasAccessToken(): boolean {
   return accessToken !== null;
 }
 
+/**
+ * Build a WebSocket URL for a given path, converting http(s) to ws(s).
+ * Uses NEXT_PUBLIC_API_URL for the host so the WS connects to the same
+ * origin as the REST calls.
+ */
+export function buildWsUrl(path: string): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
+  if (apiUrl) {
+    const base = apiUrl.replace(/^http/, "ws").replace(/\/$/, "");
+    return `${base}${path}`;
+  }
+  // Fallback: use same-origin with ws/wss
+  const proto = typeof window !== "undefined" && window.location.protocol === "https:" ? "wss" : "ws";
+  const host = typeof window !== "undefined" ? window.location.host : "localhost:8000";
+  return `${proto}://${host}${path}`;
+}
+
 /** Thrown by every failed call. Carries the canonical envelope for the UI. */
 export class GatewayError extends Error {
   readonly status: number;

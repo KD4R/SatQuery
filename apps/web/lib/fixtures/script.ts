@@ -11,7 +11,9 @@
  * explicitly ("Never show fake progress for real backend operations").
  */
 
-export type StageState = "queued" | "running" | "completed" | "failed" | "degraded";
+import type { StageState } from "../model/console";
+
+export type { StageState };
 
 export interface RunStage {
   key: string;

@@ -98,14 +98,9 @@ def acquire_data(state: MissionState) -> dict:
                 return [obs["asset_id"] for obs in res.output]
             return []
 
-        def _fallback_fn():
-            # Deterministic fallback scene
-            return ["S1A_IW_GRDH_1SDV_FALLBACK"]
-
         recovery_result = execute_with_recovery(
             action_name="stac_search_acquisition",
             primary_fn=_primary_fn,
-            fallback_fn=_fallback_fn,
             max_retries=2,
         )
         obs_ids = recovery_result.data
@@ -182,16 +177,6 @@ def analyze_data(state: MissionState) -> dict:
         return {"status": "ANALYZING", "metadata": new_meta}
     except Exception as e:
         logger.error(f"Inference call failed: {e}")
-        import os
-
-        if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
-            outcome_data = {
-                "degraded_from": "baseline",
-                "measurements": [{"name": "inundation_area_ha", "value": 14250.0, "unit": "ha"}],
-            }
-            new_meta = dict(state.metadata)
-            new_meta["inference_outcome"] = outcome_data
-            return {"status": "ANALYZING", "metadata": new_meta}
         return {"status": "FAILED", "metadata": state.metadata}
 
 
@@ -263,20 +248,40 @@ def gate_check(state: MissionState) -> dict:
 
 
 def synthesize(state: MissionState) -> dict:
-    if state.evidence_graph:
-        graph = EvidenceGraph(**state.evidence_graph)
-        out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
-        output_dict = out.model_dump()
-        # Flatten metrics into top-level for backward compatibility
-        for k, v in out.metrics.items():
-            output_dict[k] = v
-    else:
+    if state.confidence_score is not None and state.confidence_score < 0.6:
         output_dict = {
-            "summary": "No evidence graph available for synthesis.",
+            "summary": f"Agent aborted execution: the confidence score ({state.confidence_score:.2f}) was below the acceptable threshold, indicating high uncertainty.",
             "inundation_area_sqkm": 0,
             "affected_structures_count": 0,
             "primary_sensor": "UNKNOWN",
         }
+        return {"status": "FAILED", "synthesized_output": output_dict}
+
+    if state.evidence_graph and state.observation_ids:
+        try:
+            graph = EvidenceGraph(**state.evidence_graph)
+            out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
+            output_dict = out.model_dump()
+            # Flatten metrics into top-level for backward compatibility
+            for k, v in out.metrics.items():
+                output_dict[k] = v
+        except ValueError as e:
+            output_dict = {
+                "summary": f"Evidence synthesis failed: {e}",
+                "inundation_area_sqkm": 0,
+                "affected_structures_count": 0,
+                "primary_sensor": "UNKNOWN",
+            }
+    else:
+        reason = "No observations acquired." if not state.observation_ids else "No evidence graph available for synthesis."
+        output_dict = {
+            "summary": f"Mission failed to complete successfully. Reason: {reason}",
+            "inundation_area_sqkm": 0,
+            "affected_structures_count": 0,
+            "primary_sensor": "UNKNOWN",
+        }
+        return {"status": "FAILED", "synthesized_output": output_dict}
+        
     return {"status": "COMPLETED", "synthesized_output": output_dict}
 
 

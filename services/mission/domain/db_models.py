@@ -19,8 +19,10 @@ class MissionModel(Base):
     aoi_ids: Any = Column(JSON, default=list, nullable=False)
     organisation_id: Any = Column(String, index=True, nullable=False)
     created_by: Any = Column(String, nullable=False)
-    created_at: Any = Column(DateTime, default=_utc_now, nullable=False)
-    updated_at: Any = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+    created_at: Any = Column(DateTime(timezone=True), default=_utc_now, nullable=False)
+    updated_at: Any = Column(
+        DateTime(timezone=True), default=_utc_now, onupdate=_utc_now, nullable=False
+    )
 
 
 class AOIModel(Base):
@@ -32,8 +34,10 @@ class AOIModel(Base):
     geometry: Any = Column(JSON, nullable=False)
     organisation_id: Any = Column(String, index=True, nullable=False)
     created_by: Any = Column(String, nullable=False)
-    created_at: Any = Column(DateTime, default=_utc_now, nullable=False)
-    updated_at: Any = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+    created_at: Any = Column(DateTime(timezone=True), default=_utc_now, nullable=False)
+    updated_at: Any = Column(
+        DateTime(timezone=True), default=_utc_now, onupdate=_utc_now, nullable=False
+    )
 
 
 class JobModel(Base):
@@ -44,8 +48,8 @@ class JobModel(Base):
     status: Any = Column(SQLEnum(JobStatus), default=JobStatus.PENDING, nullable=False)
     organisation_id: Any = Column(String, index=True, nullable=False)
     submitted_by: Any = Column(String, nullable=False)
-    submitted_at: Any = Column(DateTime, default=_utc_now, nullable=False)
-    started_at: Any = Column(DateTime, nullable=True)
-    completed_at: Any = Column(DateTime, nullable=True)
+    submitted_at: Any = Column(DateTime(timezone=True), default=_utc_now, nullable=False)
+    started_at: Any = Column(DateTime(timezone=True), nullable=True)
+    completed_at: Any = Column(DateTime(timezone=True), nullable=True)
     trace_id: Any = Column(String, nullable=True)
     error_message: Any = Column(String, nullable=True)

@@ -27,7 +27,7 @@ service:
     traces:
       receivers: [otlp]
       processors: [batch]
-      exporters: [logging, prometheus]
+      exporters: [logging]
     metrics:
       receivers: [otlp]
       processors: [batch]

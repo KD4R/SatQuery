@@ -21,7 +21,6 @@ OWASP:
          leaking error type to eavesdroppers).
 """
 
-import asyncio
 import json
 import logging
 import os
@@ -147,7 +146,8 @@ async def mission_status_stream(
         await pubsub.subscribe(channel)
     except Exception as exc:
         logger.warning(
-            "Could not connect to Redis for websocket pub/sub: %s. Using mock fallback.", exc
+            "Could not connect to Redis for websocket pub/sub: %s. Refusing synthetic status stream.",
+            exc,
         )
         if redis_client:
             await redis_client.aclose()
@@ -164,46 +164,58 @@ async def mission_status_stream(
             }
         )
 
-        if pubsub:
-            async for message in pubsub.listen():
-                if message["type"] == "message":
-                    data = message["data"]
-                    try:
-                        payload = json.loads(data)
-                    except json.JSONDecodeError:
-                        payload = {"status": data}
-
-                    status_val = payload.get("status", "unknown")
-                    await websocket.send_json(
-                        {
-                            "event": "status_update",
-                            "mission_id": mission_id,
-                            "status": status_val,
-                            "org_id": org_id,
-                        }
-                    )
-
-                    if status_val in ("completed", "failed", "cancelled"):
-                        await websocket.send_json(
-                            {"event": "done", "mission_id": mission_id, "final_status": status_val}
-                        )
-                        break
-        else:
-            # Fallback mock sequence for tests without Redis
-            statuses = ["queued", "running", "completed"]
-            for status in statuses:
-                await asyncio.sleep(0)
-                await websocket.send_json(
-                    {
-                        "event": "status_update",
-                        "mission_id": mission_id,
-                        "status": status,
-                        "org_id": org_id,
-                    }
-                )
+        if not pubsub:
             await websocket.send_json(
-                {"event": "done", "mission_id": mission_id, "final_status": "completed"}
+                {
+                    "event": "error",
+                    "mission_id": mission_id,
+                    "error": {
+                        "code": "STATUS_STREAM_UNAVAILABLE",
+                        "message": "Live mission status is temporarily unavailable.",
+                        "details": [],
+                        "retryable": True,
+                        "trace_id": None,
+                    },
+                    "org_id": org_id,
+                }
             )
+            await websocket.send_json(
+                {"event": "done", "mission_id": mission_id, "final_status": "failed"}
+            )
+            await websocket.close(code=1013)
+            return
+
+        async for message in pubsub.listen():
+            if message["type"] != "message":
+                continue
+
+            data = message["data"]
+            try:
+                payload = json.loads(data)
+            except json.JSONDecodeError:
+                payload = {"status": data}
+
+            raw_status = str(payload.get("status", "unknown"))
+            status_val = raw_status.lower()
+            node_name = payload.get("node", "unknown")
+            agent_state = payload.get("agent_state", {})
+
+            await websocket.send_json(
+                {
+                    "event": "status_update",
+                    "mission_id": mission_id,
+                    "status": status_val,
+                    "node": node_name,
+                    "agent_state": agent_state,
+                    "org_id": org_id,
+                }
+            )
+
+            if status_val in ("completed", "failed", "cancelled"):
+                await websocket.send_json(
+                    {"event": "done", "mission_id": mission_id, "final_status": status_val}
+                )
+                break
 
         await websocket.close(code=WS_CLOSE_NORMAL)
 

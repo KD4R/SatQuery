@@ -8,11 +8,19 @@ Registers all Mission service routers:
   - /api/v1/jobs/{id}           (job status polling)
 """
 
+import os
+from contextlib import asynccontextmanager
+from collections.abc import AsyncIterator
+
 from fastapi import APIRouter, FastAPI
 from pydantic import BaseModel
 
 from packages.observability import setup_logging, setup_telemetry
 from packages.shared.middleware import IdempotencyMiddleware
+from services.mission.database import init_db
+# Import model declarations so Base.metadata contains the Mission/AOI/Job tables
+# before the local Compose startup initializer runs.
+from services.mission.domain import db_models as _db_models  # noqa: F401
 from services.mission.routers.agents import router as agents_router
 from services.mission.routers.aois import router as aois_router
 from services.mission.routers.jobs import router as jobs_router
@@ -20,10 +28,25 @@ from services.mission.routers.missions import router as missions_router
 
 setup_logging("mission")
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Initialize the local runtime schema before serving mission requests.
+
+    Production deployments should run versioned migrations before startup. The
+    current Compose release profile has no migration container, so creating
+    missing tables here is required for a clean local/integration environment.
+    Tests set SATQUERY_SKIP_DB_INIT and inject in-memory repositories.
+    """
+    if os.getenv("SATQUERY_SKIP_DB_INIT", "false").lower() != "true":
+        await init_db()
+    yield
+
+
 app = FastAPI(
     title="SatQuery Mission Service",
     description="Mission and AOI lifecycle management for SatQuery AI",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(IdempotencyMiddleware)
