@@ -73,35 +73,7 @@ class STACSearchTool(BaseTool):
                     results.append(obs.model_dump())
 
         except Exception as e:
-            # Revert to hardcoded fallback for unit test environment without Redis/P4 backend
-            import os
-
-            if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
-                if "S1_SAR" in args.sensors:
-                    results.append(
-                        {
-                            "asset_id": "S1A_IW_GRDH_1SDV_20260902T003512_049876_ASSAM",
-                            "sensor": "S1_SAR",
-                            "datetime": "2026-09-02T00:35:12Z",
-                            "cloud_cover": 0.0,
-                            "polarization": "VV+VH",
-                            "resolution_meters": 10.0,
-                            "bbox": args.bbox,
-                        }
-                    )
-                if "S2_OPTICAL" in args.sensors and args.max_cloud_cover >= 15.0:
-                    results.append(
-                        {
-                            "asset_id": "S2A_MSIL2A_20260901T044701_N0500_R033_ASSAM",
-                            "sensor": "S2_OPTICAL",
-                            "datetime": "2026-09-01T04:47:01Z",
-                            "cloud_cover": 14.5,
-                            "resolution_meters": 10.0,
-                            "bbox": args.bbox,
-                        }
-                    )
-            else:
-                return ToolResult(success=False, output=[], metadata={"error": str(e)})
+            return ToolResult(success=False, output=[], metadata={"error": str(e)})
 
         return ToolResult(
             success=True,

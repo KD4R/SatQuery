@@ -19,6 +19,9 @@ from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from services.agent.evidence.models import EvidenceGraph
 from services.agent.nodes.synthesizer import synthesize_evidence_output
 from services.agent.nodes.resilience import execute_with_recovery
+import redis
+from packages.providers.config import config
+from packages.contracts.events import EventEnvelope
 
 
 def plan_mission(state: MissionState) -> dict:
@@ -139,7 +142,7 @@ def analyze_data(state: MissionState) -> dict:
     scene_id = state.observation_ids[0]
     observations = state.metadata.get("observations", [])
     obs = next((o for o in observations if o.get("asset_id") == scene_id), {})
-    scene_href = obs.get("href", f"s3://satquery/{scene_id}.tif")
+    scene_href = obs.get("href")
     
     acquired_at = obs.get("datetime")
     if not acquired_at:
@@ -158,7 +161,6 @@ def analyze_data(state: MissionState) -> dict:
             "href": scene_href,
         },
         "scene_href": scene_href,
-        "model": "baseline",  # Force deterministic baseline
         "min_mapping_unit_ha": 0.5,
     }
 
@@ -223,13 +225,17 @@ def gate_check(state: MissionState) -> dict:
         }
     )
 
+    # Use P3/P4 confidence, metadata, disagreement, and quality outputs in the gate.
+    conf_data = outcome_data.get("confidence") or {}
+    model_conf = float(conf_data.get("value", 0.88) or 0.88)
+
     # Create the inference node with real data
     inf_node = ev_builder.add_inference(
         input_node_ids=[obs_node.node_id],
-        model_name=outcome_data.get("degraded_from", "baseline"),
+        model_name=outcome_data.get("degraded_from", "baseline") or "baseline",
         model_version="1.0",
         results={"inundated_sqkm": inundated_sqkm},
-        confidence=0.88,
+        confidence=model_conf,
     )
 
     ev_builder.add_metric(
@@ -252,10 +258,20 @@ def gate_check(state: MissionState) -> dict:
         trace_id=state.trace_id,
     )
 
+    new_meta = dict(state.metadata)
+    status = "GATE_CHECK"
+    # Implement explicit sensor-disagreement and low-confidence re-investigation behavior
+    if not conf.passed_gate:
+        retries = new_meta.get("reinvestigations", 0)
+        if retries < 1:
+            new_meta["reinvestigations"] = retries + 1
+            status = "REINVESTIGATE"
+
     return {
-        "status": "GATE_CHECK",
+        "status": status,
         "confidence_score": conf.confidence_score,
         "evidence_graph": evidence_graph,
+        "metadata": new_meta,
     }
 
 
@@ -277,6 +293,12 @@ def synthesize(state: MissionState) -> dict:
     return {"status": "COMPLETED", "synthesized_output": output_dict}
 
 
+def should_reinvestigate(state: MissionState) -> str:
+    if state.status == "REINVESTIGATE":
+        return "sensor_arbitration"
+    return "synthesize"
+
+
 def _build_graph():
     graph = StateGraph(MissionState)
     graph.add_node("planning", plan_mission)
@@ -291,7 +313,14 @@ def _build_graph():
     graph.add_edge("sensor_arbitration", "acquiring")
     graph.add_edge("acquiring", "analyzing")
     graph.add_edge("analyzing", "gate_check")
-    graph.add_edge("gate_check", "synthesize")
+    graph.add_conditional_edges(
+        "gate_check",
+        should_reinvestigate,
+        {
+            "sensor_arbitration": "sensor_arbitration",
+            "synthesize": "synthesize",
+        }
+    )
     graph.add_edge("synthesize", END)
     return graph.compile()
 
@@ -342,18 +371,47 @@ class AgentOrchestrator:
     def list_runs(self, org_id: str) -> List[MissionState]:
         return [r for r in self._runs.values() if r.organization_id == org_id]
 
+    def _get_redis(self):
+        if not hasattr(self, "_redis"):
+            self._redis = redis.from_url(config.redis_url.get_secret_value(), decode_responses=True)
+        return self._redis
+
+    def _publish_event(self, state: MissionState, event_type: str, payload: dict):
+        evt = EventEnvelope(
+            event_id=f"evt_{state.run_id}_{event_type}",
+            event_type=event_type,
+            trace_id=state.trace_id,
+            mission_id=state.mission_id,
+            producer="agent_orchestrator",
+            payload=payload
+        )
+        try:
+            r = self._get_redis()
+            r.publish(f"agent:events:{state.mission_id}", evt.model_dump_json())
+            r.xadd(f"agent:stream:{state.mission_id}", {"event": evt.model_dump_json()})
+        except Exception:
+            pass
+
     def step_execution(self, state: MissionState) -> MissionState:
         """
-        Executes the LangGraph workflow.
+        Executes the LangGraph workflow and streams events.
         """
-        result_state = self._app.invoke(state)
-        if isinstance(result_state, dict):
-            final_state = MissionState(**result_state)
-        else:
-            final_state = result_state
-
+        self._publish_event(state, "RUN_STARTED", {"status": state.status})
+        
+        current_state_dict = state.model_dump()
+        for update in self._app.stream(state):
+            node_name = list(update.keys())[0]
+            node_update = update[node_name]
+            current_state_dict.update(node_update)
+            
+            temp_state = MissionState(**current_state_dict)
+            self._publish_event(temp_state, f"NODE_COMPLETED_{node_name.upper()}", {"status": temp_state.status})
+            
+        final_state = MissionState(**current_state_dict)
         if final_state.job_id:
             self._runs[final_state.job_id] = final_state
+            
+        self._publish_event(final_state, "RUN_COMPLETED", {"status": final_state.status})
         return final_state
 
 
