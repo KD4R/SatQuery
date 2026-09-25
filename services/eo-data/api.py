@@ -132,6 +132,10 @@ def resolve_asset_api(
 
             adapter = BhoonidhiAdapter()
             s3_uri = adapter.get_asset(req.item_id, req.asset_key, context)
+            if s3_uri is None:
+                raise ValueError(
+                    f"Provider returned no URI for item={req.item_id} asset={req.asset_key}"
+                )
 
             # P4-08: Complete AssetRef metadata
             from packages.contracts.ml import AssetRef
