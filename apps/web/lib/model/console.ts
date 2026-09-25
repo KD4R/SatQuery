@@ -87,6 +87,42 @@ export interface Confidence {
   action: string;
 }
 
+/* ── Infrastructure impact (PRD §2D) ─────────────────────────────────────── */
+
+/**
+ * One infrastructure record out of the PostGIS intersection the pipeline produces
+ * (PRD §2D). The panel groups these flat records by `category` into the
+ * Flood → category → items hierarchy.
+ *
+ * Lengths and areas are nullable because the extracts do not carry them uniformly:
+ * a road way can lack a measured length, and a hospital is a point feature, for
+ * which a linear extent does not apply. Null renders NOT AVAILABLE — never 0,
+ * which would read as "measured, nothing there".
+ */
+export interface ImpactRecord {
+  id: string;
+  /** Grouping key, e.g. "Roads" or "Hospitals". */
+  category: string;
+  name: string;
+  /** True when the record intersects the flood extent. */
+  affected: boolean;
+  /** Kilometres. For an affected linear feature, the length inside the flood extent. */
+  lengthKm: number | null;
+  areaSqKm: number | null;
+  /** Provenance, or why a figure is null. Shown to the operator. */
+  note: string;
+}
+
+/**
+ * The raw feed for the Infrastructure Impact panel. Null on ConsoleScenario when
+ * the pipeline has not produced an infrastructure intersection for the run.
+ */
+export interface ScenarioImpact {
+  /** Where the records came from, shown verbatim under the panel. */
+  dataset: string;
+  records: ImpactRecord[];
+}
+
 /* ── Evidence (P5-09) ─────────────────────────────────────────────────────── */
 
 export type EvidenceKind =
@@ -166,6 +202,8 @@ export interface ConsoleScenario {
   aoiAreaSqKm: number;
   comparison: ComparisonPair;
   change: ChangeSummary;
+  /** PostGIS intersection backing the Infrastructure Impact panel; null when absent. */
+  impact: ScenarioImpact | null;
   confidence: Confidence;
   evidence: EvidenceNode[];
   arbitration: SensorArbitration;

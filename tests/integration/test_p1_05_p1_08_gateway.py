@@ -169,3 +169,68 @@ def test_p1_08_websocket_tenant_org_id_in_messages(mock_redis, mock_httpx_client
         # drain
         for _ in range(4):
             ws.receive_json()
+
+
+# ── P5 §2C: agent event envelopes pass through the bridge verbatim ──────────
+@pytest.mark.integration
+@patch("services.gateway.routers.missions_ws.httpx.AsyncClient")
+@patch("services.gateway.routers.missions_ws.redis.from_url")
+def test_p5c_agent_event_envelope_passes_through_verbatim(
+    mock_redis, mock_httpx_client, gateway_client
+):
+    """Envelope-shaped pub/sub messages reach the client with their payload intact."""
+    import json as _json
+    from unittest.mock import AsyncMock, MagicMock
+
+    envelope = {
+        "event_id": "evt-test-1",
+        "event_type": "SENSOR_DISAGREEMENT",
+        "timestamp": "2026-09-14T05:42:00Z",
+        "trace_id": "tr-1",
+        "mission_id": "m-1",
+        "producer": "agent",
+        "schema_version": "1.0",
+        "payload": {"iou": 0.31, "reason": "Optical and SAR disagree on flood extent."},
+    }
+
+    class _PubSub:
+        async def subscribe(self, channel):
+            return None
+
+        async def listen(self):
+            yield {"type": "message", "data": _json.dumps(envelope)}
+            yield {"type": "message", "data": _json.dumps({"status": "completed"})}
+
+        async def unsubscribe(self, channel):
+            return None
+
+        async def close(self):
+            return None
+
+    # The route calls pubsub() without await and pings before subscribing, so
+    # the client must be a sync MagicMock whose async methods are AsyncMocks —
+    # an AsyncMock client would return a coroutine from pubsub() and the route
+    # would fall into its no-Redis fallback.
+    client = MagicMock()
+    client.ping = AsyncMock(return_value=True)
+    client.pubsub.return_value = _PubSub()
+    client.aclose = AsyncMock()
+    mock_redis.return_value = client
+    _allow_tenant_check(mock_httpx_client)
+
+    token = _token(roles=["viewer"])
+    with gateway_client.websocket_connect(f"/ws/v1/missions/m-1?token={token}") as ws:
+        connected = ws.receive_json()
+        assert connected["event"] == "connected"
+
+        agent_event = ws.receive_json()
+        # Verbatim: the UI needs the payload, not a repackaged status.
+        assert agent_event == envelope
+        assert agent_event["payload"]["iou"] == 0.31
+
+        status = ws.receive_json()
+        assert status["event"] == "status_update"
+        assert status["status"] == "completed"
+
+        done = ws.receive_json()
+        assert done["event"] == "done"

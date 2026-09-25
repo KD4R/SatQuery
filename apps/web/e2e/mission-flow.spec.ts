@@ -175,6 +175,29 @@ test.describe("console — demo run", () => {
     await expect(rail.getByText(/UTC/)).toHaveCount(0);
   });
 
+  test("the agent speaks while it works, then retires the warning", async ({
+    page,
+  }) => {
+    await page.goto("/console");
+    await page.getByRole("button", { name: /run analysis/i }).click();
+
+    // The PRD §2C example toast, mid-run: sensors disagree and the agent is
+    // doing something about it. It lives in an aria-live polite region, so it
+    // is announced without stealing focus.
+    const disagree = page
+      .getByRole("status")
+      .filter({ hasText: /disagree on flood extent/i });
+    await expect(disagree).toBeVisible({ timeout: 10_000 });
+
+    // Auto-expiry retires it — non-intrusive means it leaves on its own.
+    await expect(disagree).toBeHidden({ timeout: 12_000 });
+
+    // The arbitration resolution arrives later in the same run.
+    await expect(
+      page.getByRole("status").filter({ hasText: /sensors agree/i }),
+    ).toBeVisible({ timeout: 10_000 });
+  });
+
   test("marks every fixture-fed surface as a fixture", async ({ page }) => {
     await page.goto("/console");
     // text-transform is CSS; the DOM says "Env".

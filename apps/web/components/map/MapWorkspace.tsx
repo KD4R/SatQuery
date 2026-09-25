@@ -250,12 +250,15 @@ export function MapWorkspace({
     let raf = 0;
 
     const tick = (now: number) => {
-      const t = Math.min((now - start) / DURATION, 1);
+      // Clamp low as well as high: rAF timestamps can arrive earlier than the
+      // captured start (vsync alignment), and a negative t sends the eased
+      // opacity below 0 — MapLibre rejects that with a validation error.
+      const t = Math.min(Math.max((now - start) / DURATION, 0), 1);
       const eased = t * (2 - t); // ease-out quad
       for (const id of layerIds) {
         const a = from.get(id)!;
         const b = targets[id]!;
-        m.setPaintProperty(`lyr-${id}`, "raster-opacity", a + (b - a) * eased);
+        m.setPaintProperty(`lyr-${id}`, "raster-opacity", Math.min(Math.max(a + (b - a) * eased, 0), 1));
       }
       if (t < 1) raf = requestAnimationFrame(tick);
     };

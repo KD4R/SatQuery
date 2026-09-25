@@ -985,3 +985,81 @@ a {
     transition: none;
   }
 }
+
+/* ═══ Agent activity toasts (P5 Phase C → PRD §2C) ══════════════════════ */
+
+/* Non-intrusive by contract: bottom-right stack over the map, one visible at
+   a time, auto-expiring. aria-live polite — the agent speaks without ever
+   interrupting a screen reader. */
+
+.atoasts {
+  position: absolute;
+  right: 12px;
+  bottom: 46px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(360px, 44vw);
+  pointer-events: none;
+}
+
+.atoast {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--hairline-bright);
+  border-radius: var(--radius);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+
+.atoast-sensor_disagreement {
+  border-left-color: var(--amber);
+}
+
+.atoast-acquiring_evidence {
+  border-left-color: var(--signal);
+}
+
+.atoast-agent_thought {
+  border-left-color: var(--verified);
+}
+
+.atoast-glyph {
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.atoast-text {
+  margin: 0;
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.atoast-dismiss {
+  flex: 0 0 auto;
+  padding: 0 3px;
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.atoast-dismiss:hover,
+.atoast-dismiss:focus-visible {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atoast {
+    backdrop-filter: none;
+  }
+}

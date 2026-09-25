@@ -13,6 +13,12 @@ from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.security.validator import validate_aoi_geometry
 from services.agent.tools.executor import get_tool_executor
 from packages.auth.models import AuthContext, Role
+from services.agent.events import (
+    emit_acquiring_evidence,
+    emit_agent_thought,
+    emit_sensor_agreement,
+    emit_sensor_disagreement,
+)
 from services.agent.security.tool_budget import ToolBudget
 from services.agent.nodes.sensor_arbitrator import arbitrate_sensors
 from services.agent.nodes.confidence_gate import evaluate_confidence_gate
@@ -53,6 +59,21 @@ def sensor_arbitration(state: MissionState) -> dict:
     selected = [sensor_map.get(decision.primary_sensor, decision.primary_sensor)]
     if decision.secondary_sensor:
         selected.append(sensor_map.get(decision.secondary_sensor, decision.secondary_sensor))
+
+    # Live agent events (P5 §2C). Two usable sensors under degraded conditions
+    # is exactly the case where they may conflict, so the stream flags the
+    # possible disagreement now — before any masks exist, hence no figures.
+    # Emission is fire-and-forget; it must never fail the run.
+    if decision.secondary_sensor:
+        emit_sensor_disagreement(
+            state.mission_id,
+            state.trace_id,
+            None,
+            selected[0],
+            selected[1],
+        )
+    else:
+        emit_sensor_agreement(state.mission_id, state.trace_id, selected[0])
 
     return {"status": "ARBITRATING", "selected_sensors": selected}
 
@@ -103,12 +124,35 @@ def acquire_data(state: MissionState) -> dict:
         observations = []
         obs_ids = []
 
+    # The PRD's "Acquiring additional evidence..." moment: the agent is about
+    # to query for data. Reason is a fixed template, never query-derived text.
+    emit_acquiring_evidence(
+        state.mission_id,
+        state.trace_id,
+        "Selecting the observations that cover the area of interest.",
+        sensors=state.selected_sensors or [],
+    )
+
     new_meta = dict(state.metadata)
     new_meta["budget"] = budget.model_dump()
     new_meta["observations"] = observations
 
     if not obs_ids:
+        emit_agent_thought(
+            state.mission_id,
+            state.trace_id,
+            "acquiring",
+            "No usable observations were returned; the run cannot proceed.",
+        )
         return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
+
+    # Numeric-only interpolation: counts are safe in a template the DOM renders.
+    emit_agent_thought(
+        state.mission_id,
+        state.trace_id,
+        "acquiring",
+        f"{len(obs_ids)} observation(s) returned for the AOI.",
+    )
 
     return {"status": "ACQUIRING", "observation_ids": obs_ids, "metadata": new_meta}
 
@@ -180,6 +224,13 @@ def analyze_data(state: MissionState) -> dict:
 
         new_meta = dict(state.metadata)
         new_meta["inference_outcome"] = outcome_data
+
+        emit_agent_thought(
+            state.mission_id,
+            state.trace_id,
+            "analyzing",
+            "Water segmentation complete; the confidence gate runs next.",
+        )
 
         return {"status": "ANALYZING", "metadata": new_meta}
     except Exception as e:

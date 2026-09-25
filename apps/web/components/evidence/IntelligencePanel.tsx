@@ -23,6 +23,7 @@ import {
   formatUTC,
 } from "../../lib/geo/format";
 import { buildEvidenceGraph } from "../../lib/evidence/graph";
+import { buildImpactModel } from "../../lib/impact/model";
 import {
   Label,
   NotAvailable,
@@ -33,6 +34,7 @@ import {
   StatusChip,
 } from "../system/primitives";
 import { BeforeAfterViewer } from "../observe/BeforeAfterViewer";
+import { InfrastructureImpact } from "../impact/InfrastructureImpact";
 import type { ConsoleScenario } from "../../lib/model/console";
 import type { DataSource } from "../../lib/api/source";
 
@@ -99,6 +101,7 @@ export function IntelligencePanel({
   const { change, confidence, arbitration, evidence, comparison, monitoring } =
     scenario;
   const band = confidenceBand(confidence.score);
+  const impactModel = buildImpactModel(scenario);
 
   return (
     <Panel
@@ -142,6 +145,9 @@ export function IntelligencePanel({
             </p>
           ) : null}
         </PanelSection>
+
+        {/* ── Infrastructure impact (PRD §2D) ────────────────────────────── */}
+        <InfrastructureImpact model={impactModel} />
 
         {/* ── Confidence (P5-11) ─────────────────────────────────────────── */}
         <PanelSection

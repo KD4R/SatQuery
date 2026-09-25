@@ -11,6 +11,10 @@ Auth:
 Protocol:
   - On connect: server sends {"event": "connected", "mission_id": "...", "org_id": "..."}
   - Streams status messages: {"event": "status_update", "status": "...", "mission_id": "..."}
+  - Envelope-shaped agent events (P5 §2C: SENSOR_DISAGREEMENT, ACQUIRING_EVIDENCE,
+    AGENT_THOUGHT — canonical EventEnvelope from packages.contracts.events) pass
+    through verbatim so the UI receives their payload intact. The bridge does not
+    interpret them; it only recognises the envelope shape.
   - On done/error: server closes connection with appropriate code.
   - Client can send {"action": "ping"} to keep alive.
 
@@ -172,6 +176,20 @@ async def mission_status_stream(
                         payload = json.loads(data)
                     except json.JSONDecodeError:
                         payload = {"status": data}
+
+                    # Agent event envelopes (P5 §2C) pass through verbatim: the
+                    # payload belongs to the UI, not to the status protocol.
+                    # Shape-checked, not type-fuzzed — anything that is not an
+                    # EventEnvelope falls through to the status path below.
+                    if (
+                        isinstance(payload, dict)
+                        and isinstance(payload.get("event_id"), str)
+                        and isinstance(payload.get("event_type"), str)
+                        and isinstance(payload.get("producer"), str)
+                        and isinstance(payload.get("payload"), dict)
+                    ):
+                        await websocket.send_json(payload)
+                        continue
 
                     status_val = payload.get("status", "unknown")
                     await websocket.send_json(

@@ -38,7 +38,7 @@
  */
 
 import type { GeoJSONPolygon } from "../api/types";
-import type { ConsoleScenario, Observation } from "../model/console";
+import type { ConsoleScenario, Observation, ScenarioImpact } from "../model/console";
 
 /** Pinned. Every `at` in the demo derives from this instant. */
 export const FIXTURE_EPOCH = "2026-09-14T05:42:00.000Z";
@@ -92,6 +92,92 @@ const BASELINE: Observation = {
     "The same Sentinel-1 scene with permanent water tinted — the dry-season baseline.",
 };
 
+/**
+ * Infrastructure impact (PRD §2D).
+ *
+ * WHAT THESE RECORDS CAN AND CANNOT CLAIM
+ * ---------------------------------------
+ * In the real stack this is the PostGIS intersection of the flood polygons with the
+ * AOI's OpenStreetMap extract; this fixture stands in for it deterministically.
+ * Records are labelled with their OSM ids, not invented place names: writing
+ * "<real hospital> — flooded" would be a fabricated claim about a real facility,
+ * and this demo exists to prove the console does not fabricate.
+ *
+ * The mix is deliberate. Roads carry measured lengths inside the flood extent, so
+ * the aggregate is a real number. Hospitals are point features, so their linear
+ * extent is honestly NOT AVAILABLE rather than zero or invented. Two of four roads
+ * are clear of the change polygons, so the hierarchy shows checked-and-clear
+ * records, not a wall of hits.
+ */
+const IMPACT: ScenarioImpact = {
+  dataset: "PostGIS · OpenStreetMap extract (roads, hospitals) clipped to the AOI",
+  records: [
+    {
+      id: "imp-road-98214",
+      category: "Roads",
+      name: "OSM way 98214",
+      affected: true,
+      lengthKm: 1.84,
+      areaSqKm: null,
+      note: "1.84 km of this way lies inside the change polygons.",
+    },
+    {
+      id: "imp-road-98231",
+      category: "Roads",
+      name: "OSM way 98231",
+      affected: true,
+      lengthKm: 0.62,
+      areaSqKm: null,
+      note: "0.62 km of this way lies inside the change polygons.",
+    },
+    {
+      id: "imp-road-98240",
+      category: "Roads",
+      name: "OSM way 98240",
+      affected: false,
+      lengthKm: 2.1,
+      areaSqKm: null,
+      note: "Runs along the floodplain edge; clear of every change polygon.",
+    },
+    {
+      id: "imp-road-98257",
+      category: "Roads",
+      name: "OSM way 98257",
+      affected: false,
+      lengthKm: 1.37,
+      areaSqKm: null,
+      note: "Clear of every change polygon.",
+    },
+    {
+      id: "imp-hosp-6614492182",
+      category: "Hospitals",
+      name: "OSM node 6614492182",
+      affected: true,
+      lengthKm: null,
+      areaSqKm: null,
+      note: "Point facility inside change polygon 9; linear extent does not apply.",
+    },
+    {
+      id: "imp-hosp-6614492345",
+      category: "Hospitals",
+      name: "OSM node 6614492345",
+      affected: false,
+      lengthKm: null,
+      areaSqKm: null,
+      note: "Point facility outside every change polygon.",
+    },
+    {
+      id: "imp-hosp-6614492401",
+      category: "Hospitals",
+      name: "OSM node 6614492401",
+      affected: false,
+      lengthKm: null,
+      areaSqKm: null,
+      note: "Point facility outside every change polygon.",
+    },
+  ],
+};
+
 export const ASSAM_SCENARIO: ConsoleScenario = {
   missionId: "msn-2026-0914-assam-01",
   runId: "run-7f3a2c91",
@@ -119,6 +205,8 @@ export const ASSAM_SCENARIO: ConsoleScenario = {
     changeFraction: 0.3327,
     baselineFraction: 0.0327,
   },
+
+  impact: IMPACT,
 
   confidence: {
     score: 0.87,

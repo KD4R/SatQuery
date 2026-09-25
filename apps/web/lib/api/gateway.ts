@@ -37,6 +37,16 @@ export function hasAccessToken(): boolean {
   return accessToken !== null;
 }
 
+/**
+ * Read access for the WebSocket client: the browser WebSocket API cannot send
+ * an Authorization header, so the token has to ride the ?token= query param
+ * (P1-08). The variable stays in-memory — this only exposes it to another
+ * module-scoped consumer, never to storage (A02).
+ */
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
 /** Thrown by every failed call. Carries the canonical envelope for the UI. */
 export class GatewayError extends Error {
   readonly status: number;

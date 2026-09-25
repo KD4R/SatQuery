@@ -1,0 +1,93 @@
+/*
+ * Infrastructure impact (PRD §2D).
+ *
+ * Lives beside the component rather than in app/mission.css so the panel ships as
+ * one self-contained unit. Colours and surfaces come from the same :root tokens
+ * the rest of the console reads — no new palette values are introduced here.
+ * Indentation carries the hierarchy: each level steps right from its parent, so
+ * Flood → Roads → Hospitals reads structurally, not just lexically.
+ */
+
+.impact-root {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.impact-node {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 8px 9px;
+  background: var(--surface-1);
+}
+
+.impact-node-root {
+  border-left: 2px solid var(--signal);
+}
+
+.impact-node-category {
+  border-left: 2px solid var(--hairline-bright);
+  margin-left: 10px;
+}
+
+.impact-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.impact-glyph {
+  color: var(--signal);
+  font-size: 9px;
+}
+
+.impact-node-category .impact-glyph {
+  color: var(--amber);
+}
+
+.impact-items {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.impact-item {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 0 3px 10px;
+  border-top: 1px solid var(--hairline);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.impact-item-glyph {
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+.impact-item.is-affected .impact-item-glyph {
+  color: var(--signal);
+}
+
+.impact-item.is-affected .impact-item-name {
+  color: var(--ink);
+}
+
+.impact-item-name {
+  color: var(--ink-dim);
+}
+
+.impact-item-figure {
+  margin-left: auto;
+  color: var(--amber);
+  font-size: 9.5px;
+}
+
+.impact-source {
+  margin: 8px 0 0;
+  font-size: 9px;
+  line-height: 1.5;
+}

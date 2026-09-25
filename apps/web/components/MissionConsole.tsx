@@ -19,6 +19,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
 import { buildTimeMachine } from "../lib/map/timeLayers";
+import { DEMO_AGENT_EVENTS, demoEventAt } from "../lib/fixtures";
+import { useMissionEvents } from "../lib/ws/useMissionEvents";
+import { hasAccessToken } from "../lib/api/gateway";
 import { demoModeEnabled, type DataSource } from "../lib/api/source";
 import { getHealth } from "../lib/api/client";
 import { useMissionRun } from "../lib/useMissionRun";
@@ -30,6 +33,7 @@ import { MissionShell } from "./shell/MissionShell";
 import { TopTelemetryBar, type SystemState } from "./shell/TopTelemetryBar";
 import { MissionQueryPanel } from "./console/MissionQueryPanel";
 import { MissionTimeline } from "./console/MissionTimeline";
+import { AgentActivityToasts } from "./console/AgentActivityToasts";
 import { IntelligencePanel } from "./evidence/IntelligencePanel";
 import { ErrorBoundary, ErrorState } from "./system/ErrorBoundary";
 import { Label, StatusChip } from "./system/primitives";
@@ -73,8 +77,41 @@ export default function MissionConsole() {
 
   const run = useMissionRun(demo);
 
-  /* Health check. Its only job is the reachability chip; a failure here never
-     blocks the console or changes what any panel claims. */
+  /* ── Live agent events (P5 §2C) ───────────────────────────────────────────
+     Demo feeds the rail from pinned fixtures on the same schedule as the run
+     script — no socket, deterministic for Playwright. Live opens the gateway
+     mission socket (only when a token exists; the socket is useless without
+     one) and receives what the orchestrator actually emitted. */
+  const [demoEventTick, setDemoEventTick] = useState(0);
+  const [demoDismissed, setDemoDismissed] = useState<ReadonlySet<string>>(new Set());
+
+  useEffect(() => {
+    if (!demo || run.phase !== "running") return;
+    setDemoEventTick(0); // a re-run replays the feed from the top
+    setDemoDismissed(new Set());
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    DEMO_AGENT_EVENTS.forEach((e, i) => {
+      timers.push(setTimeout(() => setDemoEventTick(i + 1), e.atMs));
+    });
+    return () => timers.forEach(clearTimeout);
+  }, [demo, run.phase]);
+
+  const demoEvents = useMemo(
+    () =>
+      DEMO_AGENT_EVENTS.slice(0, demoEventTick)
+        .map(demoEventAt)
+        .filter((e) => !demoDismissed.has(e.id)),
+    [demoEventTick, demoDismissed],
+  );
+
+  const live = useMissionEvents(
+    demo ? null : (run.jobId ?? null),
+    !demo && run.phase === "running" && hasAccessToken(),
+  );
+  const agentEvents = demo ? demoEvents : live.events;
+  const dismissEvent = demo
+    ? (id: string) => setDemoDismissed((prev) => new Set(prev).add(id))
+    : live.dismiss;
   useEffect(() => {
     let live = true;
     const controller = new AbortController();
@@ -137,6 +174,7 @@ export default function MissionConsole() {
   );
 
   return (
+    <div style={{ position: "relative", height: "100%" }}>
     <MissionShell
       telemetry={
         <TopTelemetryBar
@@ -264,6 +302,9 @@ export default function MissionConsole() {
           </Label>
         </div>
       }
-    />
+      />
+      {/* Agent activity toasts float bottom-right over everything (P5 §2C). */}
+      <AgentActivityToasts events={agentEvents} onDismiss={dismissEvent} />
+    </div>
   );
 }

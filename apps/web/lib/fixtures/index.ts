@@ -9,3 +9,4 @@
 
 export { ASSAM_SCENARIO, ASSAM_AOI, FIXTURE_EPOCH } from "./assam";
 export { DEMO_STAGES, DEMO_TOTAL_MS, type RunStage } from "./script";
+export { DEMO_AGENT_EVENTS, demoEventAt } from "./agentEvents";
