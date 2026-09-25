@@ -21,7 +21,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError, buildWsUrl } from "./api/gateway";
 import { executeMission, getAgentRun } from "./api/client";
-import { DEMO_STAGES, type RunStage as StageState } from "@/lib/fixtures";
+import { DEMO_STAGES, type RunStage } from "./fixtures";
+import type { StageState } from "./model/console";
 import type { ErrorResponse, GeoJSONPolygon, JobStatus } from "./api/types";
 
 export interface RunStageView {
@@ -48,7 +49,7 @@ export interface MissionRun {
 
 
 function demoStages(completedCount: number, runningIndex: number): RunStageView[] {
-  return DEMO_STAGES.map((s, i) => ({
+  return DEMO_STAGES.map((s: RunStage, i: number) => ({
     key: s.key,
     label: s.label,
     detail: s.detail,
@@ -134,7 +135,7 @@ export function useMissionRun(demo: boolean): MissionRun {
     setTraceId("trc-0000-demo-fixture");
 
     let elapsed = 0;
-    DEMO_STAGES.forEach((stage, i) => {
+    DEMO_STAGES.forEach((stage: RunStage, i: number) => {
       timers.current.push(
         setTimeout(() => setStages(demoStages(i, i)), elapsed),
       );

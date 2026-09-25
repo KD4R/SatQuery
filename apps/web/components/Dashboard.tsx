@@ -23,7 +23,7 @@ import SensorCard from "./SensorCard";
 import MonitoringCard from "./MonitoringCard";
 import ReportCard from "./ReportCard";
 import TraceDrawer from "./TraceDrawer";
-import { demoModeEnabled } from "@/lib/api/source";
+import { demoModeEnabled } from "../lib/api/source";
 
 import { useMissionRun } from "../lib/useMissionRun";
 import type { Stage, Evidence } from "../lib/types";
