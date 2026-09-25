@@ -60,8 +60,22 @@ jobs:
 
       - name: No demo-mode switches
         run: |
-          if grep -rniE 'demo_?mode|use_?mock|MOCK_|FAKE_|stub_data' \
-               --include='*.py' --include='*.ts' --include='*.tsx' apps/ services/ packages/; then
+          # Catch raw env reads of NEXT_PUBLIC_DEMO_MODE (only lib/api/source.ts is allowed).
+          if grep -rniE 'process\.env\.NEXT_PUBLIC_DEMO_MODE' \
+               --include='*.py' --include='*.ts' --include='*.tsx' \
+               --exclude='source.ts' \
+               --exclude='*.test.ts' --exclude='*.test.tsx' \
+               --exclude-dir=node_modules \
+               apps/ services/ packages/; then
+            echo "::error::Direct NEXT_PUBLIC_DEMO_MODE read outside lib/api/source.ts."
+            exit 1
+          fi
+          # Catch mock/fake/stub vocabulary that should never appear in production code.
+          if grep -rniE 'use_?mock|MOCK_DATA|MOCK_RESPONSE|FAKE_|stub_data' \
+               --include='*.py' --include='*.ts' --include='*.tsx' \
+               --exclude='*.test.ts' --exclude='*.test.tsx' --exclude='*.spec.ts' \
+               --exclude-dir=node_modules \
+               apps/ services/ packages/; then
             echo "::error::Demo/mock switch found."
             exit 1
           fi

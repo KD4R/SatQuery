@@ -49,7 +49,7 @@ class SearchService:
         polygon: Dict[str, Any],
         start_date: datetime,
         end_date: datetime,
-        context: dict,
+        context: dict | None = None,
         cloud_cover: float = 100.0,
         provider_name: str = "bhoonidhi",
         **kwargs,
@@ -57,7 +57,7 @@ class SearchService:
         from services.eo_data.telemetry import tracer, inject_context_to_span, geo_search_latency_ms
 
         with tracer.start_as_current_span("search_observations") as span:
-            inject_context_to_span(span, context)
+            inject_context_to_span(span, context or {})
             with geo_search_latency_ms.time():
                 cache_key = self._generate_cache_key(
                     provider_name, polygon, start_date, end_date, cloud_cover=cloud_cover, **kwargs

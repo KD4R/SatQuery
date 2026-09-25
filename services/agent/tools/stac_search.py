@@ -66,11 +66,16 @@ class STACSearchTool(BaseTool):
                 start_date=start,
                 end_date=end,
                 cloud_cover=args.max_cloud_cover,
+                context={},
             )
 
             for obs in observations:
-                if obs.sensor in args.sensors:
-                    results.append(obs.model_dump())
+                obs_sensor = obs.normalized_properties.get("sensor", "")
+                if not args.sensors or obs_sensor in args.sensors:
+                    dump = obs.model_dump()
+                    # Ensure sensor is top-level for downstream consumers
+                    dump.setdefault("sensor", obs_sensor)
+                    results.append(dump)
 
         except Exception as e:
             return ToolResult(success=False, output=[], metadata={"error": str(e)})
