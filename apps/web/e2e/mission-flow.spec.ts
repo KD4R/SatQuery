@@ -32,7 +32,8 @@ test.describe("landing", () => {
 
   test("quotes IoU and refuses to quote accuracy", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("0.435")).toBeVisible();
+    // .first() — the landing shows the benchmark twice (hero stat + pipeline).
+    await expect(page.getByText("0.435").first()).toBeVisible();
     // The landing page must keep explaining why accuracy is absent. If someone
     // adds an "89% accurate" badge later, this fails.
     await expect(page.getByText(/Accuracy is not quoted/i)).toBeVisible();

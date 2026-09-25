@@ -1,209 +1,182 @@
 "use client";
-import {
-  Globe2,
-  Menu,
-  PanelRightClose,
-  PanelRightOpen,
-  RefreshCw,
-} from "lucide-react";
-import { useEffect, useState } from "react";
+
+/**
+ * Dashboard — Srushti's mission-console UI wired to the live P1 Gateway.
+ *
+ * Architecture:
+ *  - All layout, styling, and component structure from Srushti (feat/p5-mission-console)
+ *  - Live backend wiring via `useMissionRun` hook from Atharv (feat/p5-frontend-migration)
+ *  - No setTimeout, no mocks, no hardcoded state — backend drives everything
+ */
+
+import { useState, useEffect } from "react";
+import { Globe2, Menu, PanelRightClose, PanelRightOpen, RefreshCw } from "lucide-react";
+
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MapCanvas from "./MapCanvas";
 import QueryConsole from "./QueryConsole";
-import EvidencePanel from "./EvidencePanel";
 import ConfidenceCard from "./ConfidenceCard";
+import EvidencePanel from "./EvidencePanel";
 import RunTimeline from "./RunTimeline";
 import SensorCard from "./SensorCard";
 import MonitoringCard from "./MonitoringCard";
 import ReportCard from "./ReportCard";
 import TraceDrawer from "./TraceDrawer";
-import type { MissionState, Stage } from "../lib/types";
-const initialQuery =
-  "Show me the flooded areas around Guntur and explain why you chose SAR.";
-const stages: Stage[] = [
-  {
-    key: "PARSE",
-    label: "Mission plan validated",
-    detail:
-      "Natural-language intent normalized into a bounded geospatial task.",
-    status: "done",
-    time: "11:39",
-  },
-  {
-    key: "RESOLVE",
-    label: "AOI resolved",
-    detail: "Guntur District → validated polygon and coordinate reference.",
-    status: "done",
-    time: "11:39",
-  },
-  {
-    key: "DISCOVER",
-    label: "Observations discovered",
-    detail: "3 candidate scenes matched the spatial + temporal constraints.",
-    status: "done",
-    time: "11:40",
-  },
-  {
-    key: "ROUTE",
-    label: "SAR selected",
-    detail: "67% optical cloud cover crossed the quality gate for this AOI.",
-    status: "done",
-    time: "11:40",
-  },
-  {
-    key: "EXECUTE",
-    label: "Geo analysis complete",
-    detail:
-      "Change mask measured from the selected observation with provenance.",
-    status: "done",
-    time: "11:42",
-  },
-  {
-    key: "EXPLAIN",
-    label: "Evidence chain verified",
-    detail:
-      "Headline values linked to source observations and processing metadata.",
-    status: "done",
-    time: "11:42",
-  },
-];
-const evidence = [
-  {
-    id: "e1",
-    kind: "observation",
-    title: "Sentinel-1 acquisition",
-    source: "P4 · EO/Data",
-    detail: "Cloud-robust scene selected after optical quality gate.",
-    status: "verified" as const,
-    provenance: "dataset S1-Guntur-2026-09-18 · processing v1.4",
-  },
-  {
-    id: "e2",
-    kind: "decision",
-    title: "SAR route rationale",
-    source: "P2 · Mission",
-    detail: "AOI-level cloud fraction is 67%; SAR remains usable under cloud.",
-    status: "verified" as const,
-    provenance: "run SAT-2409 · decision node ROUTE",
-  },
-  {
-    id: "e3",
-    kind: "measurement",
-    title: "Flood extent measurement",
-    source: "P3 · Geo inference",
-    detail: "18.7 ha change polygon with radar-shadow exclusion.",
-    status: "supporting" as const,
-    provenance: "model v2.1 · CRS EPSG:32644",
-  },
-];
+
+import { useMissionRun } from "../lib/useMissionRun";
+import { demoModeEnabled } from "../lib/api/source";
+import type { Stage, Evidence } from "../lib/types";
+
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const INITIAL_QUERY =
+  "Analyse flood extent change in Assam, India over the past 30 days using SAR data";
+
+/** Map a live RunStageView state → Srushti's StageStatus type */
+function mapStageState(state: string): Stage["status"] {
+  switch (state) {
+    case "completed": return "done";
+    case "running": return "active";
+    case "failed": return "error";
+    case "warning": return "warning";
+    default: return "pending";
+  }
+}
+
+/** Derive Srushti's Stage[] from the live useMissionRun stages */
+function liveToStages(runStages: ReturnType<typeof useMissionRun>["stages"]): Stage[] {
+  return runStages.map((s) => ({
+    key: s.key,
+    label: s.label,
+    detail: s.detail,
+    status: mapStageState(s.state),
+  }));
+}
+
+/** Extract evidence items from the agent's final state (published after COMPLETED). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function extractEvidence(agentState: any): Evidence[] {
+  if (!agentState) return [];
+  const raw = agentState.evidence ?? agentState.evidence_graph?.nodes ?? {};
+  if (Array.isArray(raw)) return raw as Evidence[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return Object.entries(raw).map(([id, node]: [string, any]) => ({
+    id,
+    kind: node.node_type ?? "observation",
+    title: node.label ?? id,
+    source: node.source ?? "backend",
+    detail: node.detail ?? "",
+    status: node.confidence_score >= 0.7 ? "verified" : "pending",
+    provenance: `trace: ${agentState.trace_id ?? "—"}`,
+  }));
+}
+
+// ── Component ──────────────────────────────────────────────────────────────────
+
 export default function Dashboard() {
+  // Theme
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // Nav
   const [active, setActive] = useState("mission");
-  const [query, setQuery] = useState(initialQuery);
-  const [running, setRunning] = useState(false);
-  const [trace, setTrace] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [rightRail, setRightRail] = useState(true);
-  const [mission, setMission] = useState<MissionState>({
-    missionId: "MIS-2409",
-    runId: "SAT-2409",
-    status: "completed",
-    query: initialQuery,
-    location: "Guntur District · Andhra Pradesh",
-    aoiArea: "2,184 km²",
-    confidence: 0.91,
-    stages,
-    observations: [],
-    evidence,
-    decision: {
-      winner: "SAR",
-      reason: "67% cloud cover over the selected AOI",
-      optical: "67% cloud",
-      sar: "Ready",
-    },
-    summary: "18.7 ha newly inundated",
-  });
+  // Trace drawer
+  const [trace, setTrace] = useState(false);
+  // Query input
+  const [query, setQuery] = useState(INITIAL_QUERY);
+
+  // ── Live backend wiring ──────────────────────────────────────────────────────
+  // Pass `false` for LIVE mode. Set to `true` for demo/offline mode. The demo
+  // flag is read through lib/api/source like everywhere else — one audited
+  // switch, per the fixture-isolation rule.
+  const run = useMissionRun(demoModeEnabled());
+
+  const confidence = run.agentState?.confidence_score ?? null;
+  const evidence = extractEvidence(run.agentState);
+  const stages = liveToStages(run.stages);
+
+  const missionId = run.agentState?.mission_id ?? run.jobId ?? "—";
+  const runId = run.traceId ?? run.jobId ?? "—";
+  // MissionState publishes no location/summary fields — show what exists, "—"
+  // where nothing does, rather than reading fields the backend never sends.
+  const location = run.agentState?.aoi ? "AOI validated" : "—";
+  const summary = run.phase === "complete" ? "Analysis complete" : "—";
+  const missionStatus =
+    run.phase === "running" ? "running" :
+    run.phase === "complete" ? "completed" :
+    run.phase === "failed" ? "failed" : "idle";
+
+  // ── Theme persistence ────────────────────────────────────────────────────────
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem("satquery-theme", theme);
   }, [theme]);
+
   useEffect(() => {
-    const saved = localStorage.getItem("satquery-theme") as
-      | "dark"
-      | "light"
-      | null;
+    const saved = localStorage.getItem("satquery-theme") as "dark" | "light" | null;
     if (saved) setTheme(saved);
   }, []);
-  const run = () => {
-    if (running || !query.trim()) return;
-    setRunning(true);
-    setMission((m) => ({
-      ...m,
-      status: "running",
-      query,
-      stages: m.stages.map((s, i) =>
-        i === 4 ? { ...s, status: "active" } : s,
-      ),
-    }));
-    setTimeout(() => {
-      setMission((m) => ({
-        ...m,
-        status: "completed",
-        confidence: 0.91,
-        stages: m.stages.map((s) => ({ ...s, status: "done" })),
-      }));
-      setRunning(false);
-    }, 1400);
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+  const handleRun = () => {
+    if (run.phase === "running" || !query.trim()) return;
+    run.start(query, null);
   };
-  const reset = () => {
-    setQuery(initialQuery);
-    setMission((m) => ({
-      ...m,
-      status: "completed",
-      confidence: 0.91,
-      stages,
-    }));
+
+  const handleReset = () => {
+    run.reset();
+    setQuery(INITIAL_QUERY);
   };
+
   const contentTitle =
-    active === "mission"
-      ? "Mission overview"
-      : active === "map"
-        ? "Map workspace"
-        : active === "monitor"
-          ? "Persistent monitoring"
-          : active === "evidence"
-            ? "Evidence chain"
-            : active === "history"
-              ? "Mission history"
-              : "Reports & decision briefs";
+    active === "mission" ? "Mission overview" :
+    active === "map" ? "Map workspace" :
+    active === "monitor" ? "Persistent monitoring" :
+    active === "evidence" ? "Evidence chain" :
+    active === "history" ? "Mission history" :
+    "Reports & decision briefs";
+
+  const contentSubtitle =
+    active === "mission" ? "Flagship flood mission and evidence-first workflow" :
+    active === "map" ? "Inspect AOI, observations, overlays and confidence layers" :
+    active === "monitor" ? "Recurring acquisition, alerting and mission watch state" :
+    active === "evidence" ? "Provenance, observations, model metadata and audit trace" :
+    active === "history" ? "Temporal mission memory and prior runs" :
+    "Decision briefs, report generation and export surfaces";
+
   return (
     <div className="app-shell">
+      {/* Mobile nav overlay */}
       <div className={`mobile-nav ${mobileNav ? "open" : ""}`}>
         <Sidebar
           active={active}
-          onSelect={(id) => {
-            setActive(id);
-            setMobileNav(false);
-          }}
+          onSelect={(id) => { setActive(id); setMobileNav(false); }}
         />
       </div>
+
+      {/* Desktop sidebar */}
       <div className="desktop-sidebar">
         <Sidebar active={active} onSelect={setActive} />
       </div>
+
       <main className="main">
         <Topbar
           theme={theme}
           onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
-          runId={mission.runId}
+          runId={runId}
         />
+
+        {/* Mobile topbar */}
         <div className="mobile-top">
           <button className="icon-btn" onClick={() => setMobileNav(true)}>
             <Menu size={17} />
           </button>
           <span>{contentTitle}</span>
         </div>
+
         <div className="content">
+          {/* Page header */}
           <div className="page-head">
             <div>
               <div className="eyebrow">FLAGSHIP MISSION · FLOOD IMPACT</div>
@@ -222,96 +195,107 @@ export default function Dashboard() {
               <span className="gateway-chip">
                 <i /> Gateway only · secured
               </span>
-              <button className="primary-btn" onClick={reset}>
+              <button className="primary-btn" onClick={handleReset}>
                 <RefreshCw size={14} /> New mission
               </button>
             </div>
           </div>
+
+          {/* Workspace mode label */}
           <div className="workspace-mode">
             <div>
               <b>{contentTitle}</b>
-              <span>
-                {active === "mission"
-                  ? "Flagship flood mission and evidence-first workflow"
-                  : active === "map"
-                    ? "Inspect AOI, observations, overlays and confidence layers"
-                    : active === "monitor"
-                      ? "Recurring acquisition, alerting and mission watch state"
-                      : active === "evidence"
-                        ? "Provenance, observations, model metadata and audit trace"
-                        : active === "history"
-                          ? "Temporal mission memory and prior runs"
-                          : "Decision briefs, report generation and export surfaces"}
-              </span>
+              <span>{contentSubtitle}</span>
             </div>
             <span className="mono-chip">P5 / {active.toUpperCase()}</span>
           </div>
+
+          {/* Main workspace */}
           <div className="workspace">
             <div className="map-card">
               <MapCanvas />
             </div>
+
             {rightRail && (
               <div className="right-rail">
                 <QueryConsole
                   value={query}
                   onChange={setQuery}
-                  onRun={run}
-                  running={running}
-                  onReset={reset}
+                  onRun={handleRun}
+                  running={run.phase === "running"}
+                  onReset={handleReset}
                 />
-                <ConfidenceCard confidence={mission.confidence} />
+                {/* Show confidence only once backend returns a value */}
+                {confidence !== null && (
+                  <ConfidenceCard confidence={confidence} />
+                )}
+                {/* Error state */}
+                {run.phase === "failed" && run.error && (
+                  <div className="error-banner">
+                    ⚠ {run.error.message}
+                    {run.error.trace_id && (
+                      <span className="mono-chip" style={{ marginLeft: 8 }}>
+                        {run.error.trace_id}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <EvidencePanel
-                  evidence={mission.evidence}
+                  evidence={evidence}
                   onTrace={() => setTrace(true)}
                 />
               </div>
             )}
+
             <button
               className="rail-toggle"
               onClick={() => setRightRail(!rightRail)}
               title={rightRail ? "Hide analysis rail" : "Show analysis rail"}
             >
-              {rightRail ? (
-                <PanelRightClose size={15} />
-              ) : (
-                <PanelRightOpen size={15} />
-              )}
+              {rightRail ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
             </button>
           </div>
+
+          {/* Mission stats strip */}
           <div className="section-strip">
             <div>
               <span>MISSION ID</span>
-              <b>{mission.missionId}</b>
+              <b>{missionId}</b>
             </div>
             <div>
               <span>AOI</span>
-              <b>{mission.location}</b>
+              <b>{location}</b>
             </div>
             <div>
               <span>RESULT</span>
-              <b>{mission.summary}</b>
+              <b>{summary}</b>
             </div>
             <div>
               <span>CONFIDENCE</span>
-              <b>
-                {mission.confidence
-                  ? `${Math.round(mission.confidence * 100)}%`
-                  : "—"}
-              </b>
+              <b>{confidence !== null ? `${Math.round(confidence * 100)}%` : "—"}</b>
             </div>
             <div>
               <span>STATUS</span>
-              <b className="success-text">
-                {mission.status === "running" ? "RUNNING" : "EVIDENCE READY"}
+              <b className={missionStatus === "failed" ? "error-text" : "success-text"}>
+                {missionStatus === "running"
+                  ? "RUNNING"
+                  : missionStatus === "completed"
+                  ? "EVIDENCE READY"
+                  : missionStatus === "failed"
+                  ? "FAILED"
+                  : "IDLE"}
               </b>
             </div>
           </div>
+
+          {/* Bottom grid */}
           <div className="bottom-grid">
-            <RunTimeline stages={mission.stages} />
+            <RunTimeline stages={stages} />
             <SensorCard />
             <MonitoringCard />
             <ReportCard onReport={() => setActive("reports")} />
           </div>
+
           <footer className="app-footer">
             <div>
               <Globe2 size={14} />
@@ -328,13 +312,16 @@ export default function Dashboard() {
           </footer>
         </div>
       </main>
+
+      {/* Trace drawer (uses live stages from backend) */}
       {trace && (
         <TraceDrawer
-          stages={mission.stages}
-          runId={mission.runId}
+          stages={stages}
+          runId={runId}
           onClose={() => setTrace(false)}
         />
       )}
+
       <div className="mobile-nav-overlay" onClick={() => setMobileNav(false)} />
     </div>
   );

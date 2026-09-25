@@ -93,27 +93,3 @@ def process_geo_job(self, job_id: str, idempotency_key: str, payload: dict, cont
             raise self.retry(exc=e)
 
 
-# --- P4-17: Geo failure recovery and fixture fallback ---
-class FixtureFallbackManager:
-    """
-    P4-17: Returns pinned deterministic fixtures when live provider calls fail.
-    Fixture files live in data/fixtures/ and are loaded by logical name.
-    """
-
-    def __init__(self, fixture_dir: str = "data/fixtures"):
-        self.fixture_dir = fixture_dir
-
-    def recover_search(self, fallback_id: str, context: dict) -> Dict[str, Any]:
-        with tracer.start_as_current_span("recover_fixture") as span:
-            inject_context_to_span(span, context)
-            import os
-            import json
-
-            fixture_path = os.path.join(self.fixture_dir, f"{fallback_id}.json")
-            if not os.path.exists(fixture_path):
-                raise FileNotFoundError(f"Fixture not found: {fixture_path}")
-            with open(fixture_path, "r") as f:
-                return json.load(f)  # type: ignore
-
-
-fixture_fallback = FixtureFallbackManager()

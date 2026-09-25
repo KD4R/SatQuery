@@ -20,10 +20,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError } from "./api/gateway";
-import { executeMission, getJob } from "./api/client";
+import { executeMission, getAgentRun, getJob } from "./api/client";
 import { DEMO_STAGES } from "./fixtures";
 import type { StageState } from "./model/console";
-import type { ErrorResponse, GeoJSONPolygon, JobStatus } from "./api/types";
+import type {
+  ErrorResponse,
+  GeoJSONPolygon,
+  JobStatus,
+  MissionState,
+} from "./api/types";
 
 export interface RunStageView {
   key: string;
@@ -40,6 +45,9 @@ export interface MissionRun {
   jobId: string | null;
   traceId: string | null;
   error: ErrorResponse | null;
+  /** The agent's final state (mission_id, confidence, evidence graph), fetched
+   * once when a live run completes. Null in demo mode and until completion. */
+  agentState: MissionState | null;
   start: (query: string, aoi: GeoJSONPolygon | null) => void;
   reset: () => void;
 }
@@ -99,6 +107,7 @@ export function useMissionRun(demo: boolean): MissionRun {
   const [jobId, setJobId] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
   const [error, setError] = useState<ErrorResponse | null>(null);
+  const [agentState, setAgentState] = useState<MissionState | null>(null);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const abort = useRef<AbortController | null>(null);
@@ -119,6 +128,7 @@ export function useMissionRun(demo: boolean): MissionRun {
     setJobId(null);
     setTraceId(null);
     setError(null);
+    setAgentState(null);
   }, [clearAll, demo]);
 
   /* ── demo ───────────────────────────────────────────────────────────────── */
@@ -141,6 +151,8 @@ export function useMissionRun(demo: boolean): MissionRun {
       );
     });
     timers.current.push(setTimeout(() => setPhase("complete"), elapsed));
+    // The demo panel is fed from the pinned scenario, not from the backend, so
+    // there is deliberately no agent state to fetch here.
   }, [clearAll]);
 
   /* ── live ───────────────────────────────────────────────────────────────── */
@@ -173,6 +185,16 @@ export function useMissionRun(demo: boolean): MissionRun {
             setStages(liveStages(status, null));
 
             if (status === "completed") {
+              // The Dashboard and report surfaces read the agent's final state
+              // (mission_id, confidence, evidence graph). A failed fetch must
+              // not fail the run — the job did complete; the panels then render
+              // NOT AVAILABLE rather than invented values.
+              try {
+                const agent = await getAgentRun(submitted.data.job_id, controller.signal);
+                setAgentState(agent.data);
+              } catch {
+                /* agent state stays null — honest absence */
+              }
               setPhase("complete");
               return;
             }
@@ -231,5 +253,5 @@ export function useMissionRun(demo: boolean): MissionRun {
     [demo, startDemo, startLive],
   );
 
-  return { phase, stages, jobId, traceId, error, start, reset };
+  return { phase, stages, jobId, traceId, error, agentState, start, reset };
 }

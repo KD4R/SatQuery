@@ -71,3 +71,4 @@ artifacts/
 # against a fingerprint of the code that produced it (P3-15). A generated file
 # that must be committed is unusual; the alternative is numbers living only in
 # prose, which is the failure this exists to prevent.
+AUDIT_REPORT.md

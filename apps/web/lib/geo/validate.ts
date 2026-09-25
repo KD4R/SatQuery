@@ -184,9 +184,7 @@ export function validateAOI(geometry: GeoJSONPolygon | null): ValidationResult {
 
   // Crossing the antimeridian breaks area and bbox maths in most of the stack.
   const lons = exterior.map((p) => p[0] as number);
-  const maxLon = lons.reduce((max, lon) => Math.max(max, lon), -Infinity);
-  const minLon = lons.reduce((min, lon) => Math.min(min, lon), Infinity);
-  if (maxLon - minLon > 180) {
+  if (Math.max(...lons) - Math.min(...lons) > 180) {
     findings.push({
       rule: "aoi.antimeridian",
       severity: "error",
