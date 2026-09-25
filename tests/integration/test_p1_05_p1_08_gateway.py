@@ -110,7 +110,7 @@ def _allow_tenant_check(mock_httpx_client):
 def test_p1_08_websocket_valid_token_connects_and_streams(
     mock_redis, mock_httpx_client, gateway_client
 ):
-    """A valid JWT connects and receives status stream messages."""
+    """A valid JWT reports Redis failure without fabricating a success stream."""
     mock_redis.side_effect = Exception("Mock Redis Failure")
     _allow_tenant_check(mock_httpx_client)
     token = _token(roles=["viewer"])
@@ -119,15 +119,12 @@ def test_p1_08_websocket_valid_token_connects_and_streams(
         assert connected["event"] == "connected"
         assert connected["mission_id"] == "m-001"
 
-        update = ws.receive_json()
-        assert update["event"] == "status_update"
-        assert "status" in update
-
-        # Drain remaining messages
-        ws.receive_json()  # running
-        ws.receive_json()  # completed
+        error = ws.receive_json()
+        assert error["event"] == "error"
+        assert error["error"]["code"] == "STATUS_STREAM_UNAVAILABLE"
         done = ws.receive_json()
         assert done["event"] == "done"
+        assert done["final_status"] == "failed"
 
 
 @pytest.mark.integration
@@ -166,6 +163,7 @@ def test_p1_08_websocket_tenant_org_id_in_messages(mock_redis, mock_httpx_client
     with gateway_client.websocket_connect(f"/ws/v1/missions/m-ws?token={token}") as ws:
         msg = ws.receive_json()
         assert msg["org_id"] == "org-ws-test"
-        # drain
-        for _ in range(4):
-            ws.receive_json()
+        error = ws.receive_json()
+        assert error["event"] == "error"
+        done = ws.receive_json()
+        assert done["event"] == "done"

@@ -119,7 +119,7 @@ def test_p1_proxy_circuit_breaker_returns_503(mock_get_client, gw):
     token = _viewer_token()
     resp = gw.get("/api/v1/missions", headers=_ah(token))
     assert resp.status_code == 503
-    body = resp.json()["detail"]
+    body = resp.json()
     assert body["code"] == "SERVICE_UNAVAILABLE"
     assert body["retryable"] is True
 
@@ -138,7 +138,7 @@ def test_p1_proxy_upstream_404_propagated(mock_get_client, gw):
     token = _viewer_token()
     resp = gw.get("/api/v1/missions/missing-id", headers=_ah(token))
     assert resp.status_code == 404
-    assert resp.json()["detail"]["code"] == "MISSION_NOT_FOUND"
+    assert resp.json()["code"] == "MISSION_NOT_FOUND"
 
 
 @pytest.mark.integration
@@ -155,7 +155,7 @@ def test_p1_proxy_upstream_500_propagated_with_retryable(mock_get_client, gw):
     token = _viewer_token()
     resp = gw.get("/api/v1/missions", headers=_ah(token))
     assert resp.status_code == 500
-    assert resp.json()["detail"]["retryable"] is True
+    assert resp.json()["retryable"] is True
 
 
 @pytest.mark.integration

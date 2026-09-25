@@ -4,6 +4,7 @@ graph/orchestrator.py — LangGraph state machine & run orchestrator for SatQuer
 
 from typing import Dict, List, Optional
 import uuid
+from datetime import datetime, timezone
 from langgraph.graph import StateGraph, START, END
 from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 from services.agent.nodes.intent_extractor import extract_intent_and_plan
@@ -18,6 +19,9 @@ from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from services.agent.evidence.models import EvidenceGraph
 from services.agent.nodes.synthesizer import synthesize_evidence_output
 from services.agent.nodes.resilience import execute_with_recovery
+import redis
+from packages.providers.config import config
+from packages.contracts.events import EventEnvelope
 
 
 def plan_mission(state: MissionState) -> dict:
@@ -95,25 +99,47 @@ def acquire_data(state: MissionState) -> dict:
                 budget=budget,
             )
             if res.success and res.output:
-                return [obs["asset_id"] for obs in res.output]
-            return []
+                return res.output
+            # Raise rather than return []. execute_with_recovery treats any returned
+            # value as success, so swallowing the failure here would report
+            # status="HEALTHY" for a search that never reached the provider --
+            # indistinguishable from "this area genuinely has no observations".
+            # Raising is what makes the bounded retries run and marks the result
+            # DEGRADED_FALLBACK, which is the truthful state.
+            raise RuntimeError(f"stac_search returned no usable observations: {res}")
 
-        def _fallback_fn():
-            # Deterministic fallback scene
-            return ["S1A_IW_GRDH_1SDV_FALLBACK"]
-
+        # fallback_fn is a required parameter and was not being passed, so this call
+        # raised TypeError on every invocation and the bare `except Exception` below
+        # turned it into obs_ids = []. _primary_fn never ran: the agent had not been
+        # searching for observations at all. mypy flags it; it reproduces with
+        #
+        #   execute_with_recovery(action_name="x", primary_fn=lambda: [], max_retries=2)
+        #
+        # observations is still [] when the search fails, so nothing downstream
+        # changes shape -- but the search now runs, retries, and a failure is
+        # labelled DEGRADED_FALLBACK instead of passing as a healthy empty result.
+        #
+        # @P2 recovery_result.status and .warning are still discarded here. A degraded
+        # acquisition should probably reach the caveats rather than look like a clean
+        # "no observations found" -- your call.
         recovery_result = execute_with_recovery(
             action_name="stac_search_acquisition",
             primary_fn=_primary_fn,
-            fallback_fn=_fallback_fn,
+            fallback_fn=lambda: [],
             max_retries=2,
         )
-        obs_ids = recovery_result.data
+        observations = recovery_result.data if recovery_result.data else []
+        obs_ids = [obs.get("asset_id") for obs in observations if "asset_id" in obs]
     except Exception:
+        observations = []
         obs_ids = []
 
     new_meta = dict(state.metadata)
     new_meta["budget"] = budget.model_dump()
+    new_meta["observations"] = observations
+
+    if not obs_ids:
+        return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
 
     return {"status": "ACQUIRING", "observation_ids": obs_ids, "metadata": new_meta}
 
@@ -142,30 +168,36 @@ def analyze_data(state: MissionState) -> dict:
         return {"status": "FAILED", "metadata": state.metadata}
 
     scene_id = state.observation_ids[0]
-    # Reconstruct fake href for STAC or use real one. In Bhoonidhi we need the href.
-    # The stac_search executor returns just the asset_id. Let's just pass it as scene_href.
-    scene_href = f"s3://satquery/{scene_id}.tif"
+    observations = state.metadata.get("observations", [])
+    obs: dict = next((o for o in observations if o.get("asset_id") == scene_id), {})
+    scene_href = obs.get("href")
 
-    client = InternalClient(
-        base_url=settings.inference_service_url, caller_service="agent", scopes=["inference:run"]
-    )
+    acquired_at = obs.get("datetime")
+    if not acquired_at:
+        acquired_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    import concurrent.futures
 
     payload = {
         "scene": {
-            "provider": "BHOONIDHI",
-            "collection": "sentinel-1-grd",
+            "provider": obs.get("provider", "BHOONIDHI"),
+            "collection": obs.get("collection", "sentinel-1-grd"),
             "item_id": scene_id,
-            "acquired_at": "2026-09-02T00:00:00Z",
-            "platform": "Sentinel-1A",
-            "instrument": "SAR-C",
+            "acquired_at": acquired_at,
+            "platform": obs.get("platform", "Sentinel-1A"),
+            "instrument": obs.get("instrument", "SAR-C"),
             "href": scene_href,
         },
         "scene_href": scene_href,
-        "model": "baseline",  # Force deterministic baseline
         "min_mapping_unit_ha": 0.5,
     }
 
     async def _call_inference():
+        client = InternalClient(
+            base_url=settings.inference_service_url,
+            caller_service="agent",
+            scopes=["inference:run"],
+        )
         try:
             resp = await client.post("/api/v1/inference/analyses", auth_context=ctx, json=payload)
             return resp.json()
@@ -173,8 +205,11 @@ def analyze_data(state: MissionState) -> dict:
             await client.aclose()
 
     try:
-        # Run async client in synchronous LangGraph node
-        outcome_data = asyncio.run(_call_inference())
+        # Run the async client on its own thread: asyncio.run() refuses to start
+        # when a loop is already running, which it is under eager Celery and in tests.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(asyncio.run, _call_inference())
+            outcome_data = future.result()
 
         new_meta = dict(state.metadata)
         new_meta["inference_outcome"] = outcome_data
@@ -182,16 +217,6 @@ def analyze_data(state: MissionState) -> dict:
         return {"status": "ANALYZING", "metadata": new_meta}
     except Exception as e:
         logger.error(f"Inference call failed: {e}")
-        import os
-
-        if os.environ.get("CELERY_TASK_ALWAYS_EAGER") == "true":
-            outcome_data = {
-                "degraded_from": "baseline",
-                "measurements": [{"name": "inundation_area_ha", "value": 14250.0, "unit": "ha"}],
-            }
-            new_meta = dict(state.metadata)
-            new_meta["inference_outcome"] = outcome_data
-            return {"status": "ANALYZING", "metadata": new_meta}
         return {"status": "FAILED", "metadata": state.metadata}
 
 
@@ -207,11 +232,16 @@ def gate_check(state: MissionState) -> dict:
         # Assuming the first measurement is the flood extent in hectares, convert to sqkm
         inundated_sqkm = measurements[0].get("value", 0.0) / 100.0
 
-    obs_id = (
-        state.observation_ids[0]
-        if state.observation_ids
-        else f"S1A_IW_GRDH_1SDV_{uuid.uuid4().hex[:6].upper()}"
-    )
+    if not state.observation_ids:
+        return {"status": "FAILED", "confidence_score": 0.0, "evidence_graph": {}}
+
+    obs_id = state.observation_ids[0]
+
+    observations = state.metadata.get("observations", [])
+    obs_dict: dict = next((o for o in observations if o.get("asset_id") == obs_id), {})
+    obs_time = obs_dict.get("datetime")
+    if not obs_time:
+        obs_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Heuristically detect sensor from observation_ids or state
     sensor = "S1_SAR"
@@ -222,17 +252,21 @@ def gate_check(state: MissionState) -> dict:
         {
             "asset_id": obs_id,
             "sensor": sensor,
-            "datetime": "2026-09-02T00:35:12Z",
+            "datetime": obs_time,
         }
     )
+
+    # Use P3/P4 confidence, metadata, disagreement, and quality outputs in the gate.
+    conf_data = outcome_data.get("confidence") or {}
+    model_conf = float(conf_data.get("value", 0.88) or 0.88)
 
     # Create the inference node with real data
     inf_node = ev_builder.add_inference(
         input_node_ids=[obs_node.node_id],
-        model_name=outcome_data.get("degraded_from", "baseline"),
+        model_name=outcome_data.get("degraded_from", "baseline") or "baseline",
         model_version="1.0",
         results={"inundated_sqkm": inundated_sqkm},
-        confidence=0.88,
+        confidence=model_conf,
     )
 
     ev_builder.add_metric(
@@ -255,29 +289,73 @@ def gate_check(state: MissionState) -> dict:
         trace_id=state.trace_id,
     )
 
+    new_meta = dict(state.metadata)
+    status = "GATE_CHECK"
+    # Implement explicit sensor-disagreement and low-confidence re-investigation behavior
+    if not conf.passed_gate:
+        retries = new_meta.get("reinvestigations", 0)
+        if retries < 1:
+            new_meta["reinvestigations"] = retries + 1
+            status = "REINVESTIGATE"
+
     return {
-        "status": "GATE_CHECK",
+        "status": status,
         "confidence_score": conf.confidence_score,
         "evidence_graph": evidence_graph,
+        "metadata": new_meta,
     }
 
 
 def synthesize(state: MissionState) -> dict:
-    if state.evidence_graph:
-        graph = EvidenceGraph(**state.evidence_graph)
-        out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
-        output_dict = out.model_dump()
-        # Flatten metrics into top-level for backward compatibility
-        for k, v in out.metrics.items():
-            output_dict[k] = v
-    else:
+    if state.confidence_score is not None and state.confidence_score < 0.6:
         output_dict = {
-            "summary": "No evidence graph available for synthesis.",
+            "summary": (
+                f"Agent aborted execution: the confidence score "
+                f"({state.confidence_score:.2f}) was below the acceptable threshold, "
+                f"indicating high uncertainty."
+            ),
             "inundation_area_sqkm": 0,
             "affected_structures_count": 0,
             "primary_sensor": "UNKNOWN",
         }
+        return {"status": "FAILED", "synthesized_output": output_dict}
+
+    if state.evidence_graph and state.observation_ids:
+        try:
+            graph = EvidenceGraph(**state.evidence_graph)
+            out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
+            output_dict = out.model_dump()
+            # Flatten metrics into top-level for backward compatibility
+            for k, v in out.metrics.items():
+                output_dict[k] = v
+        except ValueError as e:
+            output_dict = {
+                "summary": f"Evidence synthesis failed: {e}",
+                "inundation_area_sqkm": 0,
+                "affected_structures_count": 0,
+                "primary_sensor": "UNKNOWN",
+            }
+    else:
+        reason = (
+            "No observations acquired."
+            if not state.observation_ids
+            else "No evidence graph available for synthesis."
+        )
+        output_dict = {
+            "summary": f"Mission failed to complete successfully. Reason: {reason}",
+            "inundation_area_sqkm": 0,
+            "affected_structures_count": 0,
+            "primary_sensor": "UNKNOWN",
+        }
+        return {"status": "FAILED", "synthesized_output": output_dict}
+
     return {"status": "COMPLETED", "synthesized_output": output_dict}
+
+
+def should_reinvestigate(state: MissionState) -> str:
+    if state.status == "REINVESTIGATE":
+        return "sensor_arbitration"
+    return "synthesize"
 
 
 def _build_graph():
@@ -294,7 +372,14 @@ def _build_graph():
     graph.add_edge("sensor_arbitration", "acquiring")
     graph.add_edge("acquiring", "analyzing")
     graph.add_edge("analyzing", "gate_check")
-    graph.add_edge("gate_check", "synthesize")
+    graph.add_conditional_edges(
+        "gate_check",
+        should_reinvestigate,
+        {
+            "sensor_arbitration": "sensor_arbitration",
+            "synthesize": "synthesize",
+        },
+    )
     graph.add_edge("synthesize", END)
     return graph.compile()
 
@@ -345,18 +430,49 @@ class AgentOrchestrator:
     def list_runs(self, org_id: str) -> List[MissionState]:
         return [r for r in self._runs.values() if r.organization_id == org_id]
 
+    def _get_redis(self):
+        if not hasattr(self, "_redis"):
+            self._redis = redis.from_url(config.redis_url.get_secret_value(), decode_responses=True)
+        return self._redis
+
+    def _publish_event(self, state: MissionState, event_type: str, payload: dict):
+        evt = EventEnvelope(
+            event_id=f"evt_{state.run_id}_{event_type}",
+            event_type=event_type,
+            trace_id=state.trace_id,
+            mission_id=state.mission_id,
+            producer="agent_orchestrator",
+            payload=payload,
+        )
+        try:
+            r = self._get_redis()
+            r.publish(f"agent:events:{state.mission_id}", evt.model_dump_json())
+            r.xadd(f"agent:stream:{state.mission_id}", {"event": evt.model_dump_json()})
+        except Exception:
+            pass
+
     def step_execution(self, state: MissionState) -> MissionState:
         """
-        Executes the LangGraph workflow.
+        Executes the LangGraph workflow and streams events.
         """
-        result_state = self._app.invoke(state)
-        if isinstance(result_state, dict):
-            final_state = MissionState(**result_state)
-        else:
-            final_state = result_state
+        self._publish_event(state, "RUN_STARTED", {"status": state.status})
 
+        current_state_dict = state.model_dump()
+        for update in self._app.stream(state):
+            node_name = list(update.keys())[0]
+            node_update = update[node_name]
+            current_state_dict.update(node_update)
+
+            temp_state = MissionState(**current_state_dict)
+            self._publish_event(
+                temp_state, f"NODE_COMPLETED_{node_name.upper()}", {"status": temp_state.status}
+            )
+
+        final_state = MissionState(**current_state_dict)
         if final_state.job_id:
             self._runs[final_state.job_id] = final_state
+
+        self._publish_event(final_state, "RUN_COMPLETED", {"status": final_state.status})
         return final_state
 
 

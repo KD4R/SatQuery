@@ -34,7 +34,7 @@ class ProviderConfig(BaseSettings):
     # Global timeout bounds for network resilience
     request_timeout_sec: float = Field(default=15.0, alias="REQUEST_TIMEOUT_SEC")
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
 # Global provider configuration singleton
