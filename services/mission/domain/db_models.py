@@ -4,6 +4,12 @@ from services.mission.database import Base
 from services.mission.domain.models import MissionStatus, JobStatus
 from datetime import datetime, timezone
 
+# The repositories and routers stamp timezone-aware UTC datetimes
+# (datetime.now(timezone.utc)); naive columns made asyncpg reject every INSERT
+# ("can't subtract offset-naive and offset-aware datetimes"). These are
+# timestamptz columns, matching what the code actually produces.
+TIMESTAMP = DateTime(timezone=True)
+
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
@@ -19,8 +25,8 @@ class MissionModel(Base):
     aoi_ids: Any = Column(JSON, default=list, nullable=False)
     organisation_id: Any = Column(String, index=True, nullable=False)
     created_by: Any = Column(String, nullable=False)
-    created_at: Any = Column(DateTime, default=_utc_now, nullable=False)
-    updated_at: Any = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+    created_at: Any = Column(TIMESTAMP, default=_utc_now, nullable=False)
+    updated_at: Any = Column(TIMESTAMP, default=_utc_now, onupdate=_utc_now, nullable=False)
 
 
 class AOIModel(Base):
@@ -32,8 +38,8 @@ class AOIModel(Base):
     geometry: Any = Column(JSON, nullable=False)
     organisation_id: Any = Column(String, index=True, nullable=False)
     created_by: Any = Column(String, nullable=False)
-    created_at: Any = Column(DateTime, default=_utc_now, nullable=False)
-    updated_at: Any = Column(DateTime, default=_utc_now, onupdate=_utc_now, nullable=False)
+    created_at: Any = Column(TIMESTAMP, default=_utc_now, nullable=False)
+    updated_at: Any = Column(TIMESTAMP, default=_utc_now, onupdate=_utc_now, nullable=False)
 
 
 class JobModel(Base):
@@ -44,8 +50,8 @@ class JobModel(Base):
     status: Any = Column(SQLEnum(JobStatus), default=JobStatus.PENDING, nullable=False)
     organisation_id: Any = Column(String, index=True, nullable=False)
     submitted_by: Any = Column(String, nullable=False)
-    submitted_at: Any = Column(DateTime, default=_utc_now, nullable=False)
-    started_at: Any = Column(DateTime, nullable=True)
-    completed_at: Any = Column(DateTime, nullable=True)
+    submitted_at: Any = Column(TIMESTAMP, default=_utc_now, nullable=False)
+    started_at: Any = Column(TIMESTAMP, nullable=True)
+    completed_at: Any = Column(TIMESTAMP, nullable=True)
     trace_id: Any = Column(String, nullable=True)
     error_message: Any = Column(String, nullable=True)

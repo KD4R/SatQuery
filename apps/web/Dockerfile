@@ -14,6 +14,11 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# NEXT_PUBLIC_* is inlined into the client bundle at build time. Defaults to the
+# live build; pass --build-arg NEXT_PUBLIC_DEMO_MODE=1 for the deterministic
+# demo build (P5-17).
+ARG NEXT_PUBLIC_DEMO_MODE=0
+ENV NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE}
 RUN npm run build
 
 # ── Production ────────────────────────────────────────────────────────────────

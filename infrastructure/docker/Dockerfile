@@ -25,9 +25,21 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # would buy a tenth of a second at the cost of a multi-gigabyte image and a
 # host driver requirement.
 ARG INSTALL_ML=0
+
+# torch is installed with --no-deps and its dependencies are resolved from PyPI
+# first. The PyTorch CPU index mirrors torch's pure-Python dependencies, but its
+# typing-extensions wheel has shipped a broken Name field ("typing_extensions"),
+# so pip discards it, falls back to the sdist, and the build-isolation subprocess
+# then fails to find flit_core on an index that only carries PyTorch packages.
+# If a future torch version adds a dependency, add it to this list — the
+# inference healthcheck fails visibly on an unimportable torch, so a stale list
+# cannot ship silently.
 RUN if [ "$INSTALL_ML" = "1" ]; then \
         pip install --no-cache-dir --prefix=/install \
-            --index-url https://download.pytorch.org/whl/cpu "torch>=2.4"; \
+            "filelock" "typing-extensions>=4.10" "sympy>=1.13.3" \
+            "networkx>=2.5.1" "jinja2" "fsspec" && \
+        pip install --no-cache-dir --prefix=/install \
+            --index-url https://download.pytorch.org/whl/cpu --no-deps "torch>=2.4"; \
     fi
 
 # ─── Stage 2: Runtime ────────────────────────────────────────────────────────

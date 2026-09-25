@@ -24,10 +24,14 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
+    // Inside the compose network the gateway is "api"; a dev server on the host
+    // reaches it on localhost, so the origin is overridable without touching
+    // container configuration.
+    const gatewayOrigin = process.env.GATEWAY_ORIGIN ?? "http://api:8000";
     return [
       {
         source: "/api/v1/:path*",
-        destination: "http://api:8000/api/v1/:path*",
+        destination: `${gatewayOrigin}/api/v1/:path*`,
       },
     ];
   },

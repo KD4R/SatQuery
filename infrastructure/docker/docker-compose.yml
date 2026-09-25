@@ -92,6 +92,13 @@ services:
       OTEL_SERVICE_NAME: satquery-api
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
       # Upstream service discovery for the gateway proxy (proxy.py).
       MISSION_SERVICE_URL: http://mission:8000
       AGENT_SERVICE_URL: http://agent:8000
@@ -136,6 +143,13 @@ services:
       OTEL_SERVICE_NAME: satquery-worker-ingest
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
       CELERY_CONCURRENCY: "2"
     image: satquery-worker-ingest
     command: celery -A services.celery_orchestrator worker -Q ingest,celery -c 2 -l info
@@ -175,6 +189,13 @@ services:
       OTEL_SERVICE_NAME: satquery-worker-analysis
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
     command: celery -A services.celery_orchestrator worker -Q analysis,celery --autoscale=8,2 -l info
     depends_on:
       postgres:
@@ -210,6 +231,13 @@ services:
       OTEL_SERVICE_NAME: satquery-worker-report
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
     command: celery -A services.celery_orchestrator worker -Q report,celery -c 4 -l info
     depends_on:
       postgres:
@@ -255,6 +283,13 @@ services:
     environment:
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
@@ -301,10 +336,21 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: satquery
       TITILER_URL: http://titiler:8081
+      # Where submitted runs are dispatched (routers/jobs.py). Without it the
+      # code defaults to localhost:8002 — itself inside the container — and
+      # every run dies with "Agent invocation failed".
+      AGENT_SERVICE_URL: http://agent:8000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: satquery-mission
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
     ports:
       - "${MISSION_PORT:-8001}:8000"
     healthcheck:
@@ -351,6 +397,13 @@ services:
       OTEL_SERVICE_NAME: satquery-agent
       PYTHONPATH: /app
       ENVIRONMENT: development
+      # Dev auth: HS256 with a shared secret (packages/auth/config.py allows HS256
+      # only when explicitly configured; production uses RS256/OIDC). All services
+      # that decode a bearer or mint an internal S2S token need the same values.
+      AUTH_ALGORITHM: HS256
+      AUTH_SECRET_KEY: ${AUTH_SECRET_KEY:?set AUTH_SECRET_KEY in infrastructure/docker/.env}
+      AUTH_ISSUER: satquery-dev
+      AUTH_AUDIENCE: satquery-dev
     ports:
       - "${AGENT_PORT:-8002}:8000"
     healthcheck:
