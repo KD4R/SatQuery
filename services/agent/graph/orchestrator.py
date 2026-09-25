@@ -95,7 +95,7 @@ def acquire_data(state: MissionState) -> dict:
                 budget=budget,
             )
             if res.success and res.output:
-                return [obs["asset_id"] for obs in res.output]
+                return [obs["observation_id"] for obs in res.output]
             return []
 
         recovery_result = execute_with_recovery(
@@ -168,8 +168,23 @@ def analyze_data(state: MissionState) -> dict:
             await client.aclose()
 
     try:
-        # Run async client in synchronous LangGraph node
-        outcome_data = asyncio.run(_call_inference())
+        import threading
+        result_box = []
+        err_box = []
+
+        def _run_in_thread():
+            try:
+                result_box.append(asyncio.run(_call_inference()))
+            except Exception as e:
+                err_box.append(e)
+
+        t = threading.Thread(target=_run_in_thread)
+        t.start()
+        t.join()
+
+        if err_box:
+            raise err_box[0]
+        outcome_data = result_box[0]
 
         new_meta = dict(state.metadata)
         new_meta["inference_outcome"] = outcome_data

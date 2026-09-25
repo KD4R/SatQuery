@@ -132,7 +132,7 @@ class TestOTelCollectorPipeline:
         pipelines = data["service"]["pipelines"]
         assert "traces" in pipelines
         assert "otlp" in pipelines["traces"]["receivers"]
-        assert "prometheus" in pipelines["traces"]["exporters"]
+        assert "logging" in pipelines["traces"]["exporters"]
 
     def test_otel_has_metrics_pipeline(self):
         with open(INFRA_DIR / "otel-collector-config.yml") as f:
