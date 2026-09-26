@@ -2,6 +2,7 @@
 graph/orchestrator.py — LangGraph state machine & run orchestrator for SatQuery AI.
 """
 
+import logging
 from typing import Dict, List, Optional
 import uuid
 from datetime import datetime, timezone
@@ -28,6 +29,8 @@ from services.agent.nodes.resilience import execute_with_recovery
 import redis
 from packages.providers.config import config
 from packages.contracts.events import EventEnvelope
+
+logger = logging.getLogger(__name__)
 
 
 def plan_mission(state: MissionState) -> dict:
@@ -405,7 +408,19 @@ def _build_graph():
 class AgentOrchestrator:
     """
     Manages state machine transitions for agent runs and mission execution.
+
+    Run state lives in Redis (``agent:run:{job_id}``, 24h TTL) with a
+    process-local cache in front. The cache keeps same-process reads cheap;
+    Redis is what makes a run visible across processes — the API process that
+    creates it, the process that streams the graph (a daemon thread here, or a
+    Celery worker — either executor works once state is shared), the mission
+    service polling GET /agent/runs/{job_id}, and the gateway WS bridging
+    progress to the browser. Redis writes are best-effort: if Redis is down the
+    run still executes, but only this process can see it.
     """
+
+    RUN_KEY_PREFIX = "agent:run:"
+    RUN_TTL_SECONDS = 24 * 3600
 
     def __init__(self):
         self._runs: Dict[str, MissionState] = {}
@@ -439,11 +454,41 @@ class AgentOrchestrator:
             status="INITIALIZED",
             metadata=metadata or {},
         )
-        self._runs[job_id] = state
+        self.save_run(state)
         return state
 
+    def save_run(self, state: MissionState) -> None:
+        """Persist run state: process-local cache first, then Redis (best-effort)."""
+        if state.job_id:
+            self._runs[state.job_id] = state
+        try:
+            self._get_redis().set(
+                self.RUN_KEY_PREFIX + (state.job_id or state.run_id),
+                state.model_dump_json(),
+                ex=self.RUN_TTL_SECONDS,
+            )
+        except Exception as exc:  # noqa: BLE001 — a state store outage must not kill a run
+            logger.warning(
+                "Run state not persisted to Redis (job_id=%s): %s", state.job_id, exc
+            )
+
     def get_run(self, job_id: str) -> Optional[MissionState]:
-        return self._runs.get(job_id)
+        state = self._runs.get(job_id)
+        if state is not None:
+            return state
+        try:
+            raw = self._get_redis().get(self.RUN_KEY_PREFIX + job_id)
+        except Exception:  # noqa: BLE001 — an unreadable store is just "no such run"
+            return None
+        if not raw:
+            return None
+        try:
+            state = MissionState.model_validate_json(raw)
+        except Exception:  # noqa: BLE001 — a corrupt entry must not 500 the route
+            logger.exception("Stored run %s is not a valid MissionState.", job_id)
+            return None
+        self._runs[job_id] = state
+        return state
 
     def list_runs(self, org_id: str) -> List[MissionState]:
         return [r for r in self._runs.values() if r.organization_id == org_id]
@@ -486,7 +531,7 @@ class AgentOrchestrator:
             
         final_state = MissionState(**current_state_dict)
         if final_state.job_id:
-            self._runs[final_state.job_id] = final_state
+            self.save_run(final_state)
             
         self._publish_event(final_state, "RUN_COMPLETED", {"status": final_state.status})
         return final_state

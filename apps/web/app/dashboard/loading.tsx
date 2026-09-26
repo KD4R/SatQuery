@@ -1,0 +1,1 @@
+export default function Loading(){return <div className="route-loading"><div className="loading-satellite"><i/><b/><span/></div><div><span>ROUTE / MISSION CONTROL</span><strong>Loading workspace</strong></div></div>}

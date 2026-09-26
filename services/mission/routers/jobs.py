@@ -18,6 +18,7 @@ OWASP:
 
 import logging
 import os
+from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
@@ -38,14 +39,22 @@ router = APIRouter(tags=["jobs"])
 AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8002")
 
 
-async def _run_job_background(job: Job, mission_query: str, job_repo: JobRepository) -> None:
+async def _run_job_background(
+    job: Job,
+    mission_query: str,
+    job_repo: JobRepository,
+    mission_repo: MissionRepository,
+) -> None:
     """
     Simulate async job execution — in production this hands off to Celery/Redis.
     Marked RUNNING → COMPLETED in background.
     Now we actually call the Agent service via InternalClient.
     """
+    import asyncio
     from datetime import datetime, timezone
+
     from packages.auth.models import AuthContext
+    from packages.shared.client import CircuitBreakerOpenError, InternalClientError
 
     job.status = JobStatus.RUNNING
     job.started_at = datetime.now(timezone.utc)
@@ -65,22 +74,85 @@ async def _run_job_background(job: Job, mission_query: str, job_repo: JobReposit
         trace_id=job.trace_id or "",
     )
 
+    agent_job_id: Optional[str] = None
     try:
         # Trigger the LangGraph agent run
-        await client.post(
+        response = await client.post(
             "/api/v1/agent/execute",
             auth_context=system_ctx,
             json={"mission_id": job.mission_id, "query": mission_query},
         )
-        logger.info("Successfully dispatched job_id=%s to Agent service.", job.id)
+        agent_job_id = response.json().get("job_id")
+        logger.info(
+            "Successfully dispatched job_id=%s to Agent service (agent job %s).",
+            job.id,
+            agent_job_id,
+        )
     except Exception as exc:
         logger.error("Failed to dispatch job_id=%s to Agent: %s", job.id, exc)
         job.status = JobStatus.FAILED
         job.completed_at = datetime.now(timezone.utc)
         job.error_message = f"Agent invocation failed: {str(exc)}"
         await job_repo.update(job)
-    finally:
         await client.aclose()
+        return
+
+    # The agent executes the graph in its own process; its /runs/{job_id} route
+    # reports terminal state. Poll so the operator's job record reaches a
+    # terminal status too — a job stuck RUNNING forever is a lie on the timeline.
+    terminal: Optional[dict] = None
+    for _ in range(180):  # bounded: 180 x 1s ≈ 3 min ceiling for one run
+        await asyncio.sleep(1)
+        try:
+            run_response = await client.get(
+                f"/api/v1/agent/runs/{agent_job_id}", auth_context=system_ctx
+            )
+            run_status = str(run_response.json().get("status", "")).upper()
+            if run_status in ("COMPLETED", "FAILED"):
+                terminal = run_response.json()
+                break
+        except InternalClientError as exc:
+            # 404 until the agent stores the run? create_run stores synchronously,
+            # so a 404 here means a real routing problem — fail the job.
+            if exc.status_code == 404:
+                job.status = JobStatus.FAILED
+                job.completed_at = datetime.now(timezone.utc)
+                job.error_message = "Agent reported no such run after dispatch."
+                await job_repo.update(job)
+                await client.aclose()
+                return
+        except (CircuitBreakerOpenError, Exception) as exc:  # noqa: BLE001 — keep polling
+            logger.warning("Polling agent run %s failed: %s", agent_job_id, exc)
+
+    # Resolve the mission alongside the job so the missions list never shows a
+    # run as "completed" while its mission still reads "queued".
+    mission = await mission_repo.get_by_id(job.mission_id, job.organisation_id)
+    if terminal is None:
+        job.status = JobStatus.FAILED
+        job.completed_at = datetime.now(timezone.utc)
+        job.error_message = "Agent run did not reach a terminal state in time."
+        await job_repo.update(job)
+        if mission:
+            mission.status = MissionStatus.FAILED
+            await mission_repo.update(mission)
+    elif terminal.get("status", "").upper() == "COMPLETED":
+        job.status = JobStatus.COMPLETED
+        job.completed_at = datetime.now(timezone.utc)
+        await job_repo.update(job)
+        if mission:
+            mission.status = MissionStatus.COMPLETED
+            await mission_repo.update(mission)
+    else:
+        job.status = JobStatus.FAILED
+        job.completed_at = datetime.now(timezone.utc)
+        errors = terminal.get("errors") or []
+        job.error_message = "; ".join(str(e) for e in errors) or "Agent run failed."
+        await job_repo.update(job)
+        if mission:
+            mission.status = MissionStatus.FAILED
+            await mission_repo.update(mission)
+
+    await client.aclose()
 
 
 @router.post(
@@ -136,7 +208,9 @@ async def submit_mission_run(
 
     # Enqueue background processing
     mission_query = mission.description or mission.name
-    background_tasks.add_task(_run_job_background, created_job, mission_query, job_repo)
+    background_tasks.add_task(
+        _run_job_background, created_job, mission_query, job_repo, mission_repo
+    )
 
     logger.info(
         "Job submitted: job_id=%s mission_id=%s org=%s subject=%s",

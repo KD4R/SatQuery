@@ -20,7 +20,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError } from "./api/gateway";
-import { executeMission, getAgentRun, getJob } from "./api/client";
+import { executeMission, getAgentRun } from "./api/client";
+
+/**
+ * GET /agent/runs/{job_id} answers 404 until the run registers with the
+ * orchestrator, so the first polls after a 202 can legitimately miss. A 404 is
+ * treated as "not yet" only inside this window; after it, a 404 is the honest
+ * answer and the run fails.
+ */
+const RUN_404_GRACE_MS = 15_000;
+
+const AGENT_STAGE_BY_STATUS: Record<string, string> = {
+  INITIALIZED: "Agent run accepted — workflow initialising.",
+  PLANNING: "Extracting intent and planning the acquisition.",
+  SENSOR_ARBITRATION: "Arbitrating sensors.",
+  ACQUIRING: "Acquiring candidate observations.",
+  ACQUIRING_EVIDENCE: "Acquiring candidate observations.",
+  ANALYZING: "Analysing observations.",
+  GATE_CHECK: "Running the confidence gate.",
+  SYNTHESIZING: "Synthesising the evidence-backed brief.",
+  COMPLETED: "The agent run completed.",
+  FAILED: "The agent run failed.",
+};
 import { DEMO_STAGES } from "./fixtures";
 import type { StageState } from "./model/console";
 import type {
@@ -43,6 +64,9 @@ export interface MissionRun {
   phase: RunPhase;
   stages: RunStageView[];
   jobId: string | null;
+  /** Mission id the backend reports for this run — the WS event stream is keyed
+   * by it (live mode); the console's agent-event socket subscribes with this. */
+  missionId: string | null;
   traceId: string | null;
   error: ErrorResponse | null;
   /** The agent's final state (mission_id, confidence, evidence graph), fetched
@@ -69,8 +93,12 @@ function demoStages(completedCount: number, runningIndex: number): RunStageView[
   }));
 }
 
-/** The live timeline has exactly the states the job reports — no more. */
-function liveStages(status: JobStatus | null, error: ErrorResponse | null): RunStageView[] {
+/** The live timeline has exactly the states the agent run reports — no more. */
+function liveStages(
+  status: JobStatus | null,
+  error: ErrorResponse | null,
+  detail: string | null = null,
+): RunStageView[] {
   const submitted: RunStageView = {
     key: "SUBMIT",
     label: "Run submitted",
@@ -81,10 +109,13 @@ function liveStages(status: JobStatus | null, error: ErrorResponse | null): RunS
     key: "JOB",
     label: "Backend processing",
     detail:
-      status === null
-        ? "Waiting for the first job status."
-        : `The job reports status "${status}". No stage detail is published by the ` +
-          `backend yet, so none is shown.`,
+      error !== null
+        ? error.message
+        : detail ??
+          (status === null
+            ? "Waiting for the agent run to register."
+            : `The run reports status "${status}". No stage detail is published by the ` +
+              `backend yet, so none is shown.`),
     state:
       status === "completed"
         ? "completed"
@@ -92,10 +123,6 @@ function liveStages(status: JobStatus | null, error: ErrorResponse | null): RunS
           ? "failed"
           : "running",
   };
-  if (error) {
-    work.state = "failed";
-    work.detail = error.message;
-  }
   return [submitted, work];
 }
 
@@ -105,6 +132,7 @@ export function useMissionRun(demo: boolean): MissionRun {
     demo ? demoStages(0, -1) : [],
   );
   const [jobId, setJobId] = useState<string | null>(null);
+  const [missionId, setMissionId] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
   const [error, setError] = useState<ErrorResponse | null>(null);
   const [agentState, setAgentState] = useState<MissionState | null>(null);
@@ -126,6 +154,7 @@ export function useMissionRun(demo: boolean): MissionRun {
     setPhase("idle");
     setStages(demo ? demoStages(0, -1) : []);
     setJobId(null);
+    setMissionId(null);
     setTraceId(null);
     setError(null);
     setAgentState(null);
@@ -174,36 +203,44 @@ export function useMissionRun(demo: boolean): MissionRun {
           `run-${query.length}-${Date.now()}`,
         );
         setJobId(submitted.data.job_id);
+        setMissionId(submitted.data.mission_id);
         setTraceId(submitted.data.trace_id ?? submitted.traceId);
 
         let delay = POLL_START_MS;
+        const startedAt = Date.now();
         const poll = async () => {
           if (controller.signal.aborted) return;
           try {
-            const job = await getJob(submitted.data.job_id, controller.signal);
-            const status = job.data.status;
-            setStages(liveStages(status, null));
+            // The job id returned by POST /agent/execute belongs to the agent
+            // service, so the run is polled where it lives: GET /agent/runs/{id}.
+            // (GET /jobs/{id} is the mission service's registry and does not know
+            // this id — polling it reports Not Found for a healthy run.)
+            const agent = await getAgentRun(submitted.data.job_id, controller.signal);
+            const run = agent.data;
+            const status = (run.status ?? "").toUpperCase();
+            setStages(
+              liveStages(
+                status === "COMPLETED" ? "completed" : status === "FAILED" ? "failed" : "running",
+                null,
+                AGENT_STAGE_BY_STATUS[status] ?? null,
+              ),
+            );
 
-            if (status === "completed") {
-              // The Dashboard and report surfaces read the agent's final state
-              // (mission_id, confidence, evidence graph). A failed fetch must
-              // not fail the run — the job did complete; the panels then render
-              // NOT AVAILABLE rather than invented values.
-              try {
-                const agent = await getAgentRun(submitted.data.job_id, controller.signal);
-                setAgentState(agent.data);
-              } catch {
-                /* agent state stays null — honest absence */
-              }
+            if (status === "COMPLETED") {
+              // The run state itself is the final payload — no extra fetch.
+              setAgentState(run);
               setPhase("complete");
               return;
             }
-            if (status === "failed" || status === "cancelled") {
+            if (status === "FAILED") {
               setError({
-                code: `job_${status}`,
-                message: job.data.error_message ?? `The job ${status}.`,
+                code: "agent_run_failed",
+                message:
+                  (run.errors ?? [])
+                    .filter((e): e is string => typeof e === "string")
+                    .join("; ") || `The agent run reported status "${status}".`,
                 details: [],
-                trace_id: job.data.trace_id,
+                trace_id: agent.traceId,
               });
               setPhase("failed");
               return;
@@ -212,12 +249,25 @@ export function useMissionRun(demo: boolean): MissionRun {
             delay = Math.min(delay * 1.5, POLL_MAX_MS);
             timers.current.push(setTimeout(poll, delay));
           } catch (caught) {
+            // A 404 inside the grace window means the orchestrator has not
+            // registered the run yet — keep polling rather than failing.
+            const withinGrace = Date.now() - startedAt < RUN_404_GRACE_MS;
+            if (
+              caught instanceof GatewayError &&
+              caught.status === 404 &&
+              caught.body.code === "RUN_NOT_FOUND" &&
+              withinGrace
+            ) {
+              delay = Math.min(delay * 1.5, POLL_MAX_MS);
+              timers.current.push(setTimeout(poll, delay));
+              return;
+            }
             const body =
               caught instanceof GatewayError
                 ? caught.body
                 : {
                     code: "unknown",
-                    message: "Polling the job failed.",
+                    message: "Polling the run failed.",
                     details: [],
                     trace_id: null,
                   };
@@ -253,5 +303,5 @@ export function useMissionRun(demo: boolean): MissionRun {
     [demo, startDemo, startLive],
   );
 
-  return { phase, stages, jobId, traceId, error, agentState, start, reset };
+  return { phase, stages, jobId, missionId, traceId, error, agentState, start, reset };
 }

@@ -2,9 +2,18 @@
 services/agent/app/api/routers/execute.py — Async agent execute router (P2-04).
 """
 
+import asyncio
+import json
+import logging
+import threading
 from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+
+import redis as redis_sync
+
+from packages.providers.config import config
 from services.agent.graph.orchestrator import get_orchestrator
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
@@ -12,9 +21,27 @@ from services.agent.schemas import ExecuteRequest, ExecuteResponse, MissionState
 from services.agent.security.sanitizer import sanitize_prompt
 from services.agent.security.tool_budget import ToolBudget
 from services.agent.security.validator import validate_aoi_geometry
-from services.agent.worker import process_agent_run
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1/agent", tags=["agent-execute"])
+
+# Run state lives in Redis (agent:run:{job_id}) behind the orchestrator's
+# process-local cache, so a run created in this process is visible to every
+# other consumer: the mission service polling GET /runs/{job_id}, the gateway
+# WS bridging status, and a Celery worker if execution is enqueued there.
+# The graph still streams in this process (daemon thread) — the publishes are
+# what the gateway's mission WS bridges to the browser.
+
+
+def _execute_run(job_id: str) -> None:
+    """Stream one agent run in-process, publishing each node's status to Redis."""
+    from services.agent.worker import _stream_run  # shared with the Celery task
+
+    try:
+        _stream_run(job_id)
+    except Exception:  # noqa: BLE001 — background thread; log, never crash the app
+        logger.exception("Background agent run failed: job_id=%s", job_id)
 
 
 @router.post("/execute", status_code=status.HTTP_202_ACCEPTED, response_model=ExecuteResponse)
@@ -68,9 +95,12 @@ async def execute_agent(
         metadata={"budget": budget_dict} if budget_dict else None,
     )
 
-    # Trigger orchestrator step execution asynchronously via Celery
-    if state.job_id:
-        process_agent_run.delay(state.job_id)
+    # Execute in this process (daemon thread) so the just-created run state is
+    # visible to the executor. See the comment on _execute_run.
+    thread = threading.Thread(
+        target=_execute_run, args=(state.job_id,), name=f"agent-run-{state.job_id}", daemon=True
+    )
+    thread.start()
 
     response_data = ExecuteResponse(
         job_id=state.job_id or "job_unknown",

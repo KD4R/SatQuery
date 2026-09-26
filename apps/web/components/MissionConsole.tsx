@@ -105,7 +105,7 @@ export default function MissionConsole() {
   );
 
   const live = useMissionEvents(
-    demo ? null : (run.jobId ?? null),
+    demo ? null : (run.missionId ?? run.jobId ?? null),
     !demo && run.phase === "running" && hasAccessToken(),
   );
   const agentEvents = demo ? demoEvents : live.events;
