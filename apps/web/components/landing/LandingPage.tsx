@@ -26,15 +26,10 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import "@fontsource-variable/archivo/wdth.css";
-import "@fontsource/sora/latin-500.css";
-import "@fontsource/sora/latin-600.css";
-import "@fontsource/ibm-plex-sans/latin-400.css";
-import "@fontsource/ibm-plex-sans/latin-500.css";
-import "@fontsource/ibm-plex-sans/latin-600.css";
-import "@fontsource/ibm-plex-mono/latin-400.css";
-import "@fontsource/ibm-plex-mono/latin-500.css";
-import "@fontsource/ibm-plex-mono/latin-600.css";
+import "@fontsource-variable/pixelify-sans/wght.css";
+import "@fontsource/silkscreen/latin-400.css";
+import "@fontsource/silkscreen/latin-700.css";
+import "@fontsource/vt323/latin-400.css";
 import "./space.css";
 import { BrandIntro, type IntroPhase } from "./BrandIntro";
 import { Closing } from "./sections/Closing";

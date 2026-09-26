@@ -506,7 +506,7 @@ export function SpaceGlobe({
           ctx.arc(p[0], p[1], 3, 0, Math.PI * 2);
           ctx.fillStyle = `rgb(${BEACON})`;
           ctx.fill();
-          ctx.font = "600 9.5px 'IBM Plex Mono', ui-monospace, monospace";
+          ctx.font = "400 15px 'VT323', ui-monospace, monospace";
           ctx.fillStyle = `rgba(${BEACON},0.95)`;
           ctx.fillText("ASSAM · DEMO AOI", p[0] + 10, p[1] - 8);
           found.push({ x: p[0], y: p[1], region: null });
