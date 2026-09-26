@@ -78,7 +78,7 @@ function Visual({ step }: { step: number }) {
           transition: { delay, duration: 0.6, ease },
         };
 
-  const text = { fontFamily: "VT323, monospace", fontSize: 12, fill: "#b9bec4" };
+  const text = { fontFamily: "Share Tech Mono, monospace", fontSize: 11, fill: "#b9bec4" };
 
   return (
     <svg viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label={STEPS[step]!.title}>

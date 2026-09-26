@@ -17,11 +17,10 @@
  * No gradients on text or buttons, no glows, no blend modes. Depth comes from
  * hairlines and three surface steps.
  *
- * Type: pixel faces throughout. Pixelify Sans for headings and reading, VT323
- * (a terminal bitmap face) for anything measured -- numbers, stage names,
- * labels -- and Silkscreen bold for the one huge statement in the opening.
- * font-size-adjust on the root normalises their very different x-heights, so a
- * 12px label in VT323 reads the same size as 12px Pixelify.
+ * Type: Chakra Petch for headings and reading -- squared-off, technical, a
+ * satellite-HUD feel without being pixelated -- and Share Tech Mono for anything
+ * measured: numbers, stage names, labels. The SatQuery wordmark alone stays in
+ * the pixel face (Pixelify Sans).
  */
 
 .sq-landing {
@@ -53,10 +52,10 @@
   --c-alert: #e84040;
 
   /* type */
-  --f-display: "Pixelify Sans Variable", "Pixelify Sans", system-ui, sans-serif;
-  --f-sans: "Pixelify Sans Variable", "Pixelify Sans", system-ui, sans-serif;
-  --f-mono: "VT323", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --f-poster: "Silkscreen", "Pixelify Sans Variable", system-ui, sans-serif;
+  --f-display: "Chakra Petch", system-ui, sans-serif;
+  --f-sans: "Chakra Petch", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "Share Tech Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --f-brand: "Pixelify Sans Variable", "Pixelify Sans", var(--f-display);
 
   /* space: 4-point scale */
   --s-1: 4px;
@@ -89,7 +88,6 @@
   font-family: var(--f-sans);
   font-size: 16px;
   line-height: 1.5;
-  font-size-adjust: ex-height 0.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -146,7 +144,7 @@
   align-items: center;
   gap: var(--s-2);
   font-family: var(--f-mono);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1;
   letter-spacing: 0.14em;
@@ -160,7 +158,7 @@
   align-items: center;
   gap: var(--s-3);
   font-family: var(--f-mono);
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -373,7 +371,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-family: var(--f-display);
+  font-family: var(--f-brand);
   font-size: 16px;
   font-weight: 600;
   letter-spacing: 0;
@@ -456,7 +454,7 @@
   display: inline-flex;
   align-items: center;
   gap: 30px;
-  font-family: var(--f-display);
+  font-family: var(--f-brand);
   font-size: 48px;
   font-weight: 600;
   letter-spacing: 0;
@@ -592,7 +590,7 @@
 
 .sq-headline {
   position: relative;
-  font-family: var(--f-poster);
+  font-family: var(--f-display);
   font-weight: 700;
   font-size: clamp(36px, 7vw, 108px);
   line-height: 1.02;
@@ -707,7 +705,7 @@
 }
 
 .sq-intro .sq-console-body {
-  font-size: 23px;
+  font-size: 16px;
 }
 
 .sq-intro .sq-cta-row {
@@ -759,7 +757,7 @@
   height: 34px;
   padding: 0 var(--s-4);
   border-bottom: 1px solid var(--c-line);
-  font-size: 12.5px;
+  font-size: 10.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--c-ink-4);
@@ -822,7 +820,7 @@
   gap: 6px;
   padding: 10px var(--s-4);
   border-top: 1px solid var(--c-line);
-  font-size: 12.5px;
+  font-size: 10.5px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--c-ink-4);
@@ -855,7 +853,7 @@
 
 .sq-trust b {
   font-family: var(--f-mono);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 500;
   letter-spacing: 0;
   color: var(--c-ink);
@@ -916,7 +914,7 @@
 .sq-tip-split {
   margin-left: auto;
   font-family: var(--f-mono);
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -929,7 +927,7 @@
   gap: var(--s-2);
   margin-top: var(--s-2);
   font-family: var(--f-mono);
-  font-size: 14.5px;
+  font-size: 12px;
   color: var(--c-ink-3);
 }
 
@@ -1008,7 +1006,7 @@
 
 .sq-proof-k {
   font-family: var(--f-mono);
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--c-ink-4);
@@ -1081,7 +1079,7 @@
   padding-top: 10px;
   border-top: 1px solid var(--c-line-3);
   font-family: var(--f-mono);
-  font-size: 14.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--c-ink-4);
   transition:
@@ -1097,7 +1095,7 @@
 .sq-step-stage {
   padding-top: 10px;
   font-family: var(--f-mono);
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 0.14em;
   color: var(--c-ink-4);
 }
@@ -1236,7 +1234,7 @@
   flex-wrap: wrap;
   gap: var(--s-3);
   font-family: var(--f-mono);
-  font-size: 12.5px;
+  font-size: 10.5px;
   font-weight: 400;
   letter-spacing: 0.02em;
   color: var(--c-ink-3);
@@ -1324,7 +1322,7 @@
 
 .sq-bar-val {
   font-family: var(--f-mono);
-  font-size: 14.5px;
+  font-size: 12px;
   text-align: right;
   color: var(--c-ink);
   font-variant-numeric: tabular-nums;
@@ -1384,7 +1382,7 @@
   top: -20px;
   transform: translateX(-50%);
   font-family: var(--f-mono);
-  font-size: 13px;
+  font-size: 11px;
   color: var(--c-ink-2);
   white-space: nowrap;
 }
@@ -1407,7 +1405,7 @@
   display: block;
   margin-top: 2px;
   font-family: var(--f-mono);
-  font-size: 12.5px;
+  font-size: 10.5px;
   color: var(--c-ink-4);
 }
 
@@ -1455,7 +1453,7 @@
   background: var(--c-ground);
   box-shadow: inset 0 0 0 1px var(--c-line);
   font-family: var(--f-mono);
-  font-size: 14px;
+  font-size: 11.5px;
   color: var(--c-ink-3);
 }
 
@@ -1492,7 +1490,7 @@
   grid-template-columns: 50px minmax(0, 1fr) 52px;
   align-items: center;
   gap: 10px;
-  font-size: 12.5px;
+  font-size: 10.5px;
 }
 
 .sq-ece-track {
@@ -1523,7 +1521,7 @@
   display: grid;
   grid-template-columns: 50px minmax(0, 1fr) 52px;
   gap: 10px;
-  font-size: 11.5px;
+  font-size: 9.5px;
   color: var(--c-ink-4);
 }
 
@@ -1553,7 +1551,7 @@
   padding: 0 8px;
   border-radius: var(--r-1);
   font-family: var(--f-mono);
-  font-size: 12px;
+  font-size: 10px;
   letter-spacing: 0.12em;
   color: var(--c-warn);
   box-shadow: inset 0 0 0 1px rgba(248, 200, 16, 0.4);
@@ -1631,7 +1629,7 @@
 .sq-footer-meta {
   margin-top: var(--s-3);
   font-family: var(--f-mono);
-  font-size: 13px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--c-ink-4);
 }
@@ -1673,7 +1671,7 @@
 
 .sq-footer-repo b {
   font-family: var(--f-mono);
-  font-size: 15.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--c-ink);
 }

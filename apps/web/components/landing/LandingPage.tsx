@@ -27,9 +27,11 @@
 import { useEffect, useRef, useState } from "react";
 
 import "@fontsource-variable/pixelify-sans/wght.css";
-import "@fontsource/silkscreen/latin-400.css";
-import "@fontsource/silkscreen/latin-700.css";
-import "@fontsource/vt323/latin-400.css";
+import "@fontsource/chakra-petch/latin-400.css";
+import "@fontsource/chakra-petch/latin-500.css";
+import "@fontsource/chakra-petch/latin-600.css";
+import "@fontsource/chakra-petch/latin-700.css";
+import "@fontsource/share-tech-mono/latin-400.css";
 import "./space.css";
 import { BrandIntro, type IntroPhase } from "./BrandIntro";
 import { Closing } from "./sections/Closing";
