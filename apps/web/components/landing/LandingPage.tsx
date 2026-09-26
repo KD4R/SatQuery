@@ -10,7 +10,6 @@
  *
  *   Intro         the SatQuery mark alone, then it flies to the nav and the planet rises
  *   Hero          the planet; the headline folding back in 3D as it scrolls; try-it block
- *   Proof         four measured numbers, one of them the accuracy figure we refuse
  *   How it works  the console's own stages, scroll-driven
  *   Why radar     the physics, acted out by the landscape behind it
  *   Evidence      the three rules the console is built on
@@ -38,7 +37,6 @@ import { Hero } from "./sections/Hero";
 import { HowItWorks } from "./sections/HowItWorks";
 import { Nav } from "./sections/Nav";
 import { Principles } from "./sections/Principles";
-import { Proof } from "./sections/Proof";
 import { Radar } from "./sections/Radar";
 
 export default function LandingPage() {
@@ -65,7 +63,6 @@ export default function LandingPage() {
         <Nav scrolled={scrolled} />
         <main id="mission-main">
           <Hero phase={phase} />
-          <Proof />
           <HowItWorks />
           <Radar />
           <Principles />

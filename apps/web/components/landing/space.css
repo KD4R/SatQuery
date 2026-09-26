@@ -981,67 +981,6 @@
   box-shadow: inset 0 0 0 1px var(--c-line);
 }
 
-/* proof: one bordered row of four measurements */
-
-.sq-proof {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: var(--s-8);
-  border-top: 1px solid var(--c-line-2);
-  border-bottom: 1px solid var(--c-line-2);
-}
-
-.sq-proof-item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s-3);
-  padding: var(--s-6) var(--s-5) var(--s-6) 0;
-  min-width: 0;
-}
-
-.sq-proof-item + .sq-proof-item {
-  padding-left: var(--s-5);
-  border-left: 1px solid var(--c-line);
-}
-
-.sq-proof-k {
-  font-family: var(--f-mono);
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--c-ink-4);
-}
-
-.sq-proof-num {
-  font-family: var(--f-mono);
-  font-size: clamp(34px, 3.4vw, 48px);
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0;
-  color: var(--c-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.sq-proof-num.is-struck {
-  color: var(--c-ink-4);
-  text-decoration: line-through;
-  text-decoration-color: var(--c-alert);
-  text-decoration-thickness: 2px;
-}
-
-.sq-proof-label {
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--c-ink);
-}
-
-.sq-proof-note {
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--c-ink-3);
-}
-
 /* how it works: a sticky stage the page scrolls through, one step at a time */
 
 .sq-how-section {
@@ -1676,16 +1615,6 @@
 }
 
 @media (max-width: 1180px) {
-  .sq-proof {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .sq-proof-item:nth-child(3) {
-    padding-left: 0;
-    border-left: none;
-  }
-  .sq-proof-item:nth-child(n + 3) {
-    border-top: 1px solid var(--c-line);
-  }
   .sq-trust {
     gap: var(--s-6);
   }
@@ -1804,18 +1733,6 @@
   }
   .sq-trust b {
     font-size: 18px;
-  }
-  .sq-proof {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .sq-proof-item,
-  .sq-proof-item + .sq-proof-item {
-    padding-left: 0;
-    padding-right: 0;
-    border-left: none;
-  }
-  .sq-proof-item + .sq-proof-item {
-    border-top: 1px solid var(--c-line);
   }
   .sq-footer-links {
     flex-wrap: wrap;

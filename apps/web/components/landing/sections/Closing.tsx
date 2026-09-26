@@ -15,7 +15,7 @@ export function Closing() {
         <CursorWave className="sq-wave" />
         <div className="sq-wrap sq-final-inner">
           <Reveal className="sq-final-title">
-            <SectionIndex n={5} label="Ready when you are" />
+            <SectionIndex n={4} label="Ready when you are" />
             <h2 className="sq-h2">
               Ask it something.
               <br />

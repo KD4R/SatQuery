@@ -33,15 +33,13 @@ test.describe("landing", () => {
     ).toBeVisible();
   });
 
-  test("quotes IoU and refuses to quote accuracy", async ({ page }) => {
+  test("never quotes an accuracy figure", async ({ page }) => {
     await page.goto("/");
-    // The proof row counts up when it scrolls into view, so bring it there first.
-    const proof = page.locator("#proof");
-    await proof.scrollIntoViewIfNeeded();
-    await expect(proof.getByText("0.435")).toBeVisible();
-    // The landing page must keep explaining why accuracy is absent. If someone
-    // adds an "89% accurate" badge later, this fails.
-    await expect(page.getByText(/Accuracy is not quoted/i)).toBeVisible();
+    // Water is ~11% of the pixels, so a model that predicts no water at all is
+    // 89% "accurate". If someone adds an "89% accurate" badge later, this fails.
+    const body = (await page.locator("body").innerText()).toLowerCase();
+    expect(body).not.toMatch(/\d+(\.\d+)?\s*%\s*accura/);
+    expect(body).not.toMatch(/accuracy\s*(of|:)?\s*\d/);
   });
 
   test("states the calibration shortfall, not a green tick", async ({
@@ -68,11 +66,7 @@ test.describe("landing", () => {
 
     await page.goto("/");
     const figures: [string, string][] = [
-      ["#proof", "0.435"],
-      ["#proof", "0.204"],
-      ["#proof", "395"],
-      ["#proof", "89.2%"],
-      ["#proof", "10.8%"],
+      [".sq-intro", "92"],
       ["#honesty", "0.0583"],
       ["#honesty", "0.0896"],
     ];

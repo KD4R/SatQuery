@@ -40,7 +40,7 @@ export function Radar() {
     <section id="radar" className="sq-section" aria-label="Why radar">
       <div className="sq-wrap">
         <Reveal className="sq-section-head sq-radar-head">
-          <SectionIndex n={3} label="Why radar" />
+          <SectionIndex n={2} label="Why radar" />
           <h2 className="sq-h2">
             Floods come with cloud.
             <br />

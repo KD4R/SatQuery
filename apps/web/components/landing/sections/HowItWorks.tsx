@@ -469,7 +469,7 @@ export function HowItWorks() {
 
         <div className="sq-wrap sq-how-stage">
           <header className="sq-how-head">
-            <SectionIndex n={2} label="How it works" />
+            <SectionIndex n={1} label="How it works" />
             <h2 className="sq-h2">
               From a sentence{" "}
               <span className="is-quiet">to a map you can defend.</span>

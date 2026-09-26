@@ -29,13 +29,6 @@ export const HEADLINE = {
   regionCount: 10,
 } as const;
 
-/** reports/evaluation.md -- "Do not quote accuracy for this task." */
-export const ACCURACY_TRAP = {
-  waterFractionPct: 10.8,
-  predictNothingAccuracyPct: 89.2,
-  predictNothingIoU: 0.0,
-} as const;
-
 /** artifacts/hand-only-v2/metrics.json -- parameters, in_channels. */
 export const MODEL = {
   architecture: "U-Net",
