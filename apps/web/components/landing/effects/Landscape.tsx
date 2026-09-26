@@ -134,6 +134,11 @@ export function Landscape({ className }: { className?: string }) {
     const xs = new Float32Array(COLS + 1);
     const ys = new Float32Array(COLS + 1);
     const wet = new Uint8Array(COLS + 1);
+    // the farther row, kept so the water surface between two rows can be filled
+    const pxs = new Float32Array(COLS + 1);
+    const pys = new Float32Array(COLS + 1);
+    const pwet = new Uint8Array(COLS + 1);
+    let havePrev = false;
 
     for (let k = ROWS - 1; k >= 0; k--) {
       const z = zNear + k * dz - frac;
@@ -181,7 +186,25 @@ export function Landscape({ className }: { className?: string }) {
       ctx.lineWidth = 0.7 + fade * 0.8 + pulse * 0.8;
       ctx.stroke();
 
-      // water: flat and dark, and the pulse does not light it
+      // water: a flat, dark-blue surface filling the valley floor between this row
+      // and the farther one. The radar pulse never lights it -- that is the point:
+      // calm water mirrors the pulse away, so it stays dark.
+      if (havePrev) {
+        ctx.beginPath();
+        for (let i = 1; i <= COLS; i++) {
+          if (wet[i] && wet[i - 1] && pwet[i] && pwet[i - 1]) {
+            ctx.moveTo(pxs[i - 1]!, pys[i - 1]!);
+            ctx.lineTo(pxs[i]!, pys[i]!);
+            ctx.lineTo(xs[i]!, ys[i]!);
+            ctx.lineTo(xs[i - 1]!, ys[i - 1]!);
+            ctx.closePath();
+          }
+        }
+        ctx.fillStyle = `rgba(20,46,88,${0.3 + fade * 0.4})`;
+        ctx.fill();
+      }
+
+      // its surface lines, with a slow shimmer
       ctx.beginPath();
       pen = false;
       for (let i = 0; i <= COLS; i++) {
@@ -191,9 +214,15 @@ export function Landscape({ className }: { className?: string }) {
           pen = true;
         } else pen = false;
       }
-      ctx.strokeStyle = `rgba(96,160,248,${0.04 + fade * 0.1})`;
-      ctx.lineWidth = 0.6;
+      const shimmer = 0.85 + 0.15 * Math.sin(t * 1.4 + k * 0.9);
+      ctx.strokeStyle = `rgba(96,160,248,${(0.1 + fade * 0.4) * shimmer})`;
+      ctx.lineWidth = 0.6 + fade * 0.5;
       ctx.stroke();
+
+      pxs.set(xs);
+      pys.set(ys);
+      pwet.set(wet);
+      havePrev = true;
     }
 
     // vignette so the section's copy sits on something calm
