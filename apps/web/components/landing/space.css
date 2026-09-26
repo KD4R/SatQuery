@@ -430,26 +430,7 @@
 
 /* ─── Hero ────────────────────────────────────────────────────────────────── */
 
-/* The hero stage spans the full width so the cursor field behind it can too. */
-.sq-hero-stage {
-  position: relative;
-}
-
-.sq-wave {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  display: block;
-  pointer-events: none;
-  z-index: 0;
-  -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 0%, #000 72%, transparent 100%);
-}
-
 .sq-hero {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
   gap: var(--s-8);
@@ -1651,11 +1632,29 @@
 /* final */
 
 .sq-final {
+  position: relative;
+  overflow: hidden;
   padding: var(--s-10) 0;
   border-top: 1px solid var(--c-line);
 }
 
+/* The cursor field fills the closing section, full bleed, and fades out at its
+   top and bottom edges so it never meets the section rules with a hard line. */
+.sq-wave {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  z-index: 0;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 78%, transparent 100%);
+}
+
 .sq-final-inner {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
   gap: var(--s-7);

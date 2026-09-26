@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { CursorWave } from "../effects/CursorWave";
 import { IconArrow, Reveal } from "../ui";
 import { SectionIndex } from "./SectionIndex";
 
@@ -9,6 +10,7 @@ export function Closing() {
   return (
     <>
       <section className="sq-final" aria-label="Get started">
+        <CursorWave className="sq-wave" />
         <div className="sq-wrap sq-final-inner">
           <Reveal className="sq-final-title">
             <SectionIndex n={6} label="Ready when you are" />
@@ -20,8 +22,8 @@ export function Closing() {
           </Reveal>
           <Reveal delay={0.1} className="sq-final-action">
             <p className="sq-sub">
-              Run a mission over the Assam floodplain and watch every stage land, with the
-              source of every value marked.
+              Run a mission over the Assam floodplain and watch every stage
+              land, with the source of every value marked.
             </p>
             <div className="sq-cta-row">
               <Link href="/console" className="sq-btn sq-btn--primary">

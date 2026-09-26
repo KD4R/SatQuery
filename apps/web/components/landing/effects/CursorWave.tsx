@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Cursor wave: a field of small marks behind the hero that swell around the cursor
+ * Cursor wave: a field of small marks behind the closing section that swell around the cursor
  * and ripple outward from a click.
  *
  * Written for this page, after the behaviour of the React Bits Pro "Cursor Wave"
