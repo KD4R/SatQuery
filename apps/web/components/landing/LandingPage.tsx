@@ -8,7 +8,8 @@
  * have to answer the questions a sceptical judge asks -- how does it work, why
  * radar, how do you know it works, and what happens when it doesn't know.
  *
- *   Hero          headline, try-it line, the planet with the training story, model card
+ *   Intro         the SatQuery mark alone, then it flies to the nav and the planet rises
+ *   Hero          the planet; the headline revealed in 3D by scroll; try-it line, model card
  *   Proof         four measured numbers, one of them the accuracy figure we refuse
  *   How it works  the console's own stages, scroll-driven
  *   Why radar     the physics, acted out by the landscape behind it
@@ -34,6 +35,7 @@ import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
 import "./space.css";
+import { BrandIntro, type IntroPhase } from "./BrandIntro";
 import { Closing } from "./sections/Closing";
 import { Hero } from "./sections/Hero";
 import { HowItWorks } from "./sections/HowItWorks";
@@ -46,6 +48,7 @@ import { Validation } from "./sections/Validation";
 export default function LandingPage() {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [scrolled, setScrolled] = useState(false);
+  const [phase, setPhase] = useState<IntroPhase>("logo");
 
   useEffect(() => {
     const el = rootRef.current;
@@ -58,7 +61,8 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div ref={rootRef} className="sq-landing" id="top">
+    <div ref={rootRef} className="sq-landing" id="top" data-intro={phase}>
+      <BrandIntro phase={phase} onPhase={setPhase} />
       <div className="sq-atmos" aria-hidden="true" />
 
       <div className="sq-content">

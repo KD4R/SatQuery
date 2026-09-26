@@ -428,65 +428,252 @@
   transform: scaleX(1);
 }
 
-/* ─── Hero ────────────────────────────────────────────────────────────────── */
+/* ─── Opening, beat 0: the mark ────────────────────────────────────────── */
+/* See BrandIntro. The big mark is the nav brand at exactly 3x, so the FLIP
+   scale lands it pixel for pixel. */
 
-.sq-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  gap: var(--s-8);
+.sq-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
   align-items: center;
-  padding-top: var(--s-6);
-  padding-bottom: var(--s-9);
+  justify-content: center;
+  background: var(--c-ground);
+  transition: background-color 850ms var(--e-out);
 }
 
-.sq-hero-copy {
+.sq-boot[data-phase="fly"] {
+  background-color: transparent;
+  pointer-events: none;
+}
+
+.sq-boot-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 30px;
+  font-family: var(--f-display);
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--c-ink);
+  transform-origin: 0 0;
+  transition: transform 850ms cubic-bezier(0.65, 0, 0.2, 1);
+}
+
+.sq-boot-mark {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 4.5px var(--c-ink);
+  animation: sq-boot-mark 700ms var(--e-out) both;
+}
+
+.sq-boot-mark::after {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border-radius: 3px;
+  background: var(--c-signal);
+  animation: sq-boot-dot 500ms var(--e-out) 450ms both;
+}
+
+.sq-boot-word {
+  animation: sq-boot-word 700ms var(--e-out) 250ms both;
+}
+
+@keyframes sq-boot-mark {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-45deg);
+  }
+}
+
+@keyframes sq-boot-dot {
+  from {
+    transform: scale(0);
+  }
+}
+
+@keyframes sq-boot-word {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+/* While the mark is on screen: no scrolling, the nav brand hidden (the mark lands
+   on it), and everything else waiting to come up. */
+.sq-landing[data-intro="logo"],
+.sq-landing[data-intro="fly"] {
+  overflow-y: hidden;
+}
+
+.sq-landing[data-intro="logo"] .sq-intro-brand,
+.sq-landing[data-intro="fly"] .sq-intro-brand {
+  opacity: 0;
+}
+
+.sq-intro-wait {
+  transition:
+    opacity 900ms var(--e-out),
+    transform 1400ms var(--e-out);
+}
+
+.sq-landing[data-intro="logo"] .sq-intro-wait,
+.sq-landing[data-intro="fly"] .sq-intro-wait {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.sq-landing[data-intro="logo"] .sq-stage-figure.sq-intro-wait,
+.sq-landing[data-intro="fly"] .sq-stage-figure.sq-intro-wait {
+  transform: scale(0.96);
+}
+
+/* ─── Opening, beat 1: the planet ───────────────────────────────────────── */
+
+.sq-stage {
+  position: relative;
+  min-height: calc(100svh - 64px);
+  display: flex;
+}
+
+.sq-stage-figure {
+  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-4);
+  margin: 0 auto;
+  padding-top: var(--s-4);
+  padding-bottom: var(--s-8);
 }
 
-.sq-hero-copy > .sq-label {
-  margin-bottom: var(--s-5);
-}
-
-.sq-hero-copy > .sq-label i {
+.sq-stage-kicker i {
   width: 6px;
   height: 6px;
   border-radius: 1px;
   background: var(--c-signal);
 }
 
-/* Headline: static-first. The motion is a one-time mask reveal and a single scan
-   line; without it the type is complete and correct. */
+/* As large as the screen allows, leaving room for the kicker, the caption and
+   the scroll cue. */
+.sq-globe.sq-globe--stage {
+  width: min(100%, calc((100svh - 260px) / 0.78), 1000px);
+  max-height: none;
+}
+
+.sq-stage-caption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3) var(--s-6);
+  font-family: var(--f-mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--c-ink-4);
+  text-align: center;
+}
+
+.sq-scroll-cue {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s-5);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+  transition: color 160ms var(--e-std);
+}
+
+.sq-scroll-cue i {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, var(--c-ink-3), transparent);
+}
+
+.sq-scroll-cue:hover {
+  color: var(--c-ink);
+}
+
+/* ─── Opening, beat 2: the headline, revealed by scroll ─────────────────── */
+/* The section is tall; its stage sticks while the page scrolls through it, and
+   the scroll distance drives the reveal (see HeroHeadline). */
+
+.sq-reveal {
+  position: relative;
+  height: 230vh;
+  border-top: 1px solid var(--c-line);
+}
+
+.sq-reveal-sticky {
+  position: sticky;
+  top: 64px;
+  height: calc(100vh - 64px);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.sq-reveal-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
 .sq-headline {
   position: relative;
   font-family: var(--f-display);
-  font-size: clamp(40px, 4vw, 60px);
+  font-size: clamp(44px, 7vw, 108px);
   font-weight: 600;
-  line-height: 1.02;
-  letter-spacing: -0.04em;
+  line-height: 1;
+  letter-spacing: -0.045em;
   color: var(--c-ink);
+  perspective: 900px;
 }
 
 .sq-headline-line {
   display: block;
-  overflow: hidden;
-  padding-bottom: 0.06em;
-  margin-bottom: -0.06em;
 }
 
-.sq-headline-line > span {
+.sq-headline [data-word] {
   display: inline-block;
-  animation: sq-unmask 900ms var(--e-out) both;
-  animation-delay: calc(200ms + var(--i, 0) * 160ms);
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.sq-reveal-lede {
+  margin-top: var(--s-6);
+  display: flex;
+  justify-content: center;
+}
+
+.sq-reveal-lede .sq-lede {
+  margin-top: 0;
+  max-width: 620px;
+  font-size: 19px;
 }
 
 /* Proximity glitch: two coloured copies of the line, sliced and offset by an
-   amount set from script as --g (0 at rest, 1 with the cursor on the line). At
-   rest they are fully transparent. The "/ ''" alt text keeps the copies out of
-   the heading's accessible name. */
+   amount set from script as --g (0 at rest, 1 with the cursor on the line). Only
+   once the headline has fully revealed. The "/ ''" alt text keeps the copies out
+   of the heading's accessible name. */
 .sq-headline [data-glitch] {
   position: relative;
+  display: inline-block;
 }
 
 .sq-headline [data-glitch]::before,
@@ -498,25 +685,24 @@
   top: 0;
   white-space: nowrap;
   pointer-events: none;
+  opacity: 0;
+}
+
+.sq-headline.is-revealed [data-glitch]::before,
+.sq-headline.is-revealed [data-glitch]::after {
   opacity: calc(var(--g, 0) * 0.95);
 }
 
 .sq-headline [data-glitch]::before {
   color: var(--c-data-b);
   clip-path: inset(var(--c1, 0%) 0 var(--c2, 0%) 0);
-  transform: translateX(calc(var(--g, 0) * (-6px + var(--jx, 0) * 5px)));
+  transform: translateX(calc(var(--g, 0) * (-7px + var(--jx, 0) * 6px)));
 }
 
 .sq-headline [data-glitch]::after {
   color: var(--c-signal);
   clip-path: inset(var(--c3, 0%) 0 var(--c4, 0%) 0);
-  transform: translateX(calc(var(--g, 0) * (6px - var(--jx, 0) * 5px)));
-}
-
-@keyframes sq-unmask {
-  from {
-    transform: translateY(105%);
-  }
+  transform: translateX(calc(var(--g, 0) * (7px - var(--jx, 0) * 6px)));
 }
 
 .sq-headline-line--quiet {
@@ -534,51 +720,33 @@
   position: absolute;
   left: 0.02em;
   right: 0.02em;
-  bottom: 0.04em;
-  height: 0.07em;
+  bottom: 0.02em;
+  height: 0.06em;
   min-height: 3px;
   background: var(--c-signal);
   transform-origin: left;
-  animation: sq-mark 700ms var(--e-out) 1150ms both;
+  transform: scaleX(var(--mark, 1));
 }
 
-@keyframes sq-mark {
-  from {
-    transform: scaleX(0);
-  }
+/* ─── Opening, beat 3: try it, and the numbers ──────────────────────────── */
+
+.sq-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-8);
+  align-items: center;
+  padding-top: var(--s-9);
+  padding-bottom: var(--s-10);
 }
 
-.sq-scan {
-  position: absolute;
-  left: -8px;
-  right: -8px;
-  top: 0;
-  height: 1px;
-  background: var(--c-signal);
-  opacity: 0;
-  pointer-events: none;
-  animation: sq-scan 1100ms linear 150ms 1 both;
-}
-
-@keyframes sq-scan {
-  0% {
-    top: 0;
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.9;
-  }
-  85% {
-    opacity: 0.9;
-  }
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
+.sq-intro-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+  min-width: 0;
 }
 
 .sq-lede {
-  margin-top: var(--s-5);
   max-width: 500px;
   font-size: 18px;
   line-height: 1.6;
@@ -593,8 +761,7 @@
 
 /* Query console: a command line with a header and a parse, not a retro terminal. */
 .sq-console {
-  margin-top: var(--s-6);
-  max-width: 540px;
+  max-width: 560px;
   border-radius: var(--r-2);
   background: var(--c-raise-1);
   box-shadow: inset 0 0 0 1px var(--c-line-2);
@@ -692,19 +859,14 @@
   color: var(--c-ink-4);
 }
 
-.sq-hero-copy .sq-cta-row {
-  margin-top: var(--s-5);
-}
-
 /* Three measured facts, mono numbers over plain labels, under a single rule. */
 .sq-trust {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, max-content));
   gap: var(--s-7);
-  margin-top: var(--s-7);
   padding-top: var(--s-5);
   border-top: 1px solid var(--c-line);
-  max-width: 540px;
+  max-width: 560px;
 }
 
 .sq-trust div {
@@ -727,23 +889,7 @@
   color: var(--c-ink-3);
 }
 
-/* ─── Hero figure: the globe, captioned like a plate in a paper ──────────── */
-
-.sq-figure {
-  position: relative;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.sq-figure-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-4);
-  padding-bottom: var(--s-3);
-  border-bottom: 1px solid var(--c-line);
-}
+/* ─── The globe figure ────────────────────────────────────────────────────── */
 
 .sq-figure-legend {
   display: flex;
@@ -805,24 +951,6 @@
 .sq-globe-canvas:focus-visible {
   outline: 1px dashed var(--c-line-3);
   outline-offset: -8px;
-}
-
-.sq-figure-caption {
-  display: flex;
-  flex-direction: column;
-}
-
-.sq-figure-sub {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-4);
-  padding-top: var(--s-3);
-  font-family: var(--f-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--c-ink-4);
-  white-space: nowrap;
 }
 
 .sq-hover-hint {
@@ -915,16 +1043,11 @@
 }
 
 /* ─── Model validation card ───────────────────────────────────────────────── */
-/* In flow beneath the globe, pulled up over the empty south polar limb only. */
 
 .sq-validation {
   position: relative;
-  z-index: 2;
-  align-self: flex-end;
+  justify-self: end;
   width: min(100%, 560px);
-  /* percentage margins resolve against the figure's width, so the overlap tracks
-     the globe's size and only ever covers the empty space below the planet */
-  margin-top: -9%;
   border-radius: var(--r-3);
   background: var(--c-raise-1);
   box-shadow: inset 0 0 0 1px var(--c-line-2), 0 24px 48px -24px rgba(0, 0, 0, 0.9);
@@ -1734,7 +1857,7 @@
   .sq-wrap {
     padding-inline: var(--s-6);
   }
-  .sq-hero {
+  .sq-intro {
     gap: var(--s-7);
   }
 }
@@ -1755,40 +1878,13 @@
   }
 }
 
-@media (max-width: 1180px) {
-  .sq-hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: var(--s-7);
-  }
-  .sq-validation {
-    width: 100%;
-  }
-  .sq-figure-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--s-3);
-  }
-  .sq-figure-sub .sq-hover-hint {
-    display: none;
-  }
-}
-
 @media (max-width: 960px) {
-  .sq-hero {
+  .sq-intro {
     grid-template-columns: minmax(0, 1fr);
-    padding-top: var(--s-6);
-  }
-  .sq-headline {
-    font-size: clamp(40px, 7vw, 60px);
-  }
-  .sq-figure {
-    max-width: 720px;
-  }
-  .sq-figure-sub .sq-hover-hint {
-    display: inline-flex;
   }
   .sq-validation {
-    align-self: stretch;
+    justify-self: stretch;
+    width: 100%;
   }
 }
 
@@ -1859,18 +1955,32 @@
   .sq-final {
     padding: var(--s-9) 0;
   }
-  .sq-hero {
-    padding-top: var(--s-6);
-    padding-bottom: var(--s-8);
+  .sq-intro {
+    padding-top: var(--s-8);
+    padding-bottom: var(--s-9);
   }
   .sq-headline {
-    font-size: clamp(34px, 10vw, 48px);
+    font-size: clamp(40px, 12vw, 56px);
   }
-  .sq-hero-copy > .sq-label {
+  .sq-stage-kicker {
     letter-spacing: 0.08em;
     font-size: 10px;
+    text-align: center;
   }
-  .sq-lede {
+  .sq-stage-kicker i {
+    display: none;
+  }
+  .sq-globe.sq-globe--stage {
+    width: 100%;
+  }
+  .sq-stage-note {
+    width: 100%;
+  }
+  .sq-reveal {
+    height: 200vh;
+  }
+  .sq-lede,
+  .sq-reveal-lede .sq-lede {
     font-size: 16.5px;
   }
   .sq-cta-row .sq-btn {
@@ -1882,19 +1992,6 @@
   }
   .sq-trust b {
     font-size: 18px;
-  }
-  .sq-figure-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--s-2);
-  }
-  .sq-figure-sub {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--s-1);
-  }
-  .sq-validation {
-    margin-top: 0;
   }
   .sq-validation-head,
   .sq-validation-id {
@@ -1936,8 +2033,7 @@
 
 /* Touch screens have no hover: do not promise one. */
 @media (hover: none) {
-  .sq-hover-hint,
-  .sq-figure-sub .sq-hover-hint {
+  .sq-hover-hint {
     display: none;
   }
 }
@@ -1953,8 +2049,16 @@
     animation-iteration-count: 1 !important;
     transition-duration: 1ms !important;
   }
-  .sq-caret,
-  .sq-scan {
+  .sq-caret {
     animation: none;
+  }
+  .sq-reveal {
+    height: auto;
+  }
+  .sq-reveal-sticky {
+    position: relative;
+    top: auto;
+    height: auto;
+    padding: var(--s-10) 0;
   }
 }
