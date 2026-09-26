@@ -29,7 +29,13 @@ import {
   geoPath,
   geoRotation,
 } from "d3-geo";
-import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from "geojson";
+import type {
+  Feature,
+  FeatureCollection,
+  MultiPolygon,
+  Polygon,
+  Position,
+} from "geojson";
 import { useEffect, useRef, useState } from "react";
 import { feature } from "topojson-client";
 import type { Topology } from "topojson-specification";
@@ -66,8 +72,16 @@ const ORBITS = [
 ];
 
 type V3 = [number, number, number];
-const rotX = ([x, y, z]: V3, a: number): V3 => [x, Math.cos(a) * y - Math.sin(a) * z, Math.sin(a) * y + Math.cos(a) * z];
-const rotY = ([x, y, z]: V3, a: number): V3 => [Math.cos(a) * x + Math.sin(a) * z, y, -Math.sin(a) * x + Math.cos(a) * z];
+const rotX = ([x, y, z]: V3, a: number): V3 => [
+  x,
+  Math.cos(a) * y - Math.sin(a) * z,
+  Math.sin(a) * y + Math.cos(a) * z,
+];
+const rotY = ([x, y, z]: V3, a: number): V3 => [
+  Math.cos(a) * x + Math.sin(a) * z,
+  y,
+  -Math.sin(a) * x + Math.cos(a) * z,
+];
 
 /**
  * Thin the 1:50m coastline once, at load. It has ~60k vertices, and d3 re-projects
@@ -77,9 +91,16 @@ const rotY = ([x, y, z]: V3, a: number): V3 => [Math.cos(a) * x + Math.sin(a) * 
  * invisible, and islands under a degree across do not survive the fill anyway.
  * 60,629 points in 1,421 rings become 12,857 in 262.
  */
-function thin(fc: FeatureCollection, minDeg = 0.45, minExtent = 1.0): FeatureCollection {
+function thin(
+  fc: FeatureCollection,
+  minDeg = 0.45,
+  minExtent = 1.0,
+): FeatureCollection {
   const ring = (r: Position[]): Position[] | null => {
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     for (const [x, y] of r) {
       if (x! < minX) minX = x!;
       if (x! > maxX) maxX = x!;
@@ -103,18 +124,36 @@ function thin(fc: FeatureCollection, minDeg = 0.45, minExtent = 1.0): FeatureCol
   const poly = (rings: Position[][]) => {
     const outer = ring(rings[0]!);
     if (!outer) return null;
-    return [outer, ...rings.slice(1).map(ring).filter((x): x is Position[] => x !== null)];
+    return [
+      outer,
+      ...rings
+        .slice(1)
+        .map(ring)
+        .filter((x): x is Position[] => x !== null),
+    ];
   };
   const features = fc.features
     .map((f): Feature | null => {
       const g = f.geometry;
       if (g.type === "Polygon") {
         const c = poly(g.coordinates);
-        return c ? { ...f, geometry: { type: "Polygon", coordinates: c } as Polygon } : null;
+        return c
+          ? { ...f, geometry: { type: "Polygon", coordinates: c } as Polygon }
+          : null;
       }
       if (g.type === "MultiPolygon") {
-        const c = g.coordinates.map(poly).filter((x): x is Position[][] => x !== null);
-        return c.length ? { ...f, geometry: { type: "MultiPolygon", coordinates: c } as MultiPolygon } : null;
+        const c = g.coordinates
+          .map(poly)
+          .filter((x): x is Position[][] => x !== null);
+        return c.length
+          ? {
+              ...f,
+              geometry: {
+                type: "MultiPolygon",
+                coordinates: c,
+              } as MultiPolygon,
+            }
+          : null;
       }
       return f;
     })
@@ -128,19 +167,48 @@ interface Hit {
   region: RegionResult | null; // null = the demo AOI
 }
 
-export function SpaceGlobe({ className }: { className?: string }) {
+/** How far the planet turns, and for how long, as it comes up on the landing page. */
+const SPIN_IN_DEG = 150;
+const SPIN_IN_MS = 2800;
+
+export function SpaceGlobe({
+  className,
+  spinIn = true,
+}: {
+  className?: string;
+  spinIn?: boolean;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [land, setLand] = useState<FeatureCollection | null>(null);
   const [hover, setHover] = useState<Hit | null>(null);
   const hits = useRef<Hit[]>([]);
-  const view = useRef({ lambda: -62, phi: -20, vx: 0, vy: 0, dragging: false, idleSince: 0 });
+  const view = useRef({
+    lambda: -62,
+    phi: -20,
+    vx: 0,
+    vy: 0,
+    dragging: false,
+    idleSince: 0,
+  });
+  // When the entrance starts; until then the planet waits, turned away.
+  const entrance = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (spinIn && entrance.current === null)
+      entrance.current = performance.now();
+  }, [spinIn]);
 
   useEffect(() => {
     let live = true;
     fetch("/geo/land-50m.json")
       .then((r) => r.json())
       .then((topo: Topology) => {
-        if (live) setLand(thin(feature(topo, topo.objects.land!) as unknown as FeatureCollection));
+        if (live)
+          setLand(
+            thin(
+              feature(topo, topo.objects.land!) as unknown as FeatureCollection,
+            ),
+          );
       })
       // Without coastlines the globe still draws ocean, graticule, markers and
       // arcs. A landing page that fails because one asset 404'd is worse.
@@ -172,8 +240,20 @@ export function SpaceGlobe({ className }: { className?: string }) {
     // The lit ocean, the halo, the terminator and the limb depend only on size and
     // sun direction, never on rotation. Five full-disc radial-gradient fills per
     // frame were most of the remaining cost; now they are two blits.
-    let cache: { key: string; under: HTMLCanvasElement; over: HTMLCanvasElement } | null = null;
-    const lighting = (w: number, h: number, cx: number, cy: number, R: number, sx: number, sy: number) => {
+    let cache: {
+      key: string;
+      under: HTMLCanvasElement;
+      over: HTMLCanvasElement;
+    } | null = null;
+    const lighting = (
+      w: number,
+      h: number,
+      cx: number,
+      cy: number,
+      R: number,
+      sx: number,
+      sy: number,
+    ) => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const key = `${w}x${h}@${dpr}`;
       if (cache?.key === key) return cache;
@@ -245,19 +325,33 @@ export function SpaceGlobe({ className }: { className?: string }) {
         v.lambda += 3.2 * dt * blend;
       }
 
+      // Entrance: the planet turns in from SPIN_IN_DEG away and settles, easing out,
+      // while it grows the last few percent to full size.
+      let enter = 1;
+      if (!reduced) {
+        const e0 = entrance.current;
+        const k =
+          e0 === null ? 0 : Math.min(1, Math.max(0, (now - e0) / SPIN_IN_MS));
+        enter = 1 - (1 - k) ** 3;
+      }
+      const lam = v.lambda - SPIN_IN_DEG * (1 - enter);
+
       const w = canvas.clientWidth;
       const h = canvas.clientHeight;
-      // Sit a little high so the model-card strip below only overlaps the south
-      // polar limb, which rotation never brings anything interesting into.
       const cx = w / 2;
-      const cy = h * 0.44;
-      const R = Math.min(w, h) * 0.39;
+      const cy = h * 0.5;
+      const R = Math.min(w, h) * 0.4 * (0.92 + 0.08 * enter);
       ctx.clearRect(0, 0, w, h);
 
-      const projection = geoOrthographic().scale(R).translate([cx, cy]).rotate([v.lambda, v.phi, 0]).clipAngle(90).precision(1.2);
+      const projection = geoOrthographic()
+        .scale(R)
+        .translate([cx, cy])
+        .rotate([lam, v.phi, 0])
+        .clipAngle(90)
+        .precision(1.2);
       const path = geoPath(projection, ctx);
-      const rotate = geoRotation([v.lambda, v.phi, 0]);
-      const centre: [number, number] = [-v.lambda, -v.phi];
+      const rotate = geoRotation([lam, v.phi, 0]);
+      const centre: [number, number] = [-lam, -v.phi];
       const sx = cx + SUN[0] * R;
       const sy = cy + SUN[1] * R;
 
@@ -273,7 +367,14 @@ export function SpaceGlobe({ className }: { className?: string }) {
         ctx.clip();
         ctx.beginPath();
         path(land);
-        const terrain = ctx.createRadialGradient(sx, sy, R * 0.05, cx, cy, R * 1.45);
+        const terrain = ctx.createRadialGradient(
+          sx,
+          sy,
+          R * 0.05,
+          cx,
+          cy,
+          R * 1.45,
+        );
         terrain.addColorStop(0, "#4a5a42");
         terrain.addColorStop(0.32, "#39472f");
         terrain.addColorStop(0.62, "#1f2a1c");
@@ -303,7 +404,10 @@ export function SpaceGlobe({ className }: { className?: string }) {
 
       /* arcs: learned there, tested here */
       const lift = (p: [number, number], k: number) => {
-        const [lon, lat] = rotate(p).map((d) => (d * Math.PI) / 180) as [number, number];
+        const [lon, lat] = rotate(p).map((d) => (d * Math.PI) / 180) as [
+          number,
+          number,
+        ];
         const x = Math.cos(lat) * Math.sin(lon);
         const y = Math.sin(lat);
         const z = Math.cos(lat) * Math.cos(lon);
@@ -318,7 +422,10 @@ export function SpaceGlobe({ className }: { className?: string }) {
         const SEG = 44;
         const pts = Array.from({ length: SEG + 1 }, (_, i) => {
           const s = i / SEG;
-          return { s, ...lift(arc.interp(s), 1 + hMax * Math.sin(Math.PI * s)) };
+          return {
+            s,
+            ...lift(arc.interp(s), 1 + hMax * Math.sin(Math.PI * s)),
+          };
         });
 
         // faint full arc
@@ -345,7 +452,8 @@ export function SpaceGlobe({ className }: { className?: string }) {
         for (let i = 1; i < pts.length; i++) {
           const a = pts[i - 1]!;
           const b = pts[i]!;
-          if (!a.visible || !b.visible || b.s > head || b.s < head - tail) continue;
+          if (!a.visible || !b.visible || b.s > head || b.s < head - tail)
+            continue;
           const k = 1 - (head - b.s) / tail;
           ctx.strokeStyle = `rgba(${ICE},${0.95 * k * fadeOut})`;
           ctx.lineWidth = 1 + 1.8 * k;
@@ -408,7 +516,7 @@ export function SpaceGlobe({ className }: { className?: string }) {
 
       /* orbits */
       const tilt = -0.36;
-      const spin = (v.lambda * Math.PI) / 180;
+      const spin = (lam * Math.PI) / 180;
       ctx.lineWidth = 0.8;
       for (const o of ORBITS) {
         const pts: { x: number; y: number; z: number }[] = [];
@@ -427,7 +535,8 @@ export function SpaceGlobe({ className }: { className?: string }) {
         for (let i = 1; i < pts.length; i++) {
           const a = pts[i - 1]!;
           const b = pts[i]!;
-          const target = b.z < 0 && Math.hypot(b.x - cx, b.y - cy) < R ? back : front;
+          const target =
+            b.z < 0 && Math.hypot(b.x - cx, b.y - cy) < R ? back : front;
           target.moveTo(a.x, a.y);
           target.lineTo(b.x, b.y);
         }
@@ -571,11 +680,17 @@ export function SpaceGlobe({ className }: { className?: string }) {
         className="sq-globe-canvas"
       />
       {hover ? (
-        <div className="sq-globe-tip" style={{ left: hover.x, top: hover.y }} role="status">
+        <div
+          className="sq-globe-tip"
+          style={{ left: hover.x, top: hover.y }}
+          role="status"
+        >
           {hover.region ? (
             <>
               <div className="sq-tip-head">
-                <span className={`sq-dot ${hover.region.split === "held-out" ? "is-b" : "is-a"}`} />
+                <span
+                  className={`sq-dot ${hover.region.split === "held-out" ? "is-b" : "is-a"}`}
+                />
                 {hover.region.name}
                 <span className="sq-tip-split">
                   {hover.region.split === "held-out" ? "held out" : "trained"}
@@ -584,7 +699,9 @@ export function SpaceGlobe({ className }: { className?: string }) {
               <div className="sq-tip-row">
                 <span>IoU</span>
                 <b>{f3(hover.region.modelIoU)}</b>
-                <span className="sq-tip-vs">vs {f3(hover.region.baselineIoU)} baseline</span>
+                <span className="sq-tip-vs">
+                  vs {f3(hover.region.baselineIoU)} baseline
+                </span>
               </div>
               <div className="sq-tip-note">
                 {hover.region.chips} chips ·{" "}

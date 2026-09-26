@@ -3,8 +3,9 @@
 /**
  * The opening, in three beats.
  *
- *   1. Stage   -- the planet first, full screen, with the ten evaluation regions on
- *                 it and nothing competing: a caption, a legend, a scroll cue.
+ *   1. Stage   -- the planet alone, as large as the screen allows, with the ten
+ *                 evaluation regions on it. It spins in when the logo has landed,
+ *                 and zooms past as you scroll on.
  *   2. Reveal  -- scrolling turns the headline up word by word in 3D, then the one
  *                 sentence that says how it works.
  *   3. Intro   -- what you would type (the query console), the way in, three
@@ -15,6 +16,9 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
+
+import type { IntroPhase } from "../BrandIntro";
 
 import { CALIBRATION, HEADLINE, MODEL, REGIONS, f3, ratio } from "../facts";
 import { HeroHeadline } from "../HeroHeadline";
@@ -25,52 +29,53 @@ import { IconArrow, Reveal } from "../ui";
 const ease = [0.16, 1, 0.3, 1] as const;
 
 const TRAINED_REGIONS = REGIONS.filter((r) => r.split === "trained").length;
-const HELD_OUT = REGIONS.filter((r) => r.split === "held-out").map(
-  (r) => r.name,
-);
-
-export function Hero() {
+export function Hero({ phase }: { phase: IntroPhase }) {
   const reduce = useReducedMotion();
+  const zoomRef = useRef<HTMLDivElement | null>(null);
+
+  // Scrolling away from the planet zooms past it: it grows a little and fades as
+  // the headline section comes up. Scroll-linked, so it reverses on the way back.
+  useEffect(() => {
+    const el = zoomRef.current;
+    const scroller = el?.closest<HTMLElement>(".sq-landing");
+    const stage = el?.closest<HTMLElement>(".sq-stage");
+    if (!el || !scroller || !stage) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const p = Math.min(
+        1,
+        Math.max(0, scroller.scrollTop / Math.max(1, stage.offsetHeight)),
+      );
+      el.style.transform = p
+        ? `translate3d(0, ${(p * -40).toFixed(1)}px, 0) scale(${(1 + p * 0.18).toFixed(4)})`
+        : "";
+      el.style.opacity = p ? (1 - p * 1.1).toFixed(3) : "";
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(apply);
+    };
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    apply();
+    return () => {
+      cancelAnimationFrame(raf);
+      scroller.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   return (
     <>
       {/* 1 ── the planet ───────────────────────────────────────────────── */}
-      <section className="sq-stage" aria-label="Evaluation regions">
-        <figure className="sq-wrap sq-stage-figure sq-intro-wait">
-          <span className="sq-label sq-stage-kicker">
-            <i aria-hidden="true" />
-            Smart India Hackathon 2026 · SAR flood intelligence
-          </span>
-
-          <SpaceGlobe className="sq-globe--stage" />
-
-          <figcaption className="sq-stage-caption">
-            <span className="sq-figure-legend">
-              <span>
-                <i className="sq-key sq-key--a" /> trained on
-              </span>
-              <span>
-                <i className="sq-key sq-key--b" /> held out
-              </span>
-              <span>
-                <i className="sq-key sq-key--signal" /> demo area
-              </span>
-            </span>
-            <span className="sq-stage-note">
-              Fig. 1 · Sen1Floods11 regions · {HELD_OUT.join(", ")} held out of
-              training
-            </span>
-            <span className="sq-hover-hint" aria-hidden="true">
-              <i />
-              drag to rotate · hover a region
-            </span>
-          </figcaption>
-
-          <a href="#intro" className="sq-scroll-cue">
-            Scroll
-            <i aria-hidden="true" />
-          </a>
-        </figure>
+      <section
+        className="sq-stage"
+        aria-label="The ten evaluation regions on a globe"
+      >
+        <div className="sq-stage-figure sq-intro-wait">
+          <div ref={zoomRef} className="sq-stage-zoom">
+            <SpaceGlobe className="sq-globe--stage" spinIn={phase === "done"} />
+          </div>
+        </div>
       </section>
 
       {/* 2 ── the headline, revealed by scroll ─────────────────────────── */}

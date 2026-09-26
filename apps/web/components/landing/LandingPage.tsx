@@ -68,7 +68,7 @@ export default function LandingPage() {
       <div className="sq-content">
         <Nav scrolled={scrolled} />
         <main id="mission-main">
-          <Hero />
+          <Hero phase={phase} />
           <Proof />
           <HowItWorks />
           <Radar />

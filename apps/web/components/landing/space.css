@@ -529,7 +529,7 @@
 
 .sq-landing[data-intro="logo"] .sq-stage-figure.sq-intro-wait,
 .sq-landing[data-intro="fly"] .sq-stage-figure.sq-intro-wait {
-  transform: scale(0.96);
+  transform: scale(0.86);
 }
 
 /* ─── Opening, beat 1: the planet ───────────────────────────────────────── */
@@ -538,73 +538,35 @@
   position: relative;
   min-height: calc(100svh - 64px);
   display: flex;
+  /* the scroll zoom scales the full-width globe past the page edges; clip that
+     sideways without clipping it vertically */
+  overflow-x: clip;
 }
 
 .sq-stage-figure {
   position: relative;
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--s-4);
-  margin: 0 auto;
-  padding-top: var(--s-4);
-  padding-bottom: var(--s-8);
+  min-width: 0;
 }
 
-.sq-stage-kicker i {
-  width: 6px;
-  height: 6px;
-  border-radius: 1px;
-  background: var(--c-signal);
+/* Scroll-linked zoom target (see Hero). */
+.sq-stage-zoom {
+  width: 100%;
+  transform-origin: 50% 50%;
+  will-change: transform, opacity;
 }
 
-/* As large as the screen allows, leaving room for the kicker, the caption and
-   the scroll cue. */
+/* Full bleed, full height: the planet is the whole first screen. The canvas is
+   the full width so the orbits are never clipped by the page gutter. */
 .sq-globe.sq-globe--stage {
-  width: min(100%, calc((100svh - 260px) / 0.78), 1000px);
+  width: 100%;
+  height: calc(100svh - 64px);
+  min-height: 420px;
+  aspect-ratio: auto;
   max-height: none;
-}
-
-.sq-stage-caption {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s-3) var(--s-6);
-  font-family: var(--f-mono);
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  color: var(--c-ink-4);
-  text-align: center;
-}
-
-.sq-scroll-cue {
-  position: absolute;
-  left: 50%;
-  bottom: var(--s-5);
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--s-2);
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--c-ink-3);
-  transition: color 160ms var(--e-std);
-}
-
-.sq-scroll-cue i {
-  width: 1px;
-  height: 28px;
-  background: linear-gradient(to bottom, var(--c-ink-3), transparent);
-}
-
-.sq-scroll-cue:hover {
-  color: var(--c-ink);
 }
 
 /* ─── Opening, beat 2: the headline, revealed by scroll ─────────────────── */
@@ -891,44 +853,6 @@
 
 /* ─── The globe figure ────────────────────────────────────────────────────── */
 
-.sq-figure-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s-4);
-  font-family: var(--f-mono);
-  font-size: 11px;
-  color: var(--c-ink-3);
-}
-
-.sq-figure-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sq-key {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.sq-key--a {
-  background: var(--c-data-a);
-}
-
-.sq-key--b {
-  background: var(--c-data-b);
-}
-
-.sq-key--signal {
-  background: var(--c-signal);
-}
-
-.sq-key--slate {
-  background: var(--c-ink-4);
-}
-
 .sq-globe {
   position: relative;
   width: 100%;
@@ -951,18 +875,6 @@
 .sq-globe-canvas:focus-visible {
   outline: 1px dashed var(--c-line-3);
   outline-offset: -8px;
-}
-
-.sq-hover-hint {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-}
-
-.sq-hover-hint i {
-  width: 14px;
-  height: 1px;
-  background: var(--c-ink-4);
 }
 
 .sq-globe-tip {
@@ -1962,19 +1874,11 @@
   .sq-headline {
     font-size: clamp(40px, 12vw, 56px);
   }
-  .sq-stage-kicker {
-    letter-spacing: 0.08em;
-    font-size: 10px;
-    text-align: center;
-  }
-  .sq-stage-kicker i {
-    display: none;
+  .sq-stage {
+    min-height: 0;
   }
   .sq-globe.sq-globe--stage {
-    width: 100%;
-  }
-  .sq-stage-note {
-    width: 100%;
+    height: min(calc(100svh - 64px), 125vw);
   }
   .sq-reveal {
     height: 200vh;
@@ -2028,13 +1932,6 @@
   }
   .sq-footer-links {
     flex-wrap: wrap;
-  }
-}
-
-/* Touch screens have no hover: do not promise one. */
-@media (hover: none) {
-  .sq-hover-hint {
-    display: none;
   }
 }
 
