@@ -6,7 +6,8 @@
  * Original implementation (not the React Bits Pro source). A seeded value-noise
  * heightfield is flown over at constant speed and drawn as glowing contour rows,
  * far to near, each row filling the ground beneath it so nearer terrain occludes
- * farther terrain. A ringed planet sits on the horizon.
+ * farther terrain. Sentinel-1 flies across the sky above it, and its radar beam
+ * sweeps the ground.
  *
  * It is also the argument of the section it sits in. A radar pulse sweeps across the
  * ground every few seconds and lights the terrain it hits -- except the water in the
@@ -65,46 +66,6 @@ export function Landscape({ className }: { className?: string }) {
     sky.addColorStop(1, "#16181a");
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, horizon + 2);
-
-    /* ── ringed planet on the horizon ─────────────────────────────────── */
-    const pr = Math.min(w, h) * 0.2;
-    const px = w * 0.7;
-    const py = horizon + pr * 0.18;
-    const glow = ctx.createRadialGradient(px, py, pr * 0.8, px, py, pr * 2.1);
-    glow.addColorStop(0, "rgba(152,160,168,0.08)");
-    glow.addColorStop(1, "rgba(152,160,168,0)");
-    ctx.fillStyle = glow;
-    ctx.fillRect(px - pr * 2.2, py - pr * 2.2, pr * 4.4, pr * 4.4);
-
-    // back half of the ring, behind the planet
-    ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(-0.22);
-    ctx.strokeStyle = "rgba(152,160,168,0.28)";
-    ctx.lineWidth = pr * 0.05;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, pr * 1.75, pr * 0.34, 0, Math.PI, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    const body = ctx.createRadialGradient(px - pr * 0.4, py - pr * 0.5, pr * 0.1, px, py, pr);
-    body.addColorStop(0, "#9aa1a8");
-    body.addColorStop(0.45, "#3a3f44");
-    body.addColorStop(1, "#101214");
-    ctx.fillStyle = body;
-    ctx.beginPath();
-    ctx.arc(px, py, pr, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.save();
-    ctx.translate(px, py);
-    ctx.rotate(-0.22);
-    ctx.strokeStyle = "rgba(185,190,196,0.45)";
-    ctx.lineWidth = pr * 0.05;
-    ctx.beginPath();
-    ctx.ellipse(0, 0, pr * 1.75, pr * 0.34, 0, 0, Math.PI);
-    ctx.stroke();
-    ctx.restore();
 
     // horizon haze
     const haze = ctx.createLinearGradient(0, horizon - h * 0.08, 0, horizon + h * 0.04);
@@ -224,6 +185,61 @@ export function Landscape({ className }: { className?: string }) {
       pwet.set(wet);
       havePrev = true;
     }
+
+    /* ── Sentinel-1 and its radar beam ─────────────────────────────────── */
+    // The satellite drifts slowly across the sky; the beam fans down from its
+    // antenna to the strip of ground the pulse is lighting right now.
+    const sx = w * (0.62 + 0.05 * Math.sin(t * 0.18));
+    const sy = h * 0.15;
+    const kPulse = sweep * (ROWS - 1);
+    const zPulse = Math.max(0.35, zNear + kPulse * dz - frac);
+    const footY = Math.min(h, horizon + ((camY - 0.6) * f) / zPulse);
+    const halfSwath = Math.min(w * 0.46, (7 * f) / zPulse);
+    const beam = ctx.createLinearGradient(0, sy, 0, footY);
+    beam.addColorStop(0, "rgba(248,112,16,0.13)");
+    beam.addColorStop(1, "rgba(248,112,16,0.015)");
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(sx - 2, sy + 6);
+    ctx.lineTo(sx + 2, sy + 6);
+    ctx.lineTo(cx + halfSwath, footY);
+    ctx.lineTo(cx - halfSwath, footY);
+    ctx.closePath();
+    ctx.fill();
+
+    const u = Math.max(0.7, Math.min(1.3, w / 1100)); // scale with the viewer
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(u, u);
+    ctx.rotate(-0.08);
+    // solar array: one long wing, panelled
+    ctx.fillStyle = "#1c2027";
+    ctx.strokeStyle = "rgba(152,160,168,0.7)";
+    ctx.lineWidth = 0.8;
+    for (const side of [-1, 1]) {
+      const x0 = side < 0 ? -58 : 10;
+      ctx.fillRect(x0, -4, 48, 8);
+      ctx.strokeRect(x0, -4, 48, 8);
+      for (let p = 1; p < 6; p++) {
+        ctx.beginPath();
+        ctx.moveTo(x0 + p * 8, -4);
+        ctx.lineTo(x0 + p * 8, 4);
+        ctx.stroke();
+      }
+    }
+    // bus
+    ctx.fillStyle = "#c9ced3";
+    ctx.fillRect(-9, -7, 18, 14);
+    // SAR antenna: the long panel underneath that sends the pulse
+    ctx.fillStyle = "#f87010";
+    ctx.fillRect(-14, 7, 28, 3);
+    ctx.restore();
+
+    ctx.font = "400 11px 'Share Tech Mono', ui-monospace, monospace";
+    ctx.fillStyle = "rgba(152,160,168,0.85)";
+    ctx.fillText("SENTINEL-1", sx + 66 * u, sy - 8 * u);
+    ctx.fillStyle = "rgba(98,105,112,0.9)";
+    ctx.fillText("C-band SAR", sx + 66 * u, sy + 6 * u);
 
     // vignette so the section's copy sits on something calm
     const vig = ctx.createLinearGradient(0, 0, 0, h);
