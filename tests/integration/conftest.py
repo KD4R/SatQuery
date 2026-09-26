@@ -31,13 +31,17 @@ def _make_dummy_obs(sensor: str, cloud_cover: float, obs_id: str | None = None) 
 
 
 @pytest.fixture(autouse=True)
-def mock_agent_dependencies_for_integration_tests():
+def mock_agent_dependencies_for_integration_tests(request):
     """
     Globally mock the STAC search provider and Inference client during integration tests.
     Since we removed the CELERY_TASK_ALWAYS_EAGER fallback in stac_search.py and
     orchestrator.py, the agent actually attempts to hit Bhoonidhi and Inference services,
     which fails in the CI environment due to missing credentials or network isolation.
     """
+    if "test_p4_acceptance.py" in request.node.nodeid:
+        yield
+        return
+
     sar_obs = _make_dummy_obs("S1_SAR", 0.0)
     opt_obs = _make_dummy_obs("S2_OPTICAL", 14.5)
 
