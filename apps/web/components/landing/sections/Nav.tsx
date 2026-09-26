@@ -7,7 +7,6 @@ import { IconArrow } from "../ui";
 const LINKS = [
   { href: "#how", label: "How it works" },
   { href: "#radar", label: "Why radar" },
-  { href: "#validation", label: "Validation" },
   { href: "#honesty", label: "Evidence first" },
 ];
 

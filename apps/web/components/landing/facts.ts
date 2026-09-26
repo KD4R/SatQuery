@@ -84,28 +84,6 @@ export const REGIONS: readonly RegionResult[] = [
   { name: "USA", split: "trained", chips: 55, baselineIoU: 0.14, modelIoU: 0.334, at: [-98.6, 39.8] },
 ];
 
-/** reports/evaluation.md -- trained-vs-held-out paragraph under "By region". */
-export const GENERALISATION = {
-  trainedMeanIoU: 0.318,
-  heldOutMeanIoU: 0.254,
-  gap: 0.065,
-} as const;
-
-export interface Stratum {
-  label: string;
-  chips: number;
-  baselineIoU: number;
-  modelIoU: number;
-}
-
-/** reports/evaluation.md -- "Stratified by water content". */
-export const STRATA: readonly Stratum[] = [
-  { label: "<1% water", chips: 21, baselineIoU: 0.003, modelIoU: 0.018 },
-  { label: "1–10%", chips: 41, baselineIoU: 0.13, modelIoU: 0.215 },
-  { label: "10–30%", chips: 20, baselineIoU: 0.327, modelIoU: 0.358 },
-  { label: ">30%", chips: 10, baselineIoU: 0.725, modelIoU: 0.7 },
-];
-
 /** The demo AOI: Sen1Floods11 chip India_533192, Brahmaputra floodplain, Assam. */
 export const DEMO_AOI = {
   name: "Assam, India",

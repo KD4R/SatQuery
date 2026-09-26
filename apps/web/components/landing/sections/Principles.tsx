@@ -24,7 +24,7 @@ export function Principles() {
     <section id="honesty" className="sq-section">
       <div className="sq-wrap">
         <Reveal className="sq-section-head">
-          <SectionIndex n={5} label="Evidence first" />
+          <SectionIndex n={4} label="Evidence first" />
           <h2 className="sq-h2">
             It tells you what it <span className="is-quiet">doesn&rsquo;t know.</span>
           </h2>

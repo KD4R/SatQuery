@@ -13,7 +13,6 @@
  *   Proof         four measured numbers, one of them the accuracy figure we refuse
  *   How it works  the console's own stages, scroll-driven
  *   Why radar     the physics, acted out by the landscape behind it
- *   Validation    the evaluation tables, drawn, including the unflattering rows
  *   Evidence      the three rules the console is built on
  *   Close         a way in, and where every figure came from
  *
@@ -41,7 +40,6 @@ import { Nav } from "./sections/Nav";
 import { Principles } from "./sections/Principles";
 import { Proof } from "./sections/Proof";
 import { Radar } from "./sections/Radar";
-import { Validation } from "./sections/Validation";
 
 export default function LandingPage() {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -70,7 +68,6 @@ export default function LandingPage() {
           <Proof />
           <HowItWorks />
           <Radar />
-          <Validation />
           <Principles />
           <Closing />
         </main>
