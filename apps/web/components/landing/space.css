@@ -690,22 +690,52 @@
   transform: scaleX(var(--mark, 1));
 }
 
-/* ─── Opening, beat 3: try it, and the numbers ──────────────────────────── */
+/* ─── Opening, beat 3: try it, centred ──────────────────────────────────── */
 
 .sq-intro {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--s-8);
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px);
   padding-top: var(--s-9);
-  padding-bottom: var(--s-10);
+  padding-bottom: var(--s-9);
+  text-align: center;
 }
 
 .sq-intro-copy {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: var(--s-6);
-  min-width: 0;
+  width: min(100%, 720px);
+}
+
+.sq-intro-copy > * {
+  width: 100%;
+}
+
+.sq-intro .sq-console {
+  max-width: none;
+  text-align: left;
+}
+
+.sq-intro .sq-console-body {
+  font-size: 16px;
+}
+
+.sq-intro .sq-cta-row {
+  justify-content: center;
+}
+
+.sq-intro .sq-trust {
+  margin: 0 auto;
+  justify-content: center;
+  max-width: none;
+}
+
+.sq-intro .sq-trust div {
+  align-items: center;
 }
 
 .sq-lede {
@@ -952,127 +982,6 @@
 
 .sq-dot.is-signal {
   background: var(--c-signal);
-}
-
-/* ─── Model validation card ───────────────────────────────────────────────── */
-
-.sq-validation {
-  position: relative;
-  justify-self: end;
-  width: min(100%, 560px);
-  border-radius: var(--r-3);
-  background: var(--c-raise-1);
-  box-shadow: inset 0 0 0 1px var(--c-line-2), 0 24px 48px -24px rgba(0, 0, 0, 0.9);
-}
-
-.sq-validation-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--s-3);
-  height: 36px;
-  padding: 0 var(--s-5);
-  border-bottom: 1px solid var(--c-line);
-}
-
-.sq-validation-source {
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  color: var(--c-ink-4);
-}
-
-.sq-validation-id {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--s-2) var(--s-4);
-  padding: 14px var(--s-5) 0;
-}
-
-.sq-validation-name {
-  font-family: var(--f-mono);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--c-ink);
-}
-
-.sq-validation-arch {
-  font-family: var(--f-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--c-ink-3);
-}
-
-.sq-validation-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1px;
-  margin: var(--s-3) var(--s-5) var(--s-5);
-  border-radius: var(--r-2);
-  overflow: hidden;
-  background: var(--c-line);
-  box-shadow: 0 0 0 1px var(--c-line);
-}
-
-.sq-metric {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 10px var(--s-4) var(--s-3);
-  background: var(--c-raise-1);
-  min-width: 0;
-}
-
-.sq-metric-k {
-  font-family: var(--f-mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--c-ink-3);
-}
-
-.sq-metric-v {
-  font-family: var(--f-mono);
-  font-size: 24px;
-  font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.03em;
-  color: var(--c-ink);
-  font-variant-numeric: tabular-nums;
-}
-
-.sq-metric-note {
-  font-family: var(--f-mono);
-  font-size: 11px;
-  color: var(--c-ink-4);
-}
-
-.sq-status {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s-2);
-  height: 27.6px;
-  font-family: var(--f-mono);
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-}
-
-.sq-status i {
-  width: 8px;
-  height: 8px;
-  border-radius: 1px;
-}
-
-.sq-status--warn {
-  color: var(--c-warn);
-}
-
-.sq-status--warn i {
-  background: var(--c-warn);
 }
 
 /* ─── Sections ────────────────────────────────────────────────────────────── */
@@ -1754,13 +1663,51 @@
   color: var(--c-ink);
 }
 
-.sq-footer-source {
+/* The repository: code, data and the generated evaluation reports live there. */
+.sq-footer-repo {
   justify-self: end;
-  max-width: 340px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding: 10px 14px;
+  border-radius: var(--r-2);
+  color: var(--c-ink-2);
+  box-shadow: inset 0 0 0 1px var(--c-line-2);
+  transition:
+    color 160ms var(--e-std),
+    box-shadow 160ms var(--e-std);
+}
+
+.sq-footer-repo span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.sq-footer-repo b {
   font-family: var(--f-mono);
-  font-size: 11px;
-  line-height: 1.7;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-ink);
+}
+
+.sq-footer-repo small {
+  font-size: 12px;
   color: var(--c-ink-4);
+}
+
+.sq-footer-repo:hover {
+  color: var(--c-ink);
+  box-shadow: inset 0 0 0 1px var(--c-line-3);
+}
+
+.sq-footer-repo:hover .sq-arrow {
+  transform: translateX(3px);
+}
+
+.sq-footer-repo .sq-arrow {
+  transition: transform 220ms var(--e-out);
 }
 
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
@@ -1768,9 +1715,6 @@
 @media (max-width: 1280px) {
   .sq-wrap {
     padding-inline: var(--s-6);
-  }
-  .sq-intro {
-    gap: var(--s-7);
   }
 }
 
@@ -1787,16 +1731,6 @@
   }
   .sq-trust {
     gap: var(--s-6);
-  }
-}
-
-@media (max-width: 960px) {
-  .sq-intro {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .sq-validation {
-    justify-self: stretch;
-    width: 100%;
   }
 }
 
@@ -1854,7 +1788,7 @@
   .sq-footer-inner {
     grid-template-columns: minmax(0, 1fr);
   }
-  .sq-footer-source {
+  .sq-footer-repo {
     justify-self: start;
   }
 }
@@ -1868,6 +1802,7 @@
     padding: var(--s-9) 0;
   }
   .sq-intro {
+    min-height: 0;
     padding-top: var(--s-8);
     padding-bottom: var(--s-9);
   }
@@ -1896,18 +1831,6 @@
   }
   .sq-trust b {
     font-size: 18px;
-  }
-  .sq-validation-head,
-  .sq-validation-id {
-    padding-left: var(--s-4);
-    padding-right: var(--s-4);
-  }
-  .sq-validation-grid {
-    margin-left: var(--s-4);
-    margin-right: var(--s-4);
-  }
-  .sq-metric-v {
-    font-size: 22px;
   }
   .sq-proof {
     grid-template-columns: minmax(0, 1fr);

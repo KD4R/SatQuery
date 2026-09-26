@@ -27,7 +27,11 @@ export function Reveal({
       initial={reduce ? false : { opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-60px" }}
-      transition={{ delay: reduce ? 0 : delay, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        delay: reduce ? 0 : delay,
+        duration: 0.7,
+        ease: [0.16, 1, 0.3, 1],
+      }}
     >
       {children}
     </Tag>
@@ -83,7 +87,17 @@ export function CountUp({
 /* ── Icons: inline, 1.6px stroke, currentColor ──────────────────────────── */
 
 const I = ({ children }: { children: React.ReactNode }) => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     {children}
   </svg>
 );
@@ -106,7 +120,25 @@ export const IconWaves = () => (
   </I>
 );
 export const IconArrow = () => (
-  <svg className="sq-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  <svg
+    className="sq-arrow"
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
     <path d="M5 12h14M13 6l6 6-6 6" />
   </svg>
+);
+
+/** A generic source-code mark (angle brackets and a slash). */
+export const IconCode = () => (
+  <I>
+    <path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16" />
+  </I>
 );

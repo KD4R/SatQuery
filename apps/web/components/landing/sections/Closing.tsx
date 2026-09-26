@@ -3,8 +3,10 @@
 import Link from "next/link";
 
 import { CursorWave } from "../effects/CursorWave";
-import { IconArrow, Reveal } from "../ui";
+import { IconArrow, IconCode, Reveal } from "../ui";
 import { SectionIndex } from "./SectionIndex";
+
+const REPO_URL = "https://github.com/KD4R/SatQuery";
 
 export function Closing() {
   return (
@@ -53,10 +55,19 @@ export function Closing() {
             <Link href="/monitoring">Monitoring</Link>
             <Link href="/admin">Admin</Link>
           </nav>
-          <div className="sq-footer-source">
-            Every figure on this page is copied from reports/evaluation.md and
-            reports/calibration.md, which are generated, never hand-written.
-          </div>
+          <a
+            className="sq-footer-repo"
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <IconCode />
+            <span>
+              <b>github.com/KD4R/SatQuery</b>
+              <small>Code, data and evaluation reports</small>
+            </span>
+            <IconArrow />
+          </a>
         </div>
       </footer>
     </>

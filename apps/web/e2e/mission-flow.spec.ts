@@ -35,46 +35,65 @@ test.describe("landing", () => {
 
   test("quotes IoU and refuses to quote accuracy", async ({ page }) => {
     await page.goto("/");
-    // Scoped to the hero's model card: the figure now appears again further down
-    // the page, and the card is the one a visitor sees first.
-    const card = page.getByRole("complementary", { name: "Model card" });
-    await expect(card.getByText("0.435")).toBeVisible();
+    // The proof row counts up when it scrolls into view, so bring it there first.
+    const proof = page.locator("#proof");
+    await proof.scrollIntoViewIfNeeded();
+    await expect(proof.getByText("0.435")).toBeVisible();
     // The landing page must keep explaining why accuracy is absent. If someone
     // adds an "89% accurate" badge later, this fails.
     await expect(page.getByText(/Accuracy is not quoted/i)).toBeVisible();
   });
 
-  test("the model card reports the calibration shortfall, not a green tick", async ({
+  test("states the calibration shortfall, not a green tick", async ({
     page,
   }) => {
     await page.goto("/");
-    const card = page.getByRole("complementary", { name: "Model card" });
-    await expect(card.getByText("PARTIAL")).toBeVisible({ timeout: 10_000 });
+    const honesty = page.locator("#honesty");
+    await honesty.scrollIntoViewIfNeeded();
+    await expect(honesty.getByText(/still misses the bar/i)).toBeVisible();
+    await expect(honesty.getByText("0.0583")).toBeVisible();
   });
 
-  test("every model-card figure is one the generated reports state", async ({ page }) => {
+  test("every headline figure is one the generated reports state", async ({
+    page,
+  }) => {
     // reports/evaluation.md: "No number about this subsystem may appear in a slide,
     // a README or a demo script unless it appears here first." The landing page is
     // the most-seen of those surfaces, so this reads the reports from the repo and
-    // requires each hero figure to be both on the page and in a report. Editing a
-    // number in facts.ts without regenerating the report fails here.
+    // requires each figure to be both on the page and in a report. Editing a number
+    // in facts.ts without regenerating the report fails here.
     const reports =
       readFileSync(join(__dirname, "../../../reports/evaluation.md"), "utf8") +
       readFileSync(join(__dirname, "../../../reports/calibration.md"), "utf8");
 
     await page.goto("/");
-    const card = page.getByRole("complementary", { name: "Model card" });
-    for (const figure of ["0.435", "0.606", "0.204", "0.339", "0.058", "308"]) {
-      expect(reports, `${figure} is on the landing page but in neither report`).toContain(figure);
-      await expect(card.getByText(figure, { exact: false }).first()).toBeVisible();
+    const figures: [string, string][] = [
+      ["#proof", "0.435"],
+      ["#proof", "0.204"],
+      ["#proof", "395"],
+      ["#proof", "89.2%"],
+      ["#proof", "10.8%"],
+      ["#honesty", "0.0583"],
+      ["#honesty", "0.0896"],
+    ];
+    for (const [where, figure] of figures) {
+      expect(
+        reports,
+        `${figure} is on the landing page but in neither report`,
+      ).toContain(figure);
+      const section = page.locator(where);
+      await section.scrollIntoViewIfNeeded();
+      await expect(
+        section.getByText(figure, { exact: false }).first(),
+      ).toBeVisible();
     }
-    expect(reports).toContain("89.2%");
-    await expect(page.getByText("89.2%").first()).toBeVisible();
   });
 });
 
 test.describe("console — demo run", () => {
-  test("runs the full flow and reports the measured figures", async ({ page }) => {
+  test("runs the full flow and reports the measured figures", async ({
+    page,
+  }) => {
     await page.goto("/console");
 
     // Before the run there is nothing to show, and the panel says so rather than
@@ -100,7 +119,9 @@ test.describe("console — demo run", () => {
 
     // A green tick here would overclaim: 46% of the AOI was inside the swath.
     await expect(page.getByText("degraded").first()).toBeVisible();
-    await expect(page.getByText(/46% of the AOI inside the swath/i)).toBeVisible();
+    await expect(
+      page.getByText(/46% of the AOI inside the swath/i),
+    ).toBeVisible();
   });
 
   test("says NOT AVAILABLE for the acquisition time it does not have", async ({
@@ -145,7 +166,9 @@ test.describe("AOI validation", () => {
 
     await expect(page.getByText(/click to add corners/i)).toBeVisible();
     // Nothing drawn yet, so committing is blocked.
-    await expect(page.getByRole("button", { name: /^commit$/i })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: /^commit$/i }),
+    ).toBeDisabled();
 
     await page.keyboard.press("Escape");
     await expect(page.getByText(/click to add corners/i)).toBeHidden();
@@ -159,7 +182,9 @@ test.describe("routes", () => {
     await expect(page.getByText(/New water detected/i)).toBeVisible();
   });
 
-  test("monitoring shows a countdown derived from timestamps", async ({ page }) => {
+  test("monitoring shows a countdown derived from timestamps", async ({
+    page,
+  }) => {
     await page.goto("/monitoring");
     await expect(page.getByText(/next observation/i).first()).toBeVisible();
     await expect(page.getByText("8h 40m")).toBeVisible();

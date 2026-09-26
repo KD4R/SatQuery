@@ -8,29 +8,22 @@
  *                 and zooms past as you scroll on.
  *   2. Reveal  -- scrolling turns the headline up word by word in 3D, then the one
  *                 sentence that says how it works.
- *   3. Intro   -- what you would type (the query console), the way in, three
- *                 measured facts, and the model validation card: the numbers a judge
- *                 asks for first, each traceable to reports/evaluation.md or
- *                 reports/calibration.md.
+ *   3. Intro   -- centred: what you would type (the query console), the way in,
+ *                 and three measured facts.
  */
 
-import { motion, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
 import type { IntroPhase } from "../BrandIntro";
 
-import { CALIBRATION, HEADLINE, MODEL, REGIONS, f3, ratio } from "../facts";
+import { HEADLINE, ratio } from "../facts";
 import { HeroHeadline } from "../HeroHeadline";
 import { QueryConsole } from "../QueryConsole";
 import { SpaceGlobe } from "../SpaceGlobe";
 import { IconArrow, Reveal } from "../ui";
 
-const ease = [0.16, 1, 0.3, 1] as const;
-
-const TRAINED_REGIONS = REGIONS.filter((r) => r.split === "trained").length;
 export function Hero({ phase }: { phase: IntroPhase }) {
-  const reduce = useReducedMotion();
   const zoomRef = useRef<HTMLDivElement | null>(null);
 
   // Scrolling away from the planet zooms past it: it grows a little and fades as
@@ -95,7 +88,7 @@ export function Hero({ phase }: { phase: IntroPhase }) {
         </div>
       </section>
 
-      {/* 3 ── try it, and the numbers ──────────────────────────────────── */}
+      {/* 3 ── try it: the query, the way in, three measured facts ──────── */}
       <section className="sq-wrap sq-intro" aria-label="Try it">
         <div className="sq-intro-copy">
           <Reveal>
@@ -131,63 +124,6 @@ export function Hero({ phase }: { phase: IntroPhase }) {
             </div>
           </Reveal>
         </div>
-
-        <motion.aside
-          className="sq-validation"
-          aria-label="Model card"
-          initial={reduce ? false : { opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-60px" }}
-          transition={{ duration: 0.8, ease }}
-        >
-          <div className="sq-validation-head">
-            <span className="sq-label">Model validation</span>
-            <span className="sq-validation-source">reports/evaluation.md</span>
-          </div>
-          <div className="sq-validation-id">
-            <span className="sq-validation-name">
-              {HEADLINE.model.toUpperCase()}
-            </span>
-            <span className="sq-validation-arch">
-              {MODEL.architecture} · {MODEL.parameters.toLocaleString("en-US")}{" "}
-              parameters
-            </span>
-          </div>
-          <div className="sq-validation-grid">
-            <div className="sq-metric">
-              <span className="sq-metric-k">Held-out IoU</span>
-              <span className="sq-metric-v">{f3(HEADLINE.pooledIoU)}</span>
-              <span className="sq-metric-note">
-                pooled · baseline {f3(HEADLINE.baselinePooledIoU)}
-              </span>
-            </div>
-            <div className="sq-metric">
-              <span className="sq-metric-k">Held-out F1</span>
-              <span className="sq-metric-v">{f3(HEADLINE.pooledF1)}</span>
-              <span className="sq-metric-note">
-                pooled · baseline {f3(HEADLINE.baselinePooledF1)}
-              </span>
-            </div>
-            <div className="sq-metric">
-              <span className="sq-metric-k">Calibration</span>
-              <span className="sq-status sq-status--warn">
-                <i aria-hidden="true" />
-                PARTIAL
-              </span>
-              <span className="sq-metric-note">
-                ECE {CALIBRATION.eceScaled.toFixed(3)} · bar{" "}
-                {CALIBRATION.bar.toFixed(3)}
-              </span>
-            </div>
-            <div className="sq-metric">
-              <span className="sq-metric-k">Trained on</span>
-              <span className="sq-metric-v">{HEADLINE.trainChips}</span>
-              <span className="sq-metric-note">
-                chips · {TRAINED_REGIONS} regions
-              </span>
-            </div>
-          </div>
-        </motion.aside>
       </section>
     </>
   );
