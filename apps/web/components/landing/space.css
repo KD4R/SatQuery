@@ -1042,83 +1042,221 @@
   color: var(--c-ink-3);
 }
 
-/* how it works */
+/* how it works: a sticky stage the page scrolls through, one step at a time */
 
-.sq-how {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--s-8);
-  margin-top: var(--s-8);
+.sq-how-section {
+  position: relative;
+  height: 520vh;
+  border-top: 1px solid var(--c-line);
 }
 
-.sq-how-visual {
+.sq-how-sticky {
   position: sticky;
-  top: 104px;
-  height: 460px;
-  padding: var(--s-4);
+  top: 64px;
+  height: calc(100vh - 64px);
   overflow: hidden;
 }
 
-.sq-how-steps {
+.sq-warp {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Calms the warp where the reading happens and blends it into the sections
+   above and below. */
+.sq-how-veil {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to bottom, var(--c-ground) 0%, transparent 14%, transparent 86%, var(--c-ground) 100%),
+    radial-gradient(46% 52% at 50% 56%, rgba(8, 8, 8, 0.72), rgba(8, 8, 8, 0.2) 75%, transparent 100%);
+}
+
+.sq-how-stage {
+  position: relative;
+  z-index: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 18vh;
-  padding: 8vh 0 24vh;
+  justify-content: center;
+  gap: var(--s-6);
+  padding-block: var(--s-5);
 }
 
-.sq-step {
-  position: relative;
+.sq-how-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+  text-align: center;
+}
+
+.sq-how-head .sq-h2 {
+  font-size: clamp(26px, 2.6vw, 38px);
+}
+
+.sq-how-grid {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr);
-  column-gap: var(--s-4);
-  transition: opacity 300ms var(--e-std);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s-7);
 }
 
-.sq-step-n {
-  grid-row: 1 / span 3;
-  padding-top: 10px;
-  border-top: 1px solid var(--c-line-3);
+/* left: the current step */
+.sq-how-copy {
+  justify-self: end;
+  width: 100%;
+  max-width: 380px;
+  min-height: 250px;
+  display: flex;
+  align-items: center;
+}
+
+.sq-how-num {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s-2);
   font-family: var(--f-mono);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--c-ink-4);
-  transition:
-    color 300ms var(--e-std),
-    border-color 300ms var(--e-std);
 }
 
-.sq-step.is-active .sq-step-n {
+.sq-how-num b {
+  font-size: 44px;
+  font-weight: 400;
+  line-height: 1;
   color: var(--c-signal);
-  border-top-color: var(--c-signal);
+}
+
+.sq-how-num span {
+  font-size: 14px;
+  color: var(--c-ink-4);
 }
 
 .sq-step-stage {
-  padding-top: 10px;
+  margin-top: var(--s-4);
   font-family: var(--f-mono);
   font-size: 11px;
   letter-spacing: 0.14em;
-  color: var(--c-ink-4);
+  color: var(--c-ink-3);
 }
 
-.sq-step h3 {
+.sq-how-copy h3 {
   margin-top: var(--s-2);
   font-family: var(--f-display);
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 600;
   line-height: 1.2;
-  letter-spacing: 0;
 }
 
-.sq-step p {
+.sq-how-copy p {
   margin-top: var(--s-3);
-  max-width: 460px;
   font-size: 16px;
   line-height: 1.6;
   color: var(--c-ink-2);
 }
 
-.sq-step:not(.is-active) {
-  opacity: 0.36;
+/* centre: the diagram, as large as the screen height allows */
+.sq-how-card {
+  width: min(580px, calc(100vh - 64px - 270px), 44vw);
+  min-width: 280px;
+  border-radius: var(--r-3);
+  background: rgba(14, 15, 16, 0.92);
+  box-shadow:
+    inset 0 0 0 1px var(--c-line-2),
+    0 40px 80px -40px rgba(0, 0, 0, 0.9);
+  overflow: hidden;
+}
+
+.sq-how-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: 10px var(--s-4);
+  border-bottom: 1px solid var(--c-line);
+  font-family: var(--f-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--c-ink-4);
+}
+
+.sq-how-card-head span:last-child {
+  color: var(--c-ink-2);
+}
+
+.sq-how-card-body {
+  aspect-ratio: 1 / 1;
+  padding: var(--s-3);
+}
+
+.sq-how-progress {
+  height: 2px;
+  background: var(--c-line);
+}
+
+.sq-how-progress i {
+  display: block;
+  height: 100%;
+  background: var(--c-signal);
+  transform-origin: left;
+  transition: transform 500ms var(--e-out);
+}
+
+/* right: all five steps; click to jump */
+.sq-how-rail {
+  justify-self: start;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sq-rail-item {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 30px auto;
+  align-items: center;
+  width: 100%;
+  margin: 0;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: var(--r-2);
+  background: transparent;
+  box-shadow: inset 2px 0 0 transparent;
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--c-ink-4);
+  cursor: pointer;
+  transition:
+    color 200ms var(--e-std),
+    background-color 200ms var(--e-std),
+    box-shadow 200ms var(--e-std);
+}
+
+.sq-rail-item:hover {
+  color: var(--c-ink-2);
+}
+
+.sq-rail-item.is-done {
+  color: var(--c-ink-3);
+}
+
+.sq-rail-item.is-active {
+  color: var(--c-ink);
+  background: rgba(152, 160, 168, 0.07);
+  box-shadow: inset 2px 0 0 var(--c-signal);
+}
+
+.sq-rail-item.is-active .sq-rail-n {
+  color: var(--c-signal);
 }
 
 /* radar interlude */
@@ -1509,20 +1647,45 @@
 }
 
 @media (max-width: 1024px) {
-  .sq-how {
+  .sq-how-grid {
     grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: var(--s-5);
   }
-  .sq-how-visual {
-    position: relative;
-    top: auto;
-    height: 360px;
+  .sq-how-card {
+    order: 1;
+    width: min(520px, 100%, calc(100vh - 64px - 420px));
   }
-  .sq-how-steps {
-    gap: var(--s-7);
-    padding: 0;
+  .sq-how-copy {
+    order: 2;
+    justify-self: center;
+    max-width: 560px;
+    min-height: 0;
+    text-align: center;
+    justify-content: center;
   }
-  .sq-step:not(.is-active) {
-    opacity: 1;
+  .sq-how-num {
+    justify-content: center;
+  }
+  .sq-how-num b {
+    font-size: 30px;
+  }
+  .sq-how-rail {
+    order: 3;
+    justify-self: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .sq-rail-item {
+    width: auto;
+    box-shadow: inset 0 -2px 0 transparent;
+  }
+  .sq-rail-item.is-active {
+    box-shadow: inset 0 -2px 0 var(--c-signal);
+  }
+  .sq-how-head .sq-h2 {
+    font-size: clamp(22px, 5vw, 32px);
   }
   .sq-principles {
     grid-template-columns: minmax(0, 1fr);
@@ -1619,6 +1782,22 @@
   }
   .sq-footer-links {
     flex-wrap: wrap;
+  }
+  .sq-rail-label {
+    display: none;
+  }
+  .sq-rail-item {
+    grid-template-columns: auto;
+    padding: 8px 12px;
+  }
+  .sq-how-copy h3 {
+    font-size: 20px;
+  }
+  .sq-how-copy p {
+    font-size: 14.5px;
+  }
+  .sq-how-stage {
+    gap: var(--s-4);
   }
 }
 
