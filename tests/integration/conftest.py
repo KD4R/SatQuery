@@ -34,9 +34,9 @@ def _make_dummy_obs(sensor: str, cloud_cover: float, obs_id: str | None = None) 
 def mock_agent_dependencies_for_integration_tests():
     """
     Globally mock the STAC search provider and Inference client during integration tests.
-    Since we removed the CELERY_TASK_ALWAYS_EAGER fallback in stac_search.py and orchestrator.py,
-    the agent actually attempts to hit Bhoonidhi and Inference services, which fails in the CI environment
-    due to missing credentials or network isolation.
+    Since we removed the CELERY_TASK_ALWAYS_EAGER fallback in stac_search.py and
+    orchestrator.py, the agent actually attempts to hit Bhoonidhi and Inference services,
+    which fails in the CI environment due to missing credentials or network isolation.
     """
     sar_obs = _make_dummy_obs("S1_SAR", 0.0)
     opt_obs = _make_dummy_obs("S2_OPTICAL", 14.5)
@@ -46,16 +46,19 @@ def mock_agent_dependencies_for_integration_tests():
             def json(self):
                 return {
                     "measurements": [{"name": "flood_extent_ha", "value": 14250.0}],
-                    "degraded_from": "baseline"
+                    "degraded_from": "baseline",
                 }
-            def raise_for_status(self): pass
+
+            def raise_for_status(self):
+                pass
+
         return MockResponse()
 
-    with patch(
-        "services.eo_data.search.SearchService.search_observations",
-        return_value=[sar_obs, opt_obs],
-    ), patch(
-        "packages.shared.client.InternalClient.post",
-        new=mock_post
+    with (
+        patch(
+            "services.eo_data.search.SearchService.search_observations",
+            return_value=[sar_obs, opt_obs],
+        ),
+        patch("packages.shared.client.InternalClient.post", new=mock_post),
     ):
         yield

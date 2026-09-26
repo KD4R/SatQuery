@@ -169,6 +169,7 @@ def analyze_data(state: MissionState) -> dict:
 
     try:
         import threading
+
         result_box = []
         err_box = []
 

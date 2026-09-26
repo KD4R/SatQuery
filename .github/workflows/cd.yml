@@ -165,7 +165,7 @@ jobs:
         run: |
           REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
           mkdir -p infrastructure/release/dist
-          python - "$TAG" "$SHA" "$REPO_LC" <<'EOF'
+          python - "$TAG" "$SHA" "$REPO_LC" "$API_DIGEST" "$MISSION_DIGEST" "$AGENT_DIGEST" <<'EOF'
           import datetime
           import json
           import sys
