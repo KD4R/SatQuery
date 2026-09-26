@@ -6,8 +6,8 @@
  *   1. Stage   -- the planet alone, as large as the screen allows, with the ten
  *                 evaluation regions on it. It spins in when the logo has landed,
  *                 and zooms past as you scroll on.
- *   2. Reveal  -- scrolling turns the headline up word by word in 3D, then the one
- *                 sentence that says how it works.
+ *   2. Reveal  -- the headline, huge, folding back in 3D line by line as it scrolls
+ *                 up the screen; then the one sentence that says how it works.
  *   3. Intro   -- centred: what you would type (the query console), the way in,
  *                 and three measured facts.
  */
@@ -73,18 +73,15 @@ export function Hero({ phase }: { phase: IntroPhase }) {
 
       {/* 2 ── the headline, revealed by scroll ─────────────────────────── */}
       <section id="intro" className="sq-reveal" aria-label="Introduction">
-        <div className="sq-reveal-sticky">
-          <div className="sq-wrap sq-reveal-inner">
-            <HeroHeadline
-              lede={
-                <p className="sq-lede">
-                  SatQuery maps flood water from <b>Sentinel-1 radar</b>, which
-                  sees through the cloud that floods arrive with — and returns
-                  the evidence, the caveats, and what it could not measure.
-                </p>
-              }
-            />
-          </div>
+        <div className="sq-wrap sq-reveal-inner">
+          <HeroHeadline />
+          <Reveal className="sq-reveal-lede">
+            <p className="sq-lede">
+              SatQuery maps flood water from <b>Sentinel-1 radar</b>, which sees
+              through the cloud that floods arrive with — and returns the
+              evidence, the caveats, and what it could not measure.
+            </p>
+          </Reveal>
         </div>
       </section>
 

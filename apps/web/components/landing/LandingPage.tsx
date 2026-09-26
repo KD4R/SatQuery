@@ -9,7 +9,7 @@
  * radar, how do you know it works, and what happens when it doesn't know.
  *
  *   Intro         the SatQuery mark alone, then it flies to the nav and the planet rises
- *   Hero          the planet; the headline revealed in 3D by scroll; try-it line, model card
+ *   Hero          the planet; the headline folding back in 3D as it scrolls; try-it block
  *   Proof         four measured numbers, one of them the accuracy figure we refuse
  *   How it works  the console's own stages, scroll-driven
  *   Why radar     the physics, acted out by the landscape behind it
@@ -26,6 +26,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import "@fontsource-variable/archivo/wdth.css";
 import "@fontsource/sora/latin-500.css";
 import "@fontsource/sora/latin-600.css";
 import "@fontsource/ibm-plex-sans/latin-400.css";

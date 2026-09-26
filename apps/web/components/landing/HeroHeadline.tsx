@@ -1,109 +1,80 @@
 "use client";
 
 /**
- * The headline, revealed by scrolling.
+ * The headline, as a 3D scroll reveal.
  *
- * It lives in a tall section with a sticky stage (.sq-reveal in space.css). As the
- * page scrolls through that section, each word turns up out of the page in 3D --
- * rising and rotating from flat to upright, one after another -- then the underline
- * under "evidence" draws, then the sentence under the headline fades in. The motion
- * is tied to scroll position, not time: scroll back and it reverses.
+ * One or two words per line, set huge in a heavy expanded face. Each line is
+ * upright while it sits in the lower part of the screen; as scrolling carries it
+ * up past the middle it folds back on its baseline -- rotating away from the viewer
+ * in perspective, flattening and greying -- until near the top it lies almost flat.
+ * The effect is entirely scroll-linked, so it reverses on the way back.
  *
  * Modelled on the React Bits Pro "3D Text Reveal" (scroll-triggered, GSAP), written
- * here without GSAP because that component needs a paid licence. It is a few style
- * writes per animation frame, only while scrolling.
+ * here without GSAP because that component needs a paid licence. It is one style
+ * write per line per animation frame, and only while scrolling.
  *
- * Static-first: the server HTML is the finished headline. Script is what hides the
- * words to begin with, so with JavaScript off -- or reduced motion, where the script
- * leaves everything in place -- the headline is simply there.
+ * Static-first: the server HTML is the headline, upright and complete. With
+ * JavaScript off or reduced motion, nothing ever tilts. The heading's text is the
+ * ordinary sentence -- the capitals are CSS -- so its accessible name reads
+ * normally.
  *
- * Once fully revealed, a line glitches when the cursor comes near it: a sliced
- * chromatic split in blue and signal orange, scaled by distance, settling back when
- * the cursor leaves. The copies are pseudo-elements with empty alt text, so the
- * heading's text and accessible name are untouched. Not on touch screens.
+ * A line also glitches when the cursor comes near it (a sliced chromatic split in
+ * blue and signal orange); the copies are pseudo-elements with empty alt text.
  */
 
-import { Fragment, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
-const LINES: { text: string; words: string[] }[] = [
-  { text: "Ask a question.", words: ["Ask", "a", "question."] },
-  { text: "Get an answer", words: ["Get", "an", "answer"] },
-  { text: "with its evidence.", words: ["with", "its", "evidence."] },
+const LINES = [
+  "Ask a",
+  "question.",
+  "Get an",
+  "answer",
+  "with its",
+  "evidence.",
 ];
 
-/* Scroll choreography, as fractions of the section's sticky travel. */
-const WORD_STAGGER = 0.055;
-const WORD_SPAN = 0.2;
-const WORDS = LINES.reduce((n, l) => n + l.words.length, 0);
-const MARK_AT = (WORDS - 1) * WORD_STAGGER + WORD_SPAN; // underline starts when the last word lands
-const MARK_SPAN = 0.1;
-const LEDE_AT = MARK_AT + 0.04;
-const LEDE_SPAN = 0.14;
-
+const MAX_TILT = 82; // degrees, at the top of the viewport
 const RADIUS = 220;
 const STEP_MS = 70;
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
-const easeOut = (v: number) => 1 - (1 - v) ** 3;
 
-export function HeroHeadline({ lede }: { lede?: React.ReactNode }) {
+export function HeroHeadline() {
   const ref = useRef<HTMLHeadingElement | null>(null);
-  const ledeRef = useRef<HTMLDivElement | null>(null);
-  const revealed = useRef(true);
 
-  /* ── scroll-linked 3D reveal ─────────────────────────────────────────── */
+  /* ── scroll-linked fold ──────────────────────────────────────────────── */
   useEffect(() => {
     const h = ref.current;
-    const section = h?.closest<HTMLElement>(".sq-reveal");
     const scroller = h?.closest<HTMLElement>(".sq-landing");
-    if (!h || !section || !scroller) return;
+    if (!h || !scroller) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const words = Array.from(h.querySelectorAll<HTMLElement>("[data-word]"));
-    const mark = h.querySelector<HTMLElement>(".sq-headline-mark");
-    const lede = ledeRef.current;
+    const lines = Array.from(h.querySelectorAll<HTMLElement>("[data-line]"));
     let raf = 0;
 
     const apply = () => {
       raf = 0;
-      const rect = section.getBoundingClientRect();
-      const top = rect.top - scroller.getBoundingClientRect().top;
-      const travel = Math.max(1, section.offsetHeight - scroller.clientHeight);
-      // Start while the section is still sliding up (its top at 45% of the viewport),
-      // so the stage is never an empty screen, and finish within the sticky travel.
-      const lead = scroller.clientHeight * 0.45;
-      const p = clamp01((lead - top) / (travel + lead));
-
-      words.forEach((w, i) => {
-        const e = easeOut(clamp01((p - i * WORD_STAGGER) / WORD_SPAN));
-        w.style.opacity = e.toFixed(3);
-        w.style.transform =
-          e >= 1
-            ? ""
-            : `translate3d(0, ${((1 - e) * 0.55).toFixed(3)}em, 0) rotateX(${((1 - e) * 88).toFixed(1)}deg)`;
-      });
-      mark?.style.setProperty(
-        "--mark",
-        easeOut(clamp01((p - MARK_AT) / MARK_SPAN)).toFixed(3),
-      );
-      if (lede) {
-        const e = easeOut(clamp01((p - LEDE_AT) / LEDE_SPAN));
-        lede.style.opacity = e.toFixed(3);
-        lede.style.transform =
-          e >= 1 ? "" : `translate3d(0, ${((1 - e) * 14).toFixed(1)}px, 0)`;
-      }
-      const done = p >= MARK_AT + MARK_SPAN;
-      if (done !== revealed.current) {
-        revealed.current = done;
-        h.classList.toggle("is-revealed", done);
+      const box = scroller.getBoundingClientRect();
+      const top = box.top + 64; // below the sticky nav
+      const mid = top + (box.height - 64) * 0.55;
+      const span = mid - top;
+      for (const el of lines) {
+        const r = el.getBoundingClientRect();
+        const y = r.top + r.height / 2;
+        // 0 at or below the fold line, 1 at the top edge of the view
+        const t = clamp01((mid - y) / span);
+        const e = t * t; // slow start: a line only really folds near the top
+        el.style.setProperty("--tilt", e.toFixed(3));
+        el.style.transform =
+          e > 0
+            ? `perspective(1100px) rotateX(${(e * MAX_TILT).toFixed(2)}deg)`
+            : "";
       }
     };
 
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(apply);
     };
-    revealed.current = false;
-    h.classList.remove("is-revealed");
     apply();
     scroller.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll);
@@ -111,21 +82,14 @@ export function HeroHeadline({ lede }: { lede?: React.ReactNode }) {
       cancelAnimationFrame(raf);
       scroller.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
-      // leave the finished state behind, never a half-hidden headline
-      words.forEach((w) => {
-        w.style.opacity = "";
-        w.style.transform = "";
-      });
-      mark?.style.removeProperty("--mark");
-      if (lede) {
-        lede.style.opacity = "";
-        lede.style.transform = "";
+      for (const el of lines) {
+        el.style.transform = "";
+        el.style.removeProperty("--tilt");
       }
-      h.classList.add("is-revealed");
     };
   }, []);
 
-  /* ── proximity glitch, once revealed ─────────────────────────────────── */
+  /* ── proximity glitch ────────────────────────────────────────────────── */
   useEffect(() => {
     const h = ref.current;
     if (!h) return;
@@ -160,15 +124,12 @@ export function HeroHeadline({ lede }: { lede?: React.ReactNode }) {
       raf = 0;
       const stepNow = now - lastStep > STEP_MS;
       if (stepNow) lastStep = now;
-      const live = revealed.current;
       let busy = false;
       els.forEach((el, i) => {
         const r = el.getBoundingClientRect();
         const dx = Math.max(r.left - px, 0, px - r.right);
         const dy = Math.max(r.top - py, 0, py - r.bottom);
-        const target = live
-          ? Math.max(0, 1 - Math.hypot(dx, dy) / RADIUS) ** 1.6
-          : 0;
+        const target = Math.max(0, 1 - Math.hypot(dx, dy) / RADIUS) ** 1.6;
         let v = cur[i]! + (target - cur[i]!) * 0.2;
         if (v < 0.004 && target === 0) v = 0;
         cur[i] = v;
@@ -203,37 +164,23 @@ export function HeroHeadline({ lede }: { lede?: React.ReactNode }) {
   }, []);
 
   return (
-    <>
-      <h1 ref={ref} className="sq-headline is-revealed">
-        {LINES.map((line, li) => (
-          <span
-            key={line.text}
-            className={`sq-headline-line${li === 2 ? " sq-headline-line--quiet" : ""}`}
-          >
-            <span data-glitch={line.text}>
-              {line.words.map((w, wi) => (
-                <Fragment key={w}>
-                  <span data-word="">
-                    {w === "evidence." ? (
-                      <>
-                        <span className="sq-headline-mark">evidence</span>.
-                      </>
-                    ) : (
-                      w
-                    )}
-                  </span>
-                  {wi < line.words.length - 1 ? " " : null}
-                </Fragment>
-              ))}
+    <h1 ref={ref} className="sq-headline">
+      {LINES.map((line, i) => (
+        <span key={line}>
+          <span className="sq-headline-line" data-line="">
+            <span data-glitch={line}>
+              {line === "evidence." ? (
+                <>
+                  <span className="sq-headline-mark">evidence</span>.
+                </>
+              ) : (
+                line
+              )}
             </span>
           </span>
-        ))}
-      </h1>
-      {lede ? (
-        <div ref={ledeRef} className="sq-reveal-lede">
-          {lede}
-        </div>
-      ) : null}
-    </>
+          {i < LINES.length - 1 ? " " : null}
+        </span>
+      ))}
+    </h1>
   );
 }

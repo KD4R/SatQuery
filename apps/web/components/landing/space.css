@@ -354,7 +354,7 @@
 }
 
 .sq-nav.is-scrolled {
-  background: rgba(8, 8, 8, 0.86);
+  background: var(--c-ground);
   border-bottom-color: var(--c-line);
 }
 
@@ -569,23 +569,14 @@
   max-height: none;
 }
 
-/* ─── Opening, beat 2: the headline, revealed by scroll ─────────────────── */
-/* The section is tall; its stage sticks while the page scrolls through it, and
-   the scroll distance drives the reveal (see HeroHeadline). */
+/* ─── Opening, beat 2: the headline, folding back as it scrolls ──────────── */
+/* See HeroHeadline: each line is tilted from script as it passes the upper half
+   of the screen; --tilt (0..1) also greys it. */
 
 .sq-reveal {
   position: relative;
-  height: 230vh;
+  padding: var(--s-9) 0 var(--s-8);
   border-top: 1px solid var(--c-line);
-}
-
-.sq-reveal-sticky {
-  position: sticky;
-  top: 64px;
-  height: calc(100vh - 64px);
-  display: flex;
-  align-items: center;
-  overflow: hidden;
 }
 
 .sq-reveal-inner {
@@ -597,41 +588,42 @@
 
 .sq-headline {
   position: relative;
-  font-family: var(--f-display);
-  font-size: clamp(44px, 7vw, 108px);
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.045em;
+  font-family: "Archivo Variable", var(--f-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  font-size: clamp(52px, 10.5vw, 168px);
+  line-height: 0.92;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
   color: var(--c-ink);
-  perspective: 900px;
+}
+
+.sq-headline > span {
+  display: block;
 }
 
 .sq-headline-line {
   display: block;
-}
-
-.sq-headline [data-word] {
-  display: inline-block;
   transform-origin: 50% 100%;
   backface-visibility: hidden;
-  will-change: transform, opacity;
+  will-change: transform;
+  color: color-mix(in srgb, #7c8288 calc(var(--tilt, 0) * 100%), var(--c-ink));
 }
 
 .sq-reveal-lede {
-  margin-top: var(--s-6);
+  margin-top: var(--s-7);
   display: flex;
   justify-content: center;
 }
 
 .sq-reveal-lede .sq-lede {
-  margin-top: 0;
   max-width: 620px;
   font-size: 19px;
 }
 
 /* Proximity glitch: two coloured copies of the line, sliced and offset by an
-   amount set from script as --g (0 at rest, 1 with the cursor on the line). Only
-   once the headline has fully revealed. The "/ ''" alt text keeps the copies out
+   amount set from script as --g (0 at rest, 1 with the cursor on the line). The
+   "/ ''" alt text keeps the copies out
    of the heading's accessible name. */
 .sq-headline [data-glitch] {
   position: relative;
@@ -647,11 +639,10 @@
   top: 0;
   white-space: nowrap;
   pointer-events: none;
-  opacity: 0;
 }
 
-.sq-headline.is-revealed [data-glitch]::before,
-.sq-headline.is-revealed [data-glitch]::after {
+.sq-headline [data-glitch]::before,
+.sq-headline [data-glitch]::after {
   opacity: calc(var(--g, 0) * 0.95);
 }
 
@@ -667,13 +658,8 @@
   transform: translateX(calc(var(--g, 0) * (7px - var(--jx, 0) * 6px)));
 }
 
-.sq-headline-line--quiet {
-  color: var(--c-ink-3);
-}
-
 .sq-headline-mark {
   position: relative;
-  color: var(--c-ink);
   white-space: nowrap;
 }
 
@@ -682,12 +668,10 @@
   position: absolute;
   left: 0.02em;
   right: 0.02em;
-  bottom: 0.02em;
+  bottom: -0.02em;
   height: 0.06em;
   min-height: 3px;
   background: var(--c-signal);
-  transform-origin: left;
-  transform: scaleX(var(--mark, 1));
 }
 
 /* ─── Opening, beat 3: try it, centred ──────────────────────────────────── */
@@ -697,9 +681,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 64px);
-  padding-top: var(--s-9);
-  padding-bottom: var(--s-9);
+  padding-top: var(--s-8);
+  padding-bottom: var(--s-10);
   text-align: center;
 }
 
@@ -1807,7 +1790,7 @@
     padding-bottom: var(--s-9);
   }
   .sq-headline {
-    font-size: clamp(40px, 12vw, 56px);
+    font-size: clamp(38px, 13vw, 64px);
   }
   .sq-stage {
     min-height: 0;
@@ -1816,7 +1799,7 @@
     height: min(calc(100svh - 64px), 125vw);
   }
   .sq-reveal {
-    height: 200vh;
+    padding-top: var(--s-8);
   }
   .sq-lede,
   .sq-reveal-lede .sq-lede {
@@ -1872,13 +1855,5 @@
   .sq-caret {
     animation: none;
   }
-  .sq-reveal {
-    height: auto;
-  }
-  .sq-reveal-sticky {
-    position: relative;
-    top: auto;
-    height: auto;
-    padding: var(--s-10) 0;
-  }
+
 }
