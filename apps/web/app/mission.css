@@ -677,389 +677,84 @@ a {
   }
 }
 
-/* ═══ Evidence graph (P5-09 → PRD §2B) ═══════════════════════════════════ */
-
-/* Lazy-loaded React Flow styles are imported from the component module. The
-   classes below restyle the canvas with the mission design tokens. */
-
-.egraph-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: var(--ink-dim);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: color var(--t-reveal), border-color var(--t-reveal);
+/* ── Reference-design accents (screenshot restyle) ──────────────────────────
+   Cards carry a subtle coloured border in the reference film: red QUERY, blue
+   PARAMETERS, green PROGRESS/metrics, amber WHY. Content rules are unchanged —
+   this is presentation only. */
+.panel-accent-red {
+  border-color: rgba(255, 59, 48, 0.45);
+}
+.panel-accent-red .panel-head {
+  border-bottom-color: rgba(255, 59, 48, 0.45);
+}
+.panel-accent-blue {
+  border-color: rgba(90, 160, 255, 0.5);
+}
+.panel-accent-blue .panel-head {
+  border-bottom-color: rgba(90, 160, 255, 0.5);
+}
+.panel-accent-green {
+  border-color: rgba(80, 200, 120, 0.45);
+}
+.panel-accent-green .panel-head {
+  border-bottom-color: rgba(80, 200, 120, 0.45);
+}
+.panel-accent-amber {
+  border-color: rgba(255, 159, 10, 0.45);
+}
+.panel-accent-amber .panel-head {
+  border-bottom-color: rgba(255, 159, 10, 0.45);
 }
 
-.egraph-trigger:hover,
-.egraph-trigger:focus-visible {
-  color: var(--signal);
-  border-color: var(--hairline-signal);
-}
-
-.egraph-drawer {
-  position: fixed;
-  inset: 0;
-  z-index: 60;
-  display: flex;
-  flex-direction: column;
-  background: color-mix(in srgb, var(--void) 86%, transparent);
-  backdrop-filter: blur(6px);
-}
-
-.egraph-drawer-head {
+/* Top chrome: tab nav row above the telemetry bands. */
+.console-nav {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 18px;
+  padding: 0 16px;
+  height: 46px;
   border-bottom: 1px solid var(--hairline);
   background: var(--surface-1);
 }
-
-.egraph-canvas {
-  flex: 1;
-  min-height: 0;
-}
-
-.egraph-canvas .react-flow {
-  --xy-background-color: transparent;
-  font-family: var(--mono);
-}
-
-.egraph-loading {
-  display: grid;
-  place-items: center;
-  height: 100%;
-}
-
-.egraph-card {
-  min-width: 210px;
-  max-width: 260px;
-  padding: 9px 11px;
-  background: var(--surface-2);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
-.egraph-card-head {
+.console-nav-tabs {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  gap: 4px;
 }
-
-.egraph-glyph {
-  color: var(--signal);
-  font-size: 10px;
+.console-nav-tab {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  color: var(--ink-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
 }
-
-.egraph-score {
-  margin-left: auto;
-  font-size: 10px;
-}
-
-.egraph-value {
-  margin: 5px 0 0;
+.console-nav-tab:hover {
   color: var(--ink);
 }
-
-.egraph-prov {
-  margin: 4px 0 0;
-  color: var(--ink-faint);
-  font-size: 9.5px;
+.console-nav-tab-active {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+  outline: 1px solid var(--hairline-bright);
 }
 
-.egraph-card-insight {
-  border-color: var(--hairline-signal);
-  box-shadow: 0 0 0 1px var(--hairline-signal);
-}
-
-.egraph-card-gate {
-  border-left: 2px solid var(--amber);
-}
-
-.egraph-card-model {
-  border-left: 2px solid var(--earth);
-}
-
-.egraph-handle {
-  width: 6px;
-  height: 6px;
-  background: var(--hairline-bright);
-  border: none;
-}
-
-.egraph-edge-primary {
-  filter: drop-shadow(0 0 3px var(--signal-dim));
-}
-
-.egraph-controls {
-  box-shadow: none;
-}
-
-.egraph-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 8px 14px;
-  border-top: 1px solid var(--hairline);
-  background: var(--surface-1);
-  color: var(--ink-faint);
-  font-family: var(--mono);
-  font-size: 9.5px;
-}
-
-/* ═══ Earth Time Machine (PRD §2A) ═══════════════════════════════════════ */
-
-/* A floating scrub rail under the map: one range input across the run's
-   temporal states, tick marks per epoch, and the active epoch's name + date.
-   Dates render only when the backend supplies them; on a single-date dataset
-   the rail says so rather than inventing a calendar. */
-
+/* Map footer: Before / After / Change segmented control (Time Machine). */
 .tm {
-  position: absolute;
-  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(520px, calc(100vw - 560px));
-  padding: 7px 12px 6px;
-  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  backdrop-filter: blur(4px);
 }
-
-.tm-head {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  margin-bottom: 5px;
-}
-
-.tm-title {
-  letter-spacing: 0.08em;
-  color: var(--ink-dim);
-}
-
-.tm-epoch {
-  color: var(--ink);
-}
-
-.tm-date {
-  margin-left: 6px;
-  color: var(--ink-faint);
-  font-size: 9.5px;
-}
-
-.tm-count {
-  color: var(--ink-faint);
-  font-size: 9.5px;
-}
-
-.tm-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 100%;
-  height: 14px;
-  margin: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.tm-slider:focus-visible {
-  outline: 1px solid var(--hairline-signal);
-  outline-offset: 3px;
-}
-
-/* The track is the hairline; the filled part left of the thumb is the signal
-   colour, drawn with a gradient sized from the value. */
-.tm-slider::-webkit-slider-runnable-track {
-  height: 2px;
-  background: linear-gradient(
-    to right,
-    var(--signal) 0% var(--tm-fill, 50%),
-    var(--hairline-bright) var(--tm-fill, 50%) 100%
-  );
-}
-
-.tm-slider::-moz-range-track {
-  height: 2px;
-  background: var(--hairline-bright);
-}
-
-.tm-slider::-moz-range-progress {
-  height: 2px;
-  background: var(--signal);
-}
-
-.tm-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 11px;
-  height: 11px;
-  margin-top: -4.5px;
-  border-radius: 50%;
-  background: var(--surface-1);
-  border: 2px solid var(--signal);
-}
-
-.tm-slider::-moz-range-thumb {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--surface-1);
-  border: 2px solid var(--signal);
-}
-
-.tm-ticks {
-  position: relative;
-  height: 0;
-}
-
-.tm-tick {
-  position: absolute;
-  top: -12px;
-  width: 1px;
-  height: 5px;
-  transform: translateX(-0.5px);
-  background: var(--hairline-bright);
-}
-
-.tm-tick-on {
-  background: var(--signal);
-}
-
 .tm-states {
   display: flex;
-  gap: 5px;
-  margin-top: 7px;
+  gap: 0;
 }
-
 .tm-state {
-  padding: 2px 9px;
-  font-family: var(--mono);
-  font-size: 9.5px;
-  letter-spacing: 0.05em;
-  color: var(--ink-dim);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: color var(--t-reveal), border-color var(--t-reveal);
+  min-width: 88px;
+  padding: 8px 16px;
+  font-size: 11.5px;
 }
-
-.tm-state:hover,
-.tm-state:focus-visible {
-  color: var(--ink);
-  border-color: var(--hairline-bright);
-}
-
 .tm-state-on {
-  color: var(--signal);
-  border-color: var(--hairline-signal);
-}
-
-.tm-note {
-  margin: 7px 0 0;
-  color: var(--amber);
-  font-size: 9px;
-  line-height: 1.45;
-}
-
-/* Reduced motion: no crossfade on the map (the component cuts via rAF skip)
-   and no transition on the rail. */
-.tm[data-reduce="true"] .tm-state {
-  transition: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tm-state {
-    transition: none;
-  }
-}
-
-/* ═══ Agent activity toasts (P5 Phase C → PRD §2C) ══════════════════════ */
-
-/* Non-intrusive by contract: bottom-right stack over the map, one visible at
-   a time, auto-expiring. aria-live polite — the agent speaks without ever
-   interrupting a screen reader. */
-
-.atoasts {
-  position: absolute;
-  right: 12px;
-  bottom: 46px;
-  z-index: 70;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: min(360px, 44vw);
-  pointer-events: none;
-}
-
-.atoast {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 10px;
-  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
-  border: 1px solid var(--hairline);
-  border-left: 2px solid var(--hairline-bright);
-  border-radius: var(--radius);
-  backdrop-filter: blur(4px);
-  pointer-events: auto;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-}
-
-.atoast-sensor_disagreement {
-  border-left-color: var(--amber);
-}
-
-.atoast-acquiring_evidence {
-  border-left-color: var(--signal);
-}
-
-.atoast-agent_thought {
-  border-left-color: var(--verified);
-}
-
-.atoast-glyph {
-  color: var(--ink-dim);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
-.atoast-text {
-  margin: 0;
-  flex: 1;
-  font-size: 11px;
-  line-height: 1.5;
-  color: var(--ink);
-}
-
-.atoast-dismiss {
-  flex: 0 0 auto;
-  padding: 0 3px;
-  background: transparent;
-  border: none;
-  color: var(--ink-faint);
-  cursor: pointer;
-}
-
-.atoast-dismiss:hover,
-.atoast-dismiss:focus-visible {
-  color: var(--ink);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .atoast {
-    backdrop-filter: none;
-  }
+  outline: 1px solid rgba(80, 200, 120, 0.6);
+  background: rgba(80, 200, 120, 0.12);
 }

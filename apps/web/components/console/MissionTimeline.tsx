@@ -63,7 +63,8 @@ export function MissionTimeline({ stages, lines }: MissionTimelineProps) {
 
   return (
     <Panel
-      title="Run timeline"
+      title="Progress"
+      accent="green"
       actions={
         <StatusChip tone={failed ? "warn" : degraded ? "warn" : done === stages.length ? "ok" : "active"}>
           {done}/{stages.length}

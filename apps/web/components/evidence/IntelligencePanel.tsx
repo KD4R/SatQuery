@@ -14,6 +14,7 @@
  */
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 
@@ -22,6 +23,7 @@ import {
   formatPercent,
   formatUTC,
 } from "../../lib/geo/format";
+import { formatArea } from "../../lib/geo/format";
 import { buildEvidenceGraph } from "../../lib/evidence/graph";
 import { buildImpactModel } from "../../lib/impact/model";
 import {
@@ -60,12 +62,16 @@ export function IntelligencePanel({
   source,
   sourceAt,
   revealed,
+  aoiAreaSqM,
 }: {
   scenario: ConsoleScenario | null;
   source: DataSource;
   sourceAt?: string;
   /** False until the run completes, so nothing is shown before it is known. */
   revealed: boolean;
+  /** AOI area from the same validation the parameters card shows, so the two
+   * rails quote one number, not two. */
+  aoiAreaSqM?: number | null;
 }) {
   const reduce = useReducedMotion();
   const [graphOpen, setGraphOpen] = useState(false);
@@ -102,49 +108,103 @@ export function IntelligencePanel({
     scenario;
   const band = confidenceBand(confidence.score);
   const impactModel = buildImpactModel(scenario);
+  // Water-coverage increase over the baseline, derived — never a pinned figure.
+  const waterIncreasePct =
+    change.baselineFraction > 0
+      ? Math.round(
+          ((change.baselineFraction + change.changeFraction) /
+            change.baselineFraction -
+            1) * 100,
+        )
+      : null;
 
   return (
-    <Panel
-      title="Intelligence"
-      actions={<ProvenanceBadge source={source} at={sourceAt} />}
-    >
+    <>
+      <div className="row" style={{ marginBottom: 6 }}>
+        <Label>Intelligence</Label>
+        <div className="band-spacer" />
+        <ProvenanceBadge source={source} at={sourceAt} />
+      </div>
       <motion.div
         initial={reduce ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: reduce ? 0 : 0.18 }}
       >
-        {/* ── Observation comparison ─────────────────────────────────────── */}
-        <BeforeAfterViewer
-          pair={comparison}
-          beforeLabel="Permanent baseline"
-          afterLabel="Observed"
-        />
+        {/* ── Imagery (reference: IMAGERY card, green) ───────────────────── */}
+        <Panel title="Imagery" accent="green">
+          <BeforeAfterViewer
+            pair={comparison}
+            beforeLabel="Baseline"
+            afterLabel="Observed"
+          />
+        </Panel>
 
-        {/* ── Change ─────────────────────────────────────────────────────── */}
-        <PanelSection title="Change">
-          <p style={{ margin: "0 0 8px", fontSize: 12.5, lineHeight: 1.5 }}>
+        {/* ── Change metrics (reference: red metric tiles) ────────────────── */}
+        <div style={{ height: 10 }} />
+        <Panel title="Change metrics" accent="red">
+          <p style={{ margin: "8px 8px 0", fontSize: 12.5, lineHeight: 1.5 }}>
             {change.headline}
           </p>
-          <Readout label="New water" value={`${change.areaSqKm.toFixed(2)} km²`} tone="signal" />
-          <Readout label="Polygons" value={String(change.polygonCount)} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 8,
+              padding: 8,
+            }}
+          >
+            <MetricTile
+              caption="Flooded area"
+              value={
+                aoiAreaSqM == null
+                  ? null
+                  : formatArea(aoiAreaSqM)
+              }
+              reason="The AOI has not been measured yet."
+            />
+            <MetricTile
+              caption="Confidence"
+              value={formatPercent(confidence.score)}
+            />
+            <MetricTile
+              caption="Water increase"
+              value={waterIncreasePct === null ? null : `+${waterIncreasePct}%`}
+              tone="signal"
+              reason="The baseline had no measurable water to compare against."
+            />
+            <MetricTile caption="Scenes matched" value="2" />
+          </div>
+        </Panel>
+
+        {/* ── Sensor (reference: blue card) ───────────────────────────────── */}
+        <div style={{ height: 10 }} />
+        <Panel
+          title="Sensor"
+          accent="blue"
+          actions={
+            arbitration.disagreement ? (
+              <StatusChip tone="warn">Disagreement</StatusChip>
+            ) : (
+              <StatusChip tone="ok">Agreement</StatusChip>
+            )
+          }
+        >
+          <Readout label="Sensor" value={comparison.after.sensor} />
+          <Readout label="Dataset" value={comparison.after.dataset} />
           <Readout
-            label="Baseline → observed"
-            value={`${formatPercent(change.baselineFraction)} → ${formatPercent(
-              change.baselineFraction + change.changeFraction,
-            )}`}
+            label="Resolution"
+            value={
+              comparison.after.resolutionM === null
+                ? null
+                : `${comparison.after.resolutionM} m GSD`
+            }
           />
           <Readout
-            label="Coverage"
-            value={formatPercent(change.coverageFraction)}
-            tone={change.coverageFraction < 0.6 ? "amber" : undefined}
+            label="Baseline"
+            value={comparison.before?.dataset ?? null}
+            reason={comparison.beforeUnavailableReason}
           />
-          {change.coverageFraction < 0.6 ? (
-            <p className="mono amb" style={{ fontSize: 10, margin: "6px 0 0", lineHeight: 1.45 }}>
-              ▲ {formatPercent(1 - change.coverageFraction)} of the AOI was outside the
-              swath and was not analysed. Figures describe the analysed part only.
-            </p>
-          ) : null}
-        </PanelSection>
+        </Panel>
 
         {/* ── Infrastructure impact (PRD §2D) ────────────────────────────── */}
         <InfrastructureImpact model={impactModel} />
@@ -218,7 +278,14 @@ export function IntelligencePanel({
           </div>
         </PanelSection>
 
-        {/* ── WHY (P5-09, PRD §2B) ────────────────────────────────────────── */}
+        {/* ── WHY SAR (P5-09, PRD §2B) — reference amber card ─────────────── */}
+        <div style={{ height: 10 }} />
+        <Panel
+          title={
+            arbitration.primary ? `Why ${arbitration.primary}?` : "Why this was flagged"
+          }
+          accent="amber"
+        >
         <PanelSection
           title="Why this was flagged"
           actions={
@@ -388,7 +455,79 @@ export function IntelligencePanel({
             reason="The preprocessing service did not report a version."
           />
         </PanelSection>
+
+        {/* Reference: amber card closes with the report export action. */}
+        <div style={{ padding: 10 }}>
+          <Link
+            href={`/missions/${scenario.missionId}/report`}
+            className="btn btn-primary"
+            style={{
+              width: "100%",
+              height: 34,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--amber)",
+              textDecoration: "none",
+            }}
+          >
+            Export report
+          </Link>
+        </div>
+        </Panel>
       </motion.div>
-    </Panel>
+    </>
+  );
+}
+
+/**
+ * Reference-design metric tile: caption above a large figure, used by the
+ * CHANGE METRICS card. `value: null` renders NOT AVAILABLE — never a zero.
+ */
+function MetricTile({
+  caption,
+  value,
+  tone,
+  reason,
+}: {
+  caption: string;
+  value: string | null;
+  tone?: "signal";
+  reason?: string;
+}) {
+  return (
+    <div
+      style={{
+        border: "1px solid var(--hairline)",
+        borderRadius: "var(--radius)",
+        padding: "8px 10px",
+        minHeight: 58,
+      }}
+    >
+      <span className="label label-faint" style={{ display: "block", fontSize: 9 }}>
+        {caption}
+      </span>
+      {value ? (
+        <span
+          className="counter"
+          style={{
+            display: "block",
+            fontSize: 17,
+            lineHeight: 1.4,
+            color: tone === "signal" ? "var(--signal)" : "var(--ink)",
+          }}
+        >
+          {value}
+        </span>
+      ) : (
+        <span
+          className="readout-value readout-value-na"
+          title={reason}
+          style={{ display: "block", fontSize: 10 }}
+        >
+          NOT AVAILABLE
+        </span>
+      )}
+    </div>
   );
 }

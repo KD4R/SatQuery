@@ -57,11 +57,20 @@ export interface MapWorkspaceProps {
 }
 
 const LAYER_LABELS: Record<LayerId, string> = {
-  observation: "Observation",
-  baseline: "Baseline",
+  observation: "Flood extent",
+  baseline: "Baseline water",
   change: "Change",
   confidence: "Confidence",
-  aoi: "AOI",
+  aoi: "Area of interest",
+};
+
+/** Reference-design checkbox colours, one per layer family. */
+const LAYER_ACCENT: Record<LayerId, string> = {
+  observation: "rgba(255, 59, 48, 0.85)",
+  baseline: "rgba(90, 160, 255, 0.85)",
+  change: "rgba(255, 159, 10, 0.9)",
+  confidence: "rgba(80, 200, 120, 0.85)",
+  aoi: "rgba(80, 200, 120, 0.85)",
 };
 
 /** A bare dark canvas — no third-party tile hosts. See the note above. */
@@ -526,7 +535,7 @@ export function MapWorkspace({
                 type="checkbox"
                 checked={visible[id]}
                 onChange={() => onToggleLayer(id)}
-                style={{ accentColor: "#ff3b30", width: 11, height: 11 }}
+                style={{ accentColor: LAYER_ACCENT[id], width: 11, height: 11 }}
               />
               <span className="label" style={{ color: "var(--ink)" }}>
                 {LAYER_LABELS[id]}

@@ -12,6 +12,9 @@
  * Parameters are shown as *resolved* values and marked when they came from the
  * planner rather than from the operator, so nobody discovers after the fact that
  * the date range was inferred.
+ *
+ * Reference-design restyle: QUERY (red accent) and PARAMETERS (blue accent) are
+ * separate cards, with the Run Analysis action between PARAMETERS and PROGRESS.
  */
 
 import { useId, useState } from "react";
@@ -62,102 +65,107 @@ export function MissionQueryPanel({
   const blocked = blockedReason ?? (empty ? "Enter a mission query." : null);
 
   return (
-    <Panel title="Mission">
-      <PanelSection>
-        <label htmlFor={fieldId} className="label" style={{ display: "block" }}>
-          Query
-        </label>
-        <textarea
-          id={fieldId}
-          className="field"
-          rows={4}
-          value={query}
-          placeholder={EXAMPLE}
-          spellCheck={false}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onBlur={() => setTouched(true)}
-          aria-describedby={blocked && touched ? `${fieldId}-err` : undefined}
-          aria-invalid={Boolean(blocked) && touched}
-          style={{ marginTop: 6 }}
-        />
-        {blocked && touched ? (
-          <p
-            id={`${fieldId}-err`}
-            className="mono sig"
-            role="alert"
-            style={{ fontSize: 10, margin: "6px 0 0" }}
-          >
-            {blocked}
-          </p>
-        ) : null}
-      </PanelSection>
-
-      <PanelSection title="Resolved parameters">
-        <Param
-          label="AOI"
-          value={parameters.aoiName}
-          inferred={parameters.inferred.has("aoiName")}
-          reason="No AOI has been drawn or named."
-        />
-        <Readout
-          label="Area"
-          value={
-            parameters.aoiAreaSqM === null ? null : formatArea(parameters.aoiAreaSqM)
-          }
-          reason="Draw an AOI to measure it."
-        />
-        <Param
-          label="Date range"
-          value={parameters.dateRange}
-          inferred={parameters.inferred.has("dateRange")}
-          reason="The planner has not resolved a temporal window yet."
-        />
-        <Param
-          label="Sensors"
-          value={parameters.sensors.length ? parameters.sensors.join(" · ") : null}
-          inferred={parameters.inferred.has("sensors")}
-          reason="Sensor arbitration has not run."
-        />
-        <Readout
-          label="Resolution"
-          value={parameters.resolutionM === null ? null : `${parameters.resolutionM} m`}
-          reason="Depends on the selected observation."
-        />
-        <Param
-          label="Analysis"
-          value={parameters.analysisType}
-          inferred={parameters.inferred.has("analysisType")}
-          reason="The planner has not classified the intent yet."
-        />
-      </PanelSection>
-
-      {!aoiValidation.valid && aoiValidation.findings.length > 0 ? (
-        <PanelSection title="AOI blocks this run">
-          {aoiValidation.findings
-            .filter((f) => f.severity === "error")
-            .map((f) => (
-              <p
-                key={f.rule}
-                className="mono sig"
-                style={{ fontSize: 10, margin: "0 0 5px", lineHeight: 1.45 }}
-              >
-                ✕ {f.message}
-              </p>
-            ))}
+    <>
+      <Panel title="Query" accent="red">
+        <PanelSection>
+          <div style={{ padding: "2px 2px 4px" }}>
+            <textarea
+              id={fieldId}
+              className="field"
+              rows={4}
+              value={query}
+              placeholder={EXAMPLE}
+              spellCheck={false}
+              onChange={(e) => onQueryChange(e.target.value)}
+              onBlur={() => setTouched(true)}
+              aria-describedby={blocked && touched ? `${fieldId}-err` : undefined}
+              aria-invalid={Boolean(blocked) && touched}
+              style={{ marginTop: 2, border: "none", background: "transparent" }}
+            />
+          </div>
+          {blocked && touched ? (
+            <p
+              id={`${fieldId}-err`}
+              className="mono sig"
+              role="alert"
+              style={{ fontSize: 10, margin: "6px 0 0" }}
+            >
+              {blocked}
+            </p>
+          ) : null}
         </PanelSection>
-      ) : null}
+      </Panel>
 
-      <div style={{ padding: 10 }}>
-        <button
-          className="btn btn-primary"
-          style={{ width: "100%", height: 32 }}
-          onClick={onRun}
-          disabled={running || Boolean(blocked) || !aoiValidation.valid}
-        >
-          {running ? "Running…" : "Run analysis"}
-        </button>
-      </div>
-    </Panel>
+      <div style={{ height: 10 }} />
+
+      <Panel title="Parameters" accent="blue">
+        <PanelSection>
+          <Param
+            label="AOI"
+            value={parameters.aoiName}
+            inferred={parameters.inferred.has("aoiName")}
+            reason="No AOI has been drawn or named."
+          />
+          <Readout
+            label="Area"
+            value={
+              parameters.aoiAreaSqM === null ? null : formatArea(parameters.aoiAreaSqM)
+            }
+            reason="Draw an AOI to measure it."
+          />
+          <Param
+            label="Date range"
+            value={parameters.dateRange}
+            inferred={parameters.inferred.has("dateRange")}
+            reason="The planner has not resolved a temporal window yet."
+          />
+          <Param
+            label="Sensors"
+            value={parameters.sensors.length ? parameters.sensors.join(" · ") : null}
+            inferred={parameters.inferred.has("sensors")}
+            reason="Sensor arbitration has not run."
+          />
+          <Readout
+            label="Resolution"
+            value={parameters.resolutionM === null ? null : `${parameters.resolutionM} m`}
+            reason="Depends on the selected observation."
+          />
+          <Param
+            label="Analysis"
+            value={parameters.analysisType}
+            inferred={parameters.inferred.has("analysisType")}
+            reason="The planner has not classified the intent yet."
+          />
+        </PanelSection>
+
+        {!aoiValidation.valid && aoiValidation.findings.length > 0 ? (
+          <PanelSection title="AOI blocks this run">
+            {aoiValidation.findings
+              .filter((f) => f.severity === "error")
+              .map((f) => (
+                <p
+                  key={f.rule}
+                  className="mono sig"
+                  style={{ fontSize: 10, margin: "0 0 5px", lineHeight: 1.45 }}
+                >
+                  ✕ {f.message}
+                </p>
+              ))}
+          </PanelSection>
+        ) : null}
+
+        <div style={{ padding: 10 }}>
+          <button
+            className="btn btn-primary"
+            style={{ width: "100%", height: 34 }}
+            onClick={onRun}
+            disabled={running || Boolean(blocked) || !aoiValidation.valid}
+          >
+            {running ? "Running…" : "Run analysis"}
+          </button>
+        </div>
+      </Panel>
+    </>
   );
 }
 

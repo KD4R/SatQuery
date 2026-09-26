@@ -144,15 +144,21 @@ export function Panel({
   actions,
   children,
   labelledBy,
+  /** Card border tint from the reference design: red/blue/green/amber. */
+  accent,
 }: {
   title: string;
   actions?: ReactNode;
   children: ReactNode;
   labelledBy?: string;
+  accent?: "red" | "blue" | "green" | "amber";
 }) {
   const id = labelledBy ?? `panel-${title.toLowerCase().replace(/\W+/g, "-")}`;
   return (
-    <section className="panel" aria-labelledby={id}>
+    <section
+      className={`panel${accent ? ` panel-accent-${accent}` : ""}`}
+      aria-labelledby={id}
+    >
       <header className="panel-head">
         <Label as="h2">
           <span id={id}>{title}</span>

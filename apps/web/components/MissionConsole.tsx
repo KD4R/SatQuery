@@ -251,6 +251,7 @@ export default function MissionConsole() {
             source={source}
             sourceAt={FIXTURE_EPOCH}
             revealed={complete}
+            aoiAreaSqM={validation.areaSqM}
           />
         </ErrorBoundary>
       }

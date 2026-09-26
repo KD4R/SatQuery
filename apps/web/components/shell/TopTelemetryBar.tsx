@@ -17,6 +17,12 @@ import { useEffect, useState } from "react";
 import { Label, StatusChip } from "../system/primitives";
 import type { DataSource } from "../../lib/api/source";
 
+const NAV_TABS = [
+  { label: "Mission", href: "/console" },
+  { label: "Monitoring", href: "/monitoring" },
+  { label: "Archive", href: "/missions" },
+];
+
 export type SystemState = "active" | "idle" | "processing" | "degraded" | "offline";
 
 const STATE_TONE = {
@@ -63,25 +69,50 @@ export function TopTelemetryBar({
 
   return (
     <header>
-      {/* Row 1 — identity, centred wordmark, system state */}
-      <div className="band">
-        <div className="row" style={{ gap: 14 }}>
-          <Label>SatQuery</Label>
-          <Label faint>Mission Console</Label>
+      {/* Row 0 — brand, tab nav, clock/state (reference chrome) */}
+      <div className="console-nav">
+        <div className="row" style={{ gap: 10 }}>
+          <span
+            aria-hidden="true"
+            style={{
+              width: 14,
+              height: 14,
+              outline: "1px solid rgba(80, 200, 120, 0.65)",
+              display: "inline-block",
+            }}
+          />
+          <span
+            className="heading"
+            style={{ fontSize: 13, letterSpacing: "0.28em", fontWeight: 700 }}
+          >
+            SATQUERY
+          </span>
         </div>
 
+        <nav className="console-nav-tabs" aria-label="Console sections">
+          {NAV_TABS.map((t) => (
+            <a
+              key={t.label}
+              href={t.href}
+              className={`console-nav-tab${
+                t.label === "Mission" ? " console-nav-tab-active" : ""
+              }`}
+            >
+              {t.label}
+            </a>
+          ))
+          }
+        </nav>
+
         <div className="band-spacer" />
 
-        <span
-          className="heading"
-          style={{ fontSize: 13, letterSpacing: "0.22em", fontWeight: 700 }}
-        >
-          SATQUERY
-        </span>
-
-        <div className="band-spacer" />
-
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 14 }}>
+          <span className="row" style={{ gap: 6 }}>
+            <span className="label label-faint">UTC</span>
+            <span className="mono dim" style={{ fontSize: 11 }}>
+              {clock}
+            </span>
+          </span>
           <StatusChip
             tone={gatewayReachable === false ? "warn" : gatewayReachable ? "ok" : "idle"}
             title={
@@ -92,14 +123,14 @@ export function TopTelemetryBar({
                   : "The gateway did not respond to the last health check."
             }
           >
-            Gateway
+            {gatewayReachable === false ? "Gateway down" : "Gateway"}
           </StatusChip>
           <StatusChip tone={STATE_TONE[state]}>{state}</StatusChip>
         </div>
       </div>
 
-      {/* Row 2 — mission telemetry */}
-      <div className="band" style={{ height: 26 }}>
+      {/* Row 1 — mission breadcrumb + environment */}
+      <div className="band" style={{ height: 30 }}>
         <div className="row" style={{ gap: 18 }}>
           <TelemetryPair label="Mission" value={missionId} />
           <TelemetryPair label="Run" value={runId} />
@@ -107,13 +138,12 @@ export function TopTelemetryBar({
 
         <div className="band-spacer" />
 
-        <div className="row" style={{ gap: 18 }}>
+        <div className="row" style={{ gap: 14 }}>
           <TelemetryPair
             label="Env"
             value={source === "fixture" ? "DEMO" : "LIVE"}
             tone={source === "fixture" ? "amb" : undefined}
           />
-          <TelemetryPair label="UTC" value={clock} />
         </div>
       </div>
     </header>
