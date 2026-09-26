@@ -34,7 +34,6 @@ import "@fontsource/ibm-plex-mono/latin-400.css";
 import "@fontsource/ibm-plex-mono/latin-500.css";
 import "@fontsource/ibm-plex-mono/latin-600.css";
 import "./space.css";
-import { Starfield } from "./effects/Starfield";
 import { Closing } from "./sections/Closing";
 import { Hero } from "./sections/Hero";
 import { HowItWorks } from "./sections/HowItWorks";
@@ -61,7 +60,6 @@ export default function LandingPage() {
   return (
     <div ref={rootRef} className="sq-landing" id="top">
       <div className="sq-atmos" aria-hidden="true" />
-      <Starfield containerRef={rootRef} />
 
       <div className="sq-content">
         <Nav scrolled={scrolled} />

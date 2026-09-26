@@ -50,10 +50,6 @@ function makeNoise(seed: number) {
 
 export function Landscape({ className }: { className?: string }) {
   const fbm = useMemo(() => makeNoise(1947), []);
-  const stars = useMemo(() => {
-    const r = mulberry32(88);
-    return Array.from({ length: 140 }, () => ({ x: r(), y: r() * 0.5, s: 0.4 + r() * 1.1, a: 0.3 + r() * 0.7 }));
-  }, []);
 
   const { canvasRef } = useCanvasLoop(({ ctx, w, h, t }) => {
     const horizon = h * 0.5;
@@ -69,11 +65,6 @@ export function Landscape({ className }: { className?: string }) {
     sky.addColorStop(1, "#16181a");
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, horizon + 2);
-
-    for (const s of stars) {
-      ctx.fillStyle = `rgba(236,237,238,${s.a * 0.7})`;
-      ctx.fillRect(s.x * w, s.y * horizon, s.s, s.s);
-    }
 
     /* ── ringed planet on the horizon ─────────────────────────────────── */
     const pr = Math.min(w, h) * 0.2;
