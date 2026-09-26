@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test } from "@playwright/test";
 
 /**
@@ -32,17 +35,41 @@ test.describe("landing", () => {
 
   test("quotes IoU and refuses to quote accuracy", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByText("0.435")).toBeVisible();
+    // Scoped to the hero's model card: the figure now appears again further down
+    // the page, and the card is the one a visitor sees first.
+    const card = page.getByRole("complementary", { name: "Model card" });
+    await expect(card.getByText("0.435")).toBeVisible();
     // The landing page must keep explaining why accuracy is absent. If someone
     // adds an "89% accurate" badge later, this fails.
     await expect(page.getByText(/Accuracy is not quoted/i)).toBeVisible();
   });
 
-  test("system checks report the calibration shortfall, not twelve green ticks", async ({
+  test("the model card reports the calibration shortfall, not a green tick", async ({
     page,
   }) => {
     await page.goto("/");
-    await expect(page.getByText("PARTIAL")).toBeVisible({ timeout: 10_000 });
+    const card = page.getByRole("complementary", { name: "Model card" });
+    await expect(card.getByText("PARTIAL")).toBeVisible({ timeout: 10_000 });
+  });
+
+  test("every model-card figure is one the generated reports state", async ({ page }) => {
+    // reports/evaluation.md: "No number about this subsystem may appear in a slide,
+    // a README or a demo script unless it appears here first." The landing page is
+    // the most-seen of those surfaces, so this reads the reports from the repo and
+    // requires each hero figure to be both on the page and in a report. Editing a
+    // number in facts.ts without regenerating the report fails here.
+    const reports =
+      readFileSync(join(__dirname, "../../../reports/evaluation.md"), "utf8") +
+      readFileSync(join(__dirname, "../../../reports/calibration.md"), "utf8");
+
+    await page.goto("/");
+    const card = page.getByRole("complementary", { name: "Model card" });
+    for (const figure of ["0.435", "0.606", "0.204", "0.339", "0.058", "308"]) {
+      expect(reports, `${figure} is on the landing page but in neither report`).toContain(figure);
+      await expect(card.getByText(figure, { exact: false }).first()).toBeVisible();
+    }
+    expect(reports).toContain("89.2%");
+    await expect(page.getByText("89.2%").first()).toBeVisible();
   });
 });
 
