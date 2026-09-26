@@ -3,6 +3,8 @@ tests/integration/test_p2_14_service_boundary.py
 Integration tests for P2-14 service boundary: synthesized output in runs.
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -14,6 +16,33 @@ from services.agent.app.api.implementation import app as agent_app
 def client():
     with TestClient(agent_app) as c:
         yield c
+
+
+@pytest.fixture(autouse=True)
+def mock_orchestrator_deps():
+    with (
+        patch("services.agent.graph.orchestrator.get_tool_executor") as mock_executor,
+        patch("packages.shared.client.InternalClient.post", new_callable=AsyncMock) as mock_post,
+    ):
+
+        # Mock STAC search tool
+        mock_tool_res = MagicMock()
+        mock_tool_res.success = True
+        mock_tool_res.output = [
+            {"asset_id": "S1A_IW_GRDH_1SDV_TEST_1", "href": "s3://test/scene.tif"}
+        ]
+        mock_executor.return_value.execute_tool.return_value = mock_tool_res
+
+        # Mock Inference response
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {
+            "status": "completed",
+            "measurements": [{"name": "inundation_area_sqkm", "value": 14250.0}],
+            "degraded_from": "baseline",
+        }
+        mock_post.return_value = mock_resp
+
+        yield
 
 
 @pytest.fixture(scope="module")
