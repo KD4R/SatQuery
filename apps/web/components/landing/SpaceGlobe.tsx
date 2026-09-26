@@ -38,9 +38,16 @@ import { DEMO_AOI, REGIONS, f3, type RegionResult } from "./facts";
 import { prefersReducedMotion } from "./effects/canvas";
 
 const SUN: [number, number] = [-0.42, -0.38];
-const ICE = "125,211,252";
-const VIOLET = "167,139,250";
-const BEACON = "255,107,90";
+/*
+ * Overlay colours come from the landing page tokens (space.css), which take their
+ * direction from the React Bits Cursor Wave palette: one warm signal colour for the
+ * thing you can act on, two cool data colours, and neutral slate for structure.
+ * The planet itself keeps its natural ocean and terrain.
+ */
+const ICE = "48,208,152"; // --c-data-a  trained regions, training arcs
+const VIOLET = "96,160,248"; // --c-data-b  held-out regions
+const BEACON = "248,112,16"; // --c-signal  the demo area
+const SLATE = "152,160,168"; // --c-ink-3   orbits
 
 const INDIA = REGIONS.find((r) => r.name === "India")!.at;
 const ARCS = REGIONS.filter((r) => r.split === "trained").map((r, i) => ({
@@ -180,8 +187,8 @@ export function SpaceGlobe({ className }: { className?: string }) {
       };
       const [under, u] = mk();
       const halo = u.createRadialGradient(cx, cy, R * 0.96, cx, cy, R * 1.22);
-      halo.addColorStop(0, "rgba(74,158,255,0.26)");
-      halo.addColorStop(0.4, "rgba(74,158,255,0.09)");
+      halo.addColorStop(0, "rgba(74,158,255,0.12)");
+      halo.addColorStop(0.4, "rgba(74,158,255,0.04)");
       halo.addColorStop(1, "rgba(74,158,255,0)");
       u.beginPath();
       u.arc(cx, cy, R * 1.22, 0, Math.PI * 2);
@@ -209,7 +216,7 @@ export function SpaceGlobe({ className }: { className?: string }) {
       o.fill();
       const rim = o.createRadialGradient(cx, cy, R * 0.9, cx, cy, R);
       rim.addColorStop(0, "rgba(120,190,255,0)");
-      rim.addColorStop(1, "rgba(120,190,255,0.32)");
+      rim.addColorStop(1, "rgba(120,190,255,0.2)");
       o.beginPath();
       o.arc(cx, cy, R, 0, Math.PI * 2);
       o.fillStyle = rim;
@@ -350,7 +357,7 @@ export function SpaceGlobe({ className }: { className?: string }) {
         const hp = pts[Math.max(0, Math.min(SEG, Math.round(head * SEG)))]!;
         if (hp.visible && head < 1 && fadeOut > 0) {
           const g = ctx.createRadialGradient(hp.x, hp.y, 0, hp.x, hp.y, 7);
-          g.addColorStop(0, `rgba(224,242,254,${0.95 * fadeOut})`);
+          g.addColorStop(0, `rgba(214,250,236,${0.95 * fadeOut})`);
           g.addColorStop(1, `rgba(${ICE},0)`);
           ctx.fillStyle = g;
           ctx.fillRect(hp.x - 7, hp.y - 7, 14, 14);
@@ -424,9 +431,9 @@ export function SpaceGlobe({ className }: { className?: string }) {
           target.moveTo(a.x, a.y);
           target.lineTo(b.x, b.y);
         }
-        ctx.strokeStyle = `rgba(${ICE},0.04)`;
+        ctx.strokeStyle = `rgba(${SLATE},0.05)`;
         ctx.stroke(back);
-        ctx.strokeStyle = `rgba(${ICE},0.22)`;
+        ctx.strokeStyle = `rgba(${SLATE},0.26)`;
         ctx.stroke(front);
         const nu = o.phase + t * o.rate * Math.PI * 2;
         let q: V3 = [o.a * Math.cos(nu), 0, o.a * Math.sin(nu)];
@@ -438,8 +445,8 @@ export function SpaceGlobe({ className }: { className?: string }) {
         const behind = z < 0 && Math.hypot(px - cx, py - cy) < R;
         if (!behind) {
           const g = ctx.createRadialGradient(px, py, 0, px, py, 6);
-          g.addColorStop(0, "rgba(240,249,255,0.95)");
-          g.addColorStop(1, `rgba(${ICE},0)`);
+          g.addColorStop(0, "rgba(236,237,238,0.95)");
+          g.addColorStop(1, `rgba(${SLATE},0)`);
           ctx.fillStyle = g;
           ctx.fillRect(px - 6, py - 6, 12, 12);
         }
@@ -568,7 +575,7 @@ export function SpaceGlobe({ className }: { className?: string }) {
           {hover.region ? (
             <>
               <div className="sq-tip-head">
-                <span className={`sq-dot ${hover.region.split === "held-out" ? "is-violet" : "is-ice"}`} />
+                <span className={`sq-dot ${hover.region.split === "held-out" ? "is-b" : "is-a"}`} />
                 {hover.region.name}
                 <span className="sq-tip-split">
                   {hover.region.split === "held-out" ? "held out" : "trained"}
@@ -589,7 +596,7 @@ export function SpaceGlobe({ className }: { className?: string }) {
           ) : (
             <>
               <div className="sq-tip-head">
-                <span className="sq-dot is-beacon" />
+                <span className="sq-dot is-signal" />
                 {DEMO_AOI.name}
               </div>
               <div className="sq-tip-note">{DEMO_AOI.detail}</div>

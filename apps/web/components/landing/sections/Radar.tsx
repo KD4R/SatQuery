@@ -10,9 +10,9 @@
  * that last one out -- watch the radar sweep light the hills and skip the water.
  */
 
-import { GlitchText } from "../effects/GlitchText";
 import { Landscape } from "../effects/Landscape";
 import { IconCloud, IconMoon, IconWaves, Reveal } from "../ui";
+import { SectionIndex } from "./SectionIndex";
 
 const FACTS = [
   {
@@ -38,38 +38,31 @@ export function Radar() {
       <Landscape className="sq-radar-canvas" />
       <div className="sq-wrap sq-radar-copy">
         <Reveal>
-          <span className="sq-eyebrow">Why radar</span>
+          <SectionIndex n={3} label="Why radar" />
         </Reveal>
-        <Reveal delay={0.1}>
-          <div style={{ marginTop: 16, maxWidth: 760 }}>
-            <GlitchText
-              as="h2"
-              lines={[{ text: "Floods come with cloud." }, { text: "Radar doesn't care.", tone: "gradient" }]}
-              minSize={30}
-              maxSize={62}
-              seed={23}
-            />
-          </div>
+        <Reveal delay={0.08}>
+          <h2 className="sq-h2">
+            Floods come with cloud.
+            <br />
+            <span className="is-quiet">Radar doesn&rsquo;t care.</span>
+          </h2>
         </Reveal>
-        <Reveal delay={0.2}>
+        <Reveal delay={0.16}>
           <p className="sq-sub">
-            Sentinel-1 carries a synthetic aperture radar. Watch the pulse sweep the
-            ground below: the hills light up, the water in the valleys stays black. Dark
-            means water.
+            Sentinel-1 carries a synthetic aperture radar. Watch the pulse sweep the ground
+            below: the hills light up, the water in the valleys stays black. Dark means water.
           </p>
         </Reveal>
 
-        <div className="sq-radar-facts">
-          {FACTS.map((f, i) => (
-            <Reveal key={f.title} delay={0.1 * i}>
-              <div className="sq-card sq-radar-fact">
-                <span className="sq-icon">{f.icon}</span>
-                <h4>{f.title}</h4>
-                <p>{f.body}</p>
-              </div>
-            </Reveal>
+        <Reveal delay={0.1} className="sq-radar-facts">
+          {FACTS.map((f) => (
+            <div key={f.title} className="sq-radar-fact">
+              <span className="sq-icon">{f.icon}</span>
+              <h4>{f.title}</h4>
+              <p>{f.body}</p>
+            </div>
           ))}
-        </div>
+        </Reveal>
       </div>
     </section>
   );

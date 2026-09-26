@@ -80,23 +80,6 @@ export function CountUp({
   );
 }
 
-/** Cursor-following highlight for cards; sets --mx / --my on the element. */
-export function useSpotlight<T extends HTMLElement>() {
-  const ref = useRef<T | null>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const move = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
-      el.style.setProperty("--mx", `${e.clientX - r.left}px`);
-      el.style.setProperty("--my", `${e.clientY - r.top}px`);
-    };
-    el.addEventListener("pointermove", move);
-    return () => el.removeEventListener("pointermove", move);
-  }, []);
-  return ref;
-}
-
 /* ── Icons: inline, 1.6px stroke, currentColor ──────────────────────────── */
 
 const I = ({ children }: { children: React.ReactNode }) => (

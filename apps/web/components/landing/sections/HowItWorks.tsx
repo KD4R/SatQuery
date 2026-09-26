@@ -14,6 +14,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 
 import { Reveal } from "../ui";
+import { SectionIndex } from "./SectionIndex";
 
 interface Step {
   stages: string;
@@ -49,9 +50,13 @@ const STEPS: Step[] = [
   },
 ];
 
-const ICE = "#7dd3fc";
-const VIOLET = "#a78bfa";
-const FAINT = "rgba(148,170,255,0.22)";
+// Diagram colours follow the page tokens: signal orange for what the system selects
+// or answers, blue for water, slate for structure.
+const ICE = "#f87010"; // --c-signal
+const WATER = "#60a0f8"; // --c-data-b
+const VIOLET = "#98a0a8"; // --c-ink-3
+const FAINT = "rgba(152,160,168,0.24)";
+const PANEL = "#0e0f10";
 const ease = [0.16, 1, 0.3, 1] as const;
 
 function Visual({ step }: { step: number }) {
@@ -73,23 +78,19 @@ function Visual({ step }: { step: number }) {
           transition: { delay, duration: 0.6, ease },
         };
 
-  const text = { fontFamily: "IBM Plex Mono, monospace", fontSize: 11, fill: "#a8b0d8" };
+  const text = { fontFamily: "IBM Plex Mono, monospace", fontSize: 11, fill: "#b9bec4" };
 
   return (
     <svg viewBox="0 0 420 420" width="100%" height="100%" role="img" aria-label={STEPS[step]!.title}>
       <defs>
         <pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="7" stroke="rgba(148,170,255,0.35)" strokeWidth="1.4" />
+          <line x1="0" y1="0" x2="0" y2="7" stroke="rgba(152,160,168,0.35)" strokeWidth="1.2" />
         </pattern>
-        <linearGradient id="sq-g" x1="0" x2="1">
-          <stop offset="0" stopColor={ICE} />
-          <stop offset="1" stopColor={VIOLET} />
-        </linearGradient>
       </defs>
 
       {/* ground grid, shared by every step */}
       {Array.from({ length: 11 }, (_, i) => (
-        <g key={i} stroke="rgba(148,170,255,0.06)">
+        <g key={i} stroke="rgba(152,160,168,0.07)">
           <line x1={20 + i * 38} y1="20" x2={20 + i * 38} y2="400" />
           <line x1="20" y1={20 + i * 38} x2="400" y2={20 + i * 38} />
         </g>
@@ -97,13 +98,13 @@ function Visual({ step }: { step: number }) {
 
       {step === 0 && (
         <g>
-          <motion.rect x="40" y="46" width="340" height="44" rx="10" fill="rgba(13,19,44,0.9)" stroke={FAINT} {...pop()} />
-          <motion.text x="58" y="73" {...text} fill="#eef1ff" {...pop(0.1)}>
+          <motion.rect x="40" y="46" width="340" height="44" rx="6" fill={PANEL} stroke={FAINT} {...pop()} />
+          <motion.text x="58" y="73" {...text} fill="#ecedee" {...pop(0.1)}>
             › flood extent near the river this week?
           </motion.text>
           <motion.path
             d="M120 170 L250 150 L320 220 L290 320 L150 330 L100 250 Z"
-            fill="rgba(125,211,252,0.07)"
+            fill="rgba(248,112,16,0.06)"
             stroke={ICE}
             strokeWidth="2"
             strokeDasharray="0"
@@ -117,7 +118,7 @@ function Visual({ step }: { step: number }) {
             [150, 330],
             [100, 250],
           ].map(([x, y], i) => (
-            <motion.circle key={i} cx={x} cy={y} r="5" fill="#02030a" stroke={ICE} strokeWidth="2" {...pop(0.4 + i * 0.12)} />
+            <motion.circle key={i} cx={x} cy={y} r="5" fill="#080808" stroke={ICE} strokeWidth="2" {...pop(0.4 + i * 0.12)} />
           ))}
           <motion.text x="150" y="365" {...text} {...pop(1.2)}>
             geometry valid · inside budget ✓
@@ -128,22 +129,22 @@ function Visual({ step }: { step: number }) {
       {step === 1 && (
         <g>
           <motion.g {...pop()}>
-            <rect x="36" y="80" width="160" height="220" rx="14" fill="rgba(13,19,44,0.9)" stroke={FAINT} />
-            <text x="56" y="112" {...text} fill="#eef1ff">Sentinel-2</text>
+            <rect x="36" y="80" width="160" height="220" rx="8" fill={PANEL} stroke={FAINT} />
+            <text x="56" y="112" {...text} fill="#ecedee">Sentinel-2</text>
             <text x="56" y="130" {...text}>optical</text>
-            <g fill="rgba(200,210,240,0.28)">
+            <g fill="rgba(185,190,196,0.26)">
               <ellipse cx="116" cy="200" rx="52" ry="22" />
               <ellipse cx="90" cy="190" rx="28" ry="20" />
               <ellipse cx="140" cy="186" rx="30" ry="22" />
             </g>
-            <text x="56" y="272" {...text} fill="#6e77a8">cloud-obscured</text>
-            <line x1="56" y1="282" x2="176" y2="282" stroke="#ff6b5a" strokeWidth="1.5" />
+            <text x="56" y="272" {...text} fill="#626970">cloud-obscured</text>
+            <line x1="56" y1="282" x2="176" y2="282" stroke="#e84040" strokeWidth="1.5" />
           </motion.g>
           <motion.g {...pop(0.25)}>
-            <rect x="224" y="80" width="160" height="220" rx="14" fill="rgba(13,19,44,0.9)" stroke={ICE} />
-            <text x="244" y="112" {...text} fill="#eef1ff">Sentinel-1</text>
+            <rect x="224" y="80" width="160" height="220" rx="8" fill={PANEL} stroke={ICE} />
+            <text x="244" y="112" {...text} fill="#ecedee">Sentinel-1</text>
             <text x="244" y="130" {...text}>C-band radar</text>
-            <g fill="rgba(200,210,240,0.16)">
+            <g fill="rgba(185,190,196,0.14)">
               <ellipse cx="304" cy="200" rx="52" ry="22" />
             </g>
             {[0, 1, 2].map((i) => (
@@ -170,14 +171,14 @@ function Visual({ step }: { step: number }) {
       {step === 2 && (
         <g>
           <motion.path d="M110 120 L300 105 L330 250 L270 330 L120 320 L90 210 Z" fill="url(#hatch)" stroke={FAINT} strokeWidth="1.5" {...pop()} />
-          <motion.polygon points="150,40 250,40 360,400 260,400" fill="rgba(125,211,252,0.12)" stroke={ICE} strokeWidth="1" {...pop(0.3)} />
+          <motion.polygon points="150,40 250,40 360,400 260,400" fill="rgba(248,112,16,0.07)" stroke={ICE} strokeWidth="1" {...pop(0.3)} />
           <clipPath id="swath">
             <polygon points="150,40 250,40 360,400 260,400" />
           </clipPath>
           <motion.path
             d="M110 120 L300 105 L330 250 L270 330 L120 320 L90 210 Z"
-            fill="rgba(125,211,252,0.22)"
-            stroke={ICE}
+            fill="rgba(96,160,248,0.28)"
+            stroke={WATER}
             strokeWidth="2"
             clipPath="url(#swath)"
             {...pop(0.6)}
@@ -204,8 +205,8 @@ function Visual({ step }: { step: number }) {
                 y={50 + r * 27}
                 width="24"
                 height="24"
-                rx="4"
-                fill={water ? "rgba(125,211,252,0.75)" : river ? "rgba(167,139,250,0.55)" : "rgba(148,170,255,0.06)"}
+                rx="2"
+                fill={water ? "rgba(96,160,248,0.8)" : river ? "rgba(152,160,168,0.5)" : "rgba(152,160,168,0.06)"}
                 {...(reduce || (!water && !river)
                   ? {}
                   : {
@@ -219,7 +220,7 @@ function Visual({ step }: { step: number }) {
             );
           })}
           <motion.text x="50" y="395" {...text} {...pop(1.6)}>
-            <tspan fill={ICE}>■ water</tspan>
+            <tspan fill={WATER}>■ water</tspan>
             <tspan dx="14" fill={VIOLET}>■ permanent river, subtracted</tspan>
           </motion.text>
         </g>
@@ -238,7 +239,7 @@ function Visual({ step }: { step: number }) {
             ] as const
           ).map(([x, y], i) =>
             i === 0 ? null : (
-              <motion.line key={`e${i}`} x1={210} y1={210} x2={x} y2={y} stroke="url(#sq-g)" strokeWidth="1.4" {...draw(0.15 * i)} />
+              <motion.line key={`e${i}`} x1={210} y1={210} x2={x} y2={y} stroke={FAINT} strokeWidth="1.2" {...draw(0.15 * i)} />
             ),
           )}
           {(
@@ -252,8 +253,8 @@ function Visual({ step }: { step: number }) {
             ] as const
           ).map(([x, y, label, main], i) => (
             <motion.g key={label} {...pop(0.2 + i * 0.12)}>
-              <circle cx={x} cy={y} r={main ? 34 : 24} fill="rgba(13,19,44,0.95)" stroke={main ? ICE : label === "NOT AVAILABLE" ? "#6e77a8" : VIOLET} strokeWidth={main ? 2 : 1.4} strokeDasharray={label === "NOT AVAILABLE" ? "4 4" : undefined} />
-              <text x={x} y={y + 4} textAnchor="middle" {...text} fontSize={main ? 11 : 9.5} fill={main ? "#eef1ff" : "#a8b0d8"}>
+              <circle cx={x} cy={y} r={main ? 34 : 24} fill={PANEL} stroke={main ? ICE : label === "NOT AVAILABLE" ? "#626970" : VIOLET} strokeWidth={main ? 2 : 1.4} strokeDasharray={label === "NOT AVAILABLE" ? "4 4" : undefined} />
+              <text x={x} y={y + 4} textAnchor="middle" {...text} fontSize={main ? 11 : 9.5} fill={main ? "#ecedee" : "#b9bec4"}>
                 {label === "NOT AVAILABLE" ? "N/A" : label}
               </text>
             </motion.g>
@@ -288,9 +289,9 @@ export function HowItWorks() {
     <section id="how" className="sq-section">
       <div className="sq-wrap">
         <Reveal className="sq-section-head">
-          <span className="sq-eyebrow">How it works</span>
+          <SectionIndex n={2} label="How it works" />
           <h2 className="sq-h2">
-            From a sentence <span className="sq-grad-text">to a map you can defend.</span>
+            From a sentence <span className="is-quiet">to a map you can defend.</span>
           </h2>
           <p className="sq-sub">
             Five steps, the same ones the console&rsquo;s mission timeline shows you as it runs.
@@ -298,7 +299,7 @@ export function HowItWorks() {
         </Reveal>
 
         <div className="sq-how">
-          <div className="sq-card sq-how-visual">
+          <div className="sq-panel sq-how-visual">
             <AnimatePresence mode="wait">
               <motion.div
                 key={active}

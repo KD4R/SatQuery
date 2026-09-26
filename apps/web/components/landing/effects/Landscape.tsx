@@ -64,15 +64,14 @@ export function Landscape({ className }: { className?: string }) {
 
     /* ── sky ──────────────────────────────────────────────────────────── */
     const sky = ctx.createLinearGradient(0, 0, 0, horizon);
-    sky.addColorStop(0, "#02030a");
-    sky.addColorStop(0.55, "#070b22");
-    sky.addColorStop(0.88, "#1a1240");
-    sky.addColorStop(1, "#3a1a5c");
+    sky.addColorStop(0, "#080808");
+    sky.addColorStop(0.6, "#0c0d0e");
+    sky.addColorStop(1, "#16181a");
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, horizon + 2);
 
     for (const s of stars) {
-      ctx.fillStyle = `rgba(230,236,255,${s.a * 0.8})`;
+      ctx.fillStyle = `rgba(236,237,238,${s.a * 0.7})`;
       ctx.fillRect(s.x * w, s.y * horizon, s.s, s.s);
     }
 
@@ -81,8 +80,8 @@ export function Landscape({ className }: { className?: string }) {
     const px = w * 0.7;
     const py = horizon + pr * 0.18;
     const glow = ctx.createRadialGradient(px, py, pr * 0.8, px, py, pr * 2.1);
-    glow.addColorStop(0, "rgba(167,139,250,0.28)");
-    glow.addColorStop(1, "rgba(167,139,250,0)");
+    glow.addColorStop(0, "rgba(152,160,168,0.08)");
+    glow.addColorStop(1, "rgba(152,160,168,0)");
     ctx.fillStyle = glow;
     ctx.fillRect(px - pr * 2.2, py - pr * 2.2, pr * 4.4, pr * 4.4);
 
@@ -90,7 +89,7 @@ export function Landscape({ className }: { className?: string }) {
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(-0.22);
-    ctx.strokeStyle = "rgba(196,181,253,0.35)";
+    ctx.strokeStyle = "rgba(152,160,168,0.28)";
     ctx.lineWidth = pr * 0.05;
     ctx.beginPath();
     ctx.ellipse(0, 0, pr * 1.75, pr * 0.34, 0, Math.PI, Math.PI * 2);
@@ -98,9 +97,9 @@ export function Landscape({ className }: { className?: string }) {
     ctx.restore();
 
     const body = ctx.createRadialGradient(px - pr * 0.4, py - pr * 0.5, pr * 0.1, px, py, pr);
-    body.addColorStop(0, "#c4b5fd");
-    body.addColorStop(0.45, "#6d4bd1");
-    body.addColorStop(1, "#1b0f3d");
+    body.addColorStop(0, "#9aa1a8");
+    body.addColorStop(0.45, "#3a3f44");
+    body.addColorStop(1, "#101214");
     ctx.fillStyle = body;
     ctx.beginPath();
     ctx.arc(px, py, pr, 0, Math.PI * 2);
@@ -109,7 +108,7 @@ export function Landscape({ className }: { className?: string }) {
     ctx.save();
     ctx.translate(px, py);
     ctx.rotate(-0.22);
-    ctx.strokeStyle = "rgba(221,214,254,0.55)";
+    ctx.strokeStyle = "rgba(185,190,196,0.45)";
     ctx.lineWidth = pr * 0.05;
     ctx.beginPath();
     ctx.ellipse(0, 0, pr * 1.75, pr * 0.34, 0, 0, Math.PI);
@@ -118,19 +117,19 @@ export function Landscape({ className }: { className?: string }) {
 
     // horizon haze
     const haze = ctx.createLinearGradient(0, horizon - h * 0.08, 0, horizon + h * 0.04);
-    haze.addColorStop(0, "rgba(125,211,252,0)");
-    haze.addColorStop(0.7, "rgba(125,211,252,0.10)");
-    haze.addColorStop(1, "rgba(125,211,252,0)");
+    haze.addColorStop(0, "rgba(152,160,168,0)");
+    haze.addColorStop(0.7, "rgba(152,160,168,0.06)");
+    haze.addColorStop(1, "rgba(152,160,168,0)");
     ctx.fillStyle = haze;
     ctx.fillRect(0, horizon - h * 0.08, w, h * 0.12);
 
     // Ground beyond the farthest row. Without it the sky gradient shows through the
     // valley at the horizon and reads as glowing water -- the opposite of the point.
-    ctx.fillStyle = "#03050f";
+    ctx.fillStyle = "#080808";
     ctx.fillRect(0, horizon, w, h - horizon);
     const rim = ctx.createLinearGradient(0, horizon - 2, 0, horizon + h * 0.03);
-    rim.addColorStop(0, "rgba(125,211,252,0.18)");
-    rim.addColorStop(1, "rgba(125,211,252,0)");
+    rim.addColorStop(0, "rgba(152,160,168,0.12)");
+    rim.addColorStop(1, "rgba(152,160,168,0)");
     ctx.fillStyle = rim;
     ctx.fillRect(0, horizon - 2, w, h * 0.03 + 2);
 
@@ -169,13 +168,13 @@ export function Landscape({ className }: { className?: string }) {
       for (let i = 0; i <= COLS; i++) ctx.lineTo(xs[i]!, ys[i]!);
       ctx.lineTo(xs[COLS]!, h);
       ctx.closePath();
-      ctx.fillStyle = "#03050f";
+      ctx.fillStyle = "#080808";
       ctx.fill();
 
       const fade = (1 - depth) ** 1.1;
       const pulse = Math.exp(-(((depth - sweep) / 0.045) ** 2));
 
-      // land: ice by default, bright where the radar pulse is passing
+      // land: slate by default, signal orange where the radar pulse is passing
       ctx.beginPath();
       let pen = false;
       for (let i = 0; i <= COLS; i++) {
@@ -187,7 +186,7 @@ export function Landscape({ className }: { className?: string }) {
         } else pen = false;
       }
       const a = 0.08 + fade * 0.42 + pulse * 0.55;
-      ctx.strokeStyle = pulse > 0.3 ? `rgba(165,243,252,${Math.min(1, a)})` : `rgba(125,211,252,${a})`;
+      ctx.strokeStyle = pulse > 0.3 ? `rgba(248,112,16,${Math.min(1, a)})` : `rgba(152,160,168,${a * 0.85})`;
       ctx.lineWidth = 0.7 + fade * 0.8 + pulse * 0.8;
       ctx.stroke();
 
@@ -201,17 +200,17 @@ export function Landscape({ className }: { className?: string }) {
           pen = true;
         } else pen = false;
       }
-      ctx.strokeStyle = `rgba(99,102,241,${0.05 + fade * 0.12})`;
+      ctx.strokeStyle = `rgba(96,160,248,${0.04 + fade * 0.1})`;
       ctx.lineWidth = 0.6;
       ctx.stroke();
     }
 
     // vignette so the section's copy sits on something calm
     const vig = ctx.createLinearGradient(0, 0, 0, h);
-    vig.addColorStop(0, "rgba(2,3,10,0.55)");
-    vig.addColorStop(0.35, "rgba(2,3,10,0)");
-    vig.addColorStop(0.8, "rgba(2,3,10,0)");
-    vig.addColorStop(1, "rgba(2,3,10,0.9)");
+    vig.addColorStop(0, "rgba(8,8,8,0.6)");
+    vig.addColorStop(0.35, "rgba(8,8,8,0)");
+    vig.addColorStop(0.8, "rgba(8,8,8,0)");
+    vig.addColorStop(1, "rgba(8,8,8,0.92)");
     ctx.fillStyle = vig;
     ctx.fillRect(0, 0, w, h);
   });

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { IconArrow } from "../ui";
+
 const LINKS = [
   { href: "#how", label: "How it works" },
   { href: "#radar", label: "Why radar" },
@@ -15,7 +17,7 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
       <div className="sq-wrap sq-nav-inner">
         <a href="#top" className="sq-brand" aria-label="SatQuery, back to top">
           <span className="sq-brand-mark" aria-hidden="true" />
-          SATQUERY
+          SatQuery
         </a>
         <nav className="sq-nav-links" aria-label="Sections">
           {LINKS.map((l) => (
@@ -24,8 +26,9 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
             </a>
           ))}
         </nav>
-        <Link href="/console" className="sq-btn sq-btn-ghost sq-btn-sm">
+        <Link href="/console" className="sq-btn sq-btn--secondary sq-btn--sm">
           Open console
+          <IconArrow />
         </Link>
       </div>
     </header>

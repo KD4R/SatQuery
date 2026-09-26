@@ -47,7 +47,7 @@ function tile(d: (typeof DEPTHS)[number]): string {
     const a = d.alpha[0]! + rand() * (d.alpha[1]! - d.alpha[0]!);
     const hue = rand();
     x.fillStyle =
-      hue < 0.12 ? `rgba(255,214,170,${a})` : hue < 0.3 ? `rgba(170,200,255,${a})` : `rgba(235,240,255,${a})`;
+      hue < 0.3 ? `rgba(185,190,196,${a})` : `rgba(236,237,238,${a})`;
     x.beginPath();
     // Keep stars off the tile edge so the repeat seam never cuts one in half.
     x.arc(4 + rand() * (TILE - 8), 4 + rand() * (TILE - 8), s, 0, Math.PI * 2);

@@ -25,8 +25,15 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import "@fontsource/sora/latin-500.css";
+import "@fontsource/sora/latin-600.css";
+import "@fontsource/ibm-plex-sans/latin-400.css";
+import "@fontsource/ibm-plex-sans/latin-500.css";
+import "@fontsource/ibm-plex-sans/latin-600.css";
+import "@fontsource/ibm-plex-mono/latin-400.css";
+import "@fontsource/ibm-plex-mono/latin-500.css";
+import "@fontsource/ibm-plex-mono/latin-600.css";
 import "./space.css";
-import { PixelMagnet } from "./effects/PixelMagnet";
 import { Starfield } from "./effects/Starfield";
 import { Closing } from "./sections/Closing";
 import { Hero } from "./sections/Hero";
@@ -53,7 +60,7 @@ export default function LandingPage() {
 
   return (
     <div ref={rootRef} className="sq-landing" id="top">
-      <div className="sq-nebula" aria-hidden="true" />
+      <div className="sq-atmos" aria-hidden="true" />
       <Starfield containerRef={rootRef} />
 
       <div className="sq-content">
@@ -68,8 +75,6 @@ export default function LandingPage() {
           <Closing />
         </main>
       </div>
-
-      <PixelMagnet />
     </div>
   );
 }

@@ -6,15 +6,13 @@
  */
 
 import { CALIBRATION } from "../facts";
-import { Reveal, useSpotlight } from "../ui";
+import { Reveal } from "../ui";
+import { SectionIndex } from "./SectionIndex";
 
 function Card({ children, delay }: { children: React.ReactNode; delay: number }) {
-  const ref = useSpotlight<HTMLDivElement>();
   return (
     <Reveal delay={delay}>
-      <div ref={ref} className="sq-card sq-principle sq-proof-card">
-        {children}
-      </div>
+      <div className="sq-panel sq-principle">{children}</div>
     </Reveal>
   );
 }
@@ -26,9 +24,9 @@ export function Principles() {
     <section id="honesty" className="sq-section">
       <div className="sq-wrap">
         <Reveal className="sq-section-head">
-          <span className="sq-eyebrow">Evidence first</span>
+          <SectionIndex n={5} label="Evidence first" />
           <h2 className="sq-h2">
-            It tells you what it <span className="sq-grad-text">doesn&rsquo;t know.</span>
+            It tells you what it <span className="is-quiet">doesn&rsquo;t know.</span>
           </h2>
           <p className="sq-sub">
             A flood map that fills its gaps with confident guesses is worse than no map. These
@@ -45,7 +43,7 @@ export function Principles() {
               </div>
               <div className="sq-mini-row">
                 <span>Area analysed</span>
-                <span style={{ color: "var(--sq-ink)" }}>inside swath only</span>
+                <span className="is-ink">inside swath only</span>
               </div>
             </div>
             <h3>&ldquo;Not available&rdquo; beats a guess.</h3>
@@ -67,8 +65,8 @@ export function Principles() {
               >
                 {(
                   [
-                    ["raw", CALIBRATION.eceRaw, "#6e77a8"],
-                    ["scaled", CALIBRATION.eceScaled, "var(--sq-amber)"],
+                    ["raw", CALIBRATION.eceRaw, "var(--c-ink-4)"],
+                    ["scaled", CALIBRATION.eceScaled, "var(--c-warn)"],
                   ] as const
                 ).map(([label, v, c]) => (
                   <div key={label} className="sq-ece-row">
@@ -102,9 +100,9 @@ export function Principles() {
                 <span className="sq-badge">FIXTURE</span>
                 <span className="sq-badge">ENV: DEMO</span>
               </div>
-              <div className="sq-mini-row" style={{ marginTop: 8 }}>
+              <div className="sq-mini-row">
                 <span>Gateway</span>
-                <span style={{ color: "var(--sq-ink)" }}>unreachable — shown as such</span>
+                <span className="is-ink">unreachable — shown as such</span>
               </div>
             </div>
             <h3>Demo data is badged. Always.</h3>
