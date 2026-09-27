@@ -970,6 +970,565 @@ body:has(.preview-shell) {
   height: auto;
 }
 
+/* ─── Sub-page design system (restored) ──────────────────────────────────
+   These classes styled /dashboard's sub-pages (monitoring, admin, evidence,
+   history, reports, alerts, settings, map) and were lost from this file in
+   the f95e796→125d998 rewrite. Restored and recolored to the landing's
+   instrument palette: hairlines instead of soft shadows, signal orange as
+   the only accent, Share Tech Mono for labels. */
+/* Labelled content sections on sub-pages: an index, a title, a rule. */
+.dash-section {
+  margin-top: 34px;
+  min-width: 0;
+}
+.dash-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line2);
+  margin-bottom: 16px;
+}
+.dash-section-head .dash-section-index {
+  font: 11px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+.dash-section-head h2 {
+  margin: 0;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.route-transition {
+  animation: routeIn 0.18s cubic-bezier(0.22, 0.8, 0.24, 1) both;
+  transform-origin: 50% 12%;
+}
+@keyframes routeIn {
+  0% { opacity: 0; transform: translateY(10px) scale(0.997); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.page-head.compact {
+  margin-bottom: 34px;
+}
+.page-head.compact h1 {
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  margin: 10px 0 12px;
+}
+.page-head.compact .subtitle {
+  max-width: 650px;
+}
+
+.surface-grid {
+  display: grid;
+  gap: 14px;
+}
+.surface-grid.two {
+  grid-template-columns: 1.2fr 0.8fr;
+}
+.surface-grid.three {
+  grid-template-columns: repeat(3, 1fr);
+}
+.surface {
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 6px;
+  padding: 20px;
+}
+.surface-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.surface-title h2 {
+  font-size: 15px;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.surface-title span {
+  font: 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.stat-box {
+  padding: 17px;
+  background: var(--panel2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 6px;
+}
+.stat-box span {
+  font: 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  display: block;
+}
+.stat-box b {
+  font-size: 22px;
+  display: block;
+  margin-top: 9px;
+}
+.stat-box small {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.progress-line {
+  height: 5px;
+  border-radius: 999px;
+  background: var(--panel3);
+  overflow: hidden;
+  margin: 10px 0;
+}
+.progress-line i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 13px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 10px;
+}
+.data-table th {
+  font: 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.badge {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font: 9px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  border: 1px solid var(--line);
+}
+.badge.success {
+  color: var(--data-a);
+  border-color: color-mix(in srgb, var(--data-a) 30%, transparent);
+  background: color-mix(in srgb, var(--data-a) 8%, transparent);
+}
+.badge.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 30%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+.badge.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+}
+.timeline-list .timeline-row {
+  display: grid;
+  grid-template-columns: 90px 18px 1fr auto;
+  gap: 10px;
+  align-items: start;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+.timeline-list .timeline-row b {
+  font-size: 10px;
+}
+.timeline-list .timeline-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.timeline-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-top: 3px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.ghost-btn,
+.mini-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  color: var(--soft);
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 10px;
+}
+.ghost-btn:hover,
+.mini-btn:hover {
+  border-color: var(--line2);
+  color: var(--text);
+}
+
+.list-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+.list-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+  flex: 0 0 auto;
+}
+.list-card > div:nth-child(2) {
+  flex: 1;
+}
+.list-card b {
+  font-size: 11px;
+}
+.list-card small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 4px;
+}
+
+.split-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+.split-stat span {
+  font-size: 10px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.split-stat b {
+  font: 16px "Share Tech Mono", ui-monospace, monospace;
+}
+
+.settings-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  padding: 17px 0;
+  border-bottom: 1px solid var(--line);
+}
+.settings-row b {
+  display: block;
+  font-size: 11px;
+}
+.settings-row small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 4px;
+  max-width: 500px;
+}
+
+.toggle {
+  width: 38px;
+  height: 21px;
+  border-radius: 20px;
+  background: var(--panel3);
+  border: 1px solid var(--line);
+  position: relative;
+}
+.toggle i {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.toggle.on {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+.toggle.on i {
+  left: 20px;
+  background: var(--accent);
+}
+
+.security-banner {
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  border-radius: 6px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.security-banner svg {
+  color: var(--accent);
+}
+.security-banner b {
+  font-size: 11px;
+}
+.security-banner small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 3px;
+}
+
+.report-preview {
+  min-height: 360px;
+  background: var(--panel2);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 8px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.report-preview h3 {
+  font-size: 24px;
+  letter-spacing: -0.04em;
+  margin: 8px 0;
+}
+.report-preview p {
+  color: var(--muted);
+  font-size: 11px;
+  max-width: 420px;
+  line-height: 1.7;
+}
+.report-meta {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 40px;
+}
+.report-meta div {
+  padding: 11px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 6px;
+}
+.report-meta span {
+  font: 9px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  display: block;
+}
+.report-meta b {
+  font-size: 11px;
+  display: block;
+  margin-top: 5px;
+}
+
+.map-mini {
+  height: 280px;
+  border-radius: 8px;
+  background: var(--panel2);
+  position: relative;
+  overflow: hidden;
+}
+.map-mini .map-label {
+  position: absolute;
+  left: 15px;
+  bottom: 15px;
+  font: 10px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--muted);
+}
+
+.chart {
+  height: 180px;
+  display: flex;
+  align-items: end;
+  gap: 8px;
+  padding: 20px 5px 0;
+}
+.chart i {
+  display: block;
+  flex: 1;
+  background: linear-gradient(to top, color-mix(in srgb, var(--accent) 12%, transparent), var(--accent));
+  border-radius: 3px 3px 0 0;
+  min-height: 12px;
+}
+
+.code-chip {
+  font: 10px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--muted);
+  background: var(--panel3);
+  border: 1px solid var(--line);
+  padding: 7px 9px;
+  border-radius: 4px;
+}
+
+.alert-item {
+  border-left: 2px solid var(--accent);
+  padding: 13px 15px;
+  background: var(--panel2);
+  margin-bottom: 9px;
+  border-radius: 0 6px 6px 0;
+}
+.alert-item.warning {
+  border-color: var(--warn);
+}
+.alert-item.error {
+  border-color: var(--danger);
+}
+.alert-item b {
+  font-size: 11px;
+}
+.alert-item small {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 5px;
+}
+
+.empty-state {
+  padding: 45px 20px;
+  text-align: center;
+  border: 1px dashed var(--line2);
+  border-radius: 8px;
+  color: var(--muted);
+}
+.empty-state svg {
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.empty-state b {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+}
+.empty-state span {
+  display: block;
+  font-size: 10px;
+  margin-top: 5px;
+}
+
+.map-page-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 14px;
+  align-items: stretch;
+}
+.map-page-map {
+  padding: 0;
+  overflow: hidden;
+  min-height: 620px;
+  position: relative;
+}
+.map-page-map > .map-wrap {
+  height: 100%;
+  min-height: 620px;
+}
+.map-page-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.map-loading-skeleton {
+  height: 100%;
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 7px;
+  background: var(--panel2);
+  color: var(--text);
+}
+.map-loading-skeleton span {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line2);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: mapSpin 0.8s linear infinite;
+}
+@keyframes mapSpin {
+  to { transform: rotate(360deg); }
+}
+.map-loading-skeleton b {
+  font-size: 11px;
+}
+.map-loading-skeleton small {
+  font: 10px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--muted);
+}
+
+.workspace, .bottom-grid, .surface-grid, .map-page-grid, .section-strip {
+  min-width: 0;
+}
+.workspace > *, .bottom-grid > *, .surface-grid > *, .map-page-grid > * {
+  min-width: 0;
+}
+.bottom-grid > .card {
+  align-self: start;
+  height: max-content;
+}
+
+@media (max-width: 900px) {
+  .surface-grid.two,
+  .surface-grid.three {
+    grid-template-columns: 1fr;
+  }
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .page-head.compact {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .map-page-grid {
+    grid-template-columns: 1fr;
+  }
+  .report-meta {
+    grid-template-columns: 1fr;
+  }
+  .top-actions .help-btn,
+  .top-actions .run-pill {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .route-transition {
+    animation: none !important;
+  }
+}
+
 /* ─── Secondary dashboard draft (/dashboard/preview) ─────────────────── */
 .preview-shell {
   position: relative;

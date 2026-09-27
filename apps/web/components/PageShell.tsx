@@ -26,7 +26,7 @@ export default function PageShell({children}:{children:React.ReactNode}){
   <header className="topbar">
     <div className="top-context">
       <div className="eyebrow">SATQUERY / MISSION CONTROL</div>
-      <div className="top-title"><span className="top-title-mark">SQ</span>Earth Observation Intelligence <span className="live-pill"><i/> LIVE</span></div>
+      <div className="top-title"><span className="top-title-mark">SQ</span>{' '}Earth Observation Intelligence <span className="live-pill"><i/> LIVE</span></div>
     </div>
     <div className="top-actions">
       <div className="run-pill"><span>RUN</span>SAT-2409</div>
