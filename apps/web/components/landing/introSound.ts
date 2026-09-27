@@ -2,9 +2,10 @@
  * The two-second opening sound, played once per browser -- the first time
  * someone opens the site -- while the SatQuery mark is in the middle.
  *
- * Synthesised with the Web Audio API, so there is no audio file to ship or
- * license: a low pad swells in, a tone sweeps up like a signal locking on, and
- * two soft pings land (a radar echo) as the cube settles. About 2 seconds.
+ * If apps/web/public/sounds/intro.mp3 exists, that file is played (capped at 3 s
+ * and faded out). Otherwise a sound is synthesised with the Web Audio API: a low
+ * pad swells in, a tone sweeps up like a signal locking on, and two soft pings
+ * land (a radar echo) as the cube settles. About 2 seconds.
  *
  * Browsers only allow sound after the visitor has interacted with a page, and a
  * website cannot override that. So on a first visit where the browser holds the
@@ -15,6 +16,11 @@
  */
 
 const KEY = "sq-intro-sound-played";
+
+/** Drop an audio file here (apps/web/public/sounds/intro.mp3) to replace the
+ *  synthesised sound. Any length; it is capped at MAX_FILE_S and faded out. */
+const SOUND_URL = "/sounds/intro.mp3";
+const MAX_FILE_S = 3;
 
 function alreadyPlayed(): boolean {
   try {
@@ -121,21 +127,60 @@ export function createIntroSound(): IntroSound {
     return SILENT;
   }
 
+  // If the project ships its own sound at public/sounds/intro.mp3, use it;
+  // otherwise fall back to the synthesised one. Fetched and decoded now, while
+  // the mark is on screen, so it is ready by the time the click comes.
+  let file: AudioBuffer | null = null;
+  const loaded: Promise<void> = fetch(SOUND_URL)
+    .then((r) =>
+      r.ok ? r.arrayBuffer() : Promise.reject(new Error("no file")),
+    )
+    .then((data) => ctx.decodeAudioData(data))
+    .then((buf) => {
+      file = buf;
+    })
+    .catch(() => undefined);
+  // never hold the sound back more than this waiting for the file
+  const loadedOrLate = () =>
+    Promise.race([loaded, new Promise<void>((r) => setTimeout(r, 800))]);
+
   let done = false;
   const start = () => {
     if (done || ctx.state !== "running") return;
     done = true;
-    compose(ctx);
+    let length = 2.0;
+    if (file) {
+      // play the file, capped and faded out so it never outstays the intro
+      length = Math.min(file.duration, MAX_FILE_S);
+      const src = ctx.createBufferSource();
+      const g = ctx.createGain();
+      src.buffer = file;
+      const t0 = ctx.currentTime;
+      g.gain.setValueAtTime(0.9, t0);
+      g.gain.setValueAtTime(0.9, t0 + Math.max(0, length - 0.4));
+      g.gain.linearRampToValueAtTime(0.0001, t0 + length);
+      src.connect(g).connect(ctx.destination);
+      src.start(t0);
+      src.stop(t0 + length + 0.05);
+    } else {
+      compose(ctx);
+    }
     markPlayed();
-    setTimeout(() => void ctx.close().catch(() => undefined), 2600);
+    setTimeout(
+      () => void ctx.close().catch(() => undefined),
+      (length + 0.6) * 1000,
+    );
   };
 
   return {
     needsGesture: ctx.state !== "running",
     play: () => {
       if (done) return;
-      if (ctx.state === "running") start();
-      else void ctx.resume().then(start, () => undefined);
+      // resume() runs synchronously inside the click, which is what the
+      // browser requires; the sound itself starts once the file is ready
+      const resumed =
+        ctx.state === "running" ? Promise.resolve() : ctx.resume();
+      void Promise.all([resumed, loadedOrLate()]).then(start, () => undefined);
     },
     stop: () => {
       if (!done) void ctx.close().catch(() => undefined);
