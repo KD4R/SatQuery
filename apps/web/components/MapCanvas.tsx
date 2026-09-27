@@ -1,222 +1,80 @@
 "use client";
-import {
-  Layers3,
-  MapPin,
-  Minus,
-  Plus,
-  ScanSearch,
-  SquareDashedMousePointer,
-  Target,
-  Undo2,
-} from "lucide-react";
-import Map, {
-  Layer,
-  NavigationControl,
-  Source,
-  useMap,
-} from "react-map-gl/maplibre";
-import { useState } from "react";
-import type { Feature, FeatureCollection, Polygon } from "geojson";
-const aoi = {
-  type: "Feature",
-  properties: {},
-  geometry: {
-    type: "Polygon",
-    coordinates: [
-      [
-        [80.245, 16.295],
-        [80.305, 16.295],
-        [80.325, 16.345],
-        [80.292, 16.385],
-        [80.235, 16.365],
-        [80.215, 16.325],
-        [80.245, 16.295],
-      ],
-    ],
-  },
-} satisfies Feature<Polygon>;
-const change = {
-  type: "FeatureCollection",
-  features: [
-    {
-      type: "Feature",
-      properties: { confidence: 0.94 },
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [80.257, 16.315],
-            [80.272, 16.318],
-            [80.277, 16.337],
-            [80.266, 16.348],
-            [80.251, 16.337],
-            [80.257, 16.315],
-          ],
-        ],
-      },
-    },
-    {
-      type: "Feature",
-      properties: { confidence: 0.87 },
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [80.285, 16.342],
-            [80.302, 16.348],
-            [80.306, 16.361],
-            [80.291, 16.366],
-            [80.279, 16.356],
-            [80.285, 16.342],
-          ],
-        ],
-      },
-    },
-  ],
-} satisfies FeatureCollection<Polygon>;
-function MapButtons({ onDraw: _onDraw }: { onDraw: () => void }) {
-  const { current } = useMap();
-  return (
-    <div className="map-controls">
-      <button className="map-control" onClick={() => current?.zoomIn()}>
-        <Plus size={15} />
-      </button>
-      <button className="map-control" onClick={() => current?.zoomOut()}>
-        <Minus size={15} />
-      </button>
-    </div>
+
+/**
+ * The dashboard's map card, wrapping the console's MapWorkspace so the map
+ * speaks the same language on both surfaces. In demo mode, once the run
+ * completes, the Earth Time Machine rail (Before → After → Change) appears on
+ * the map, built from the same pinned Assam scenario the console uses — one
+ * source of truth, no invented dates (the fixture's honesty rules carry over).
+ *
+ * The run itself belongs to the Dashboard (its QueryConsole drives it); this
+ * card only observes its phase. Owning a second run here would leave it idle
+ * forever — its `complete` would never turn true and the Time Machine rail
+ * would never appear.
+ */
+
+import { useMemo } from "react";
+
+import { ProvenanceBadge } from "./system/primitives";
+import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
+import { buildTimeMachine } from "../lib/map/timeLayers";
+import { demoModeEnabled } from "../lib/api/source";
+import { MapWorkspace } from "./map/MapWorkspace";
+import type { LayerId } from "./map/MapWorkspace";
+import type { GeoJSONPolygon } from "../lib/api/types";
+
+const ALL_LAYERS: Record<LayerId, boolean> = {
+  observation: true,
+  baseline: true,
+  change: true,
+  confidence: true,
+  aoi: true,
+};
+
+export default function MapCanvas({ complete = false }: { complete?: boolean }) {
+  const demo = demoModeEnabled();
+
+  const timeMachine = useMemo(
+    () => (demo && complete ? buildTimeMachine(ASSAM_SCENARIO) : null),
+    [demo, complete],
   );
-}
-export default function MapCanvas() {
-  const [layer, setLayer] = useState<"change" | "confidence">("change");
-  const [draw, setDraw] = useState(false);
-  const style = {
-    version: 8 as const,
-    sources: {
-      osm: {
-        type: "raster" as const,
-        tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-        tileSize: 256,
-        attribution: "© OpenStreetMap contributors",
-      },
-    },
-    layers: [
-      {
-        id: "osm",
-        type: "raster" as const,
-        source: "osm",
-        paint: { "raster-opacity": 0.82 },
-      },
-    ],
-  };
+
   return (
-    <div className="map-wrap">
-      <Map
-        initialViewState={{ longitude: 80.272, latitude: 16.335, zoom: 11.7 }}
-        mapStyle={style}
-        attributionControl={false}
-        reuseMaps
-      >
-        <NavigationControl position="top-right" showCompass={false} />
-        <MapButtons onDraw={() => setDraw(true)} />
-        <Source id="aoi" type="geojson" data={aoi}>
-          <Layer
-            id="aoi-fill"
-            type="fill"
-            paint={{ "fill-color": "#9fc96b", "fill-opacity": 0.1 }}
-          />
-          <Layer
-            id="aoi-line"
-            type="line"
-            paint={{
-              "line-color": "#b9df83",
-              "line-width": 2,
-              "line-dasharray": [2, 2],
-            }}
-          />
-        </Source>
-        <Source id="change" type="geojson" data={change}>
-          <Layer
-            id="change-fill"
-            type="fill"
-            paint={{
-              "fill-color": layer === "change" ? "#9ccf53" : "#5fa7ff",
-              "fill-opacity": 0.42,
-            }}
-          />
-          <Layer
-            id="change-line"
-            type="line"
-            paint={{
-              "line-color": layer === "change" ? "#d8f59e" : "#a8d1ff",
-              "line-width": 2,
-            }}
-          />
-        </Source>
-      </Map>
-      <div className="map-overlay">
-        <div className="map-toolbar">
-          <button className="tool active">
-            <Layers3 size={14} /> Analysis
-          </button>
-          <button
-            className={`tool ${layer === "confidence" ? "active" : ""}`}
-            onClick={() =>
-              setLayer(layer === "change" ? "confidence" : "change")
-            }
-          >
-            <ScanSearch size={14} />{" "}
-            {layer === "change" ? "Change" : "Confidence"}
-          </button>
-          <button
-            className={`tool ${draw ? "active" : ""}`}
-            onClick={() => setDraw(!draw)}
-          >
-            <SquareDashedMousePointer size={14} /> Draw AOI
-          </button>
-          <button className="tool">
-            <Target size={14} /> Resolve place
-          </button>
+    <div className="map-canvas-host">
+      {demo && (
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 20,
+          }}
+        >
+          <ProvenanceBadge source="fixture" at={FIXTURE_EPOCH} />
         </div>
-        {draw && (
-          <div className="draw-hint">
-            <SquareDashedMousePointer size={14} />
-            <div>
-              <b>AOI draw mode</b>
-              <span>
-                Use the map to define the area. Validation runs before
-                processing.
-              </span>
-            </div>
-            <button onClick={() => setDraw(false)}>
-              <Undo2 size={13} />
-            </button>
-          </div>
-        )}
-        <div className="map-meta">
-          <div className="meta-kicker">
-            <MapPin size={11} /> ACTIVE AOI
-          </div>
-          <strong>Guntur District · Andhra Pradesh</strong>
-          <span>16.33° N · 80.27° E</span>
-          <div className="meta-stat">
-            <b>2,184 km²</b>
-            <span>district extent</span>
-          </div>
-        </div>
-        <div className="map-legend">
-          <div className="legend-title">LAYER / CONFIDENCE</div>
-          <div className="legend-gradient" />
-          <div className="legend-scale">
-            <span>Low</span>
-            <span>Medium</span>
-            <span>High</span>
-          </div>
-          <div className="legend-row">
-            <i className="aoi-swatch" /> AOI boundary
-          </div>
-        </div>
-      </div>
+      )}
+      <MapWorkspace
+        center={[93.8962, 26.7914]}
+        zoom={12.4}
+        aoi={ASSAM_SCENARIO.aoi as GeoJSONPolygon}
+        onAoiChange={() => {
+          /* AOI editing stays console-only for now. */
+        }}
+        overlays={Object.entries(ASSAM_SCENARIO.overlays).map(([id, ov]) => ({
+          id,
+          url: ov.url,
+          bbox: ov.bbox,
+        }))}
+        changeGeoJsonUrl={
+          complete && demo ? ASSAM_SCENARIO.changeGeoJsonUrl : null
+        }
+        timeMachine={timeMachine}
+        visible={ALL_LAYERS}
+        onToggleLayer={() => {
+          /* Layer toggles stay console-only for now. */
+        }}
+      />
     </div>
   );
 }

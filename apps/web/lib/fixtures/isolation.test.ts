@@ -46,6 +46,9 @@ const FIXTURE_CONSUMERS = new Set([
   // Each of these either renders <ProvenanceBadge> itself or is owned by a
   // component that does.
   "components/MissionConsole.tsx",
+  // The dashboard's map card. Renders the badge itself (top centre) and hosts
+  // the console's MapWorkspace, which carries the Time Machine epochs.
+  "components/MapCanvas.tsx",
   "components/mission/MissionMemory.tsx",
   "components/mission/MonitoringScreen.tsx",
   "components/report/ReportScreen.tsx",

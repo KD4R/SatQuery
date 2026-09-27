@@ -365,6 +365,13 @@ a {
   position: relative;
   box-shadow: var(--shadow);
 }
+/* Host for the console's MapWorkspace inside the dashboard's map card. The
+   workspace positions itself absolute inset-0 and pulls console tokens from
+   mission.css, which is already loaded globally. */
+.map-canvas-host {
+  position: absolute;
+  inset: 0;
+}
 .map-wrap {
   position: absolute;
   inset: 0;

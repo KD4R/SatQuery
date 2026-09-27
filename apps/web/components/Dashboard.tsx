@@ -183,7 +183,9 @@ export default function Dashboard() {
             )}
 
             <div className="map-card">
-              <MapCanvas />
+              {/* The run this Dashboard drives (demo or live) is the same one
+                  the map card observes — one run, one source of truth. */}
+              <MapCanvas complete={run.phase === "complete"} />
             </div>
 
             <button
