@@ -1,39 +1,51 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap");
+@import "@fontsource/chakra-petch/latin-400.css";
+@import "@fontsource/chakra-petch/latin-500.css";
+@import "@fontsource/chakra-petch/latin-600.css";
+@import "@fontsource/chakra-petch/latin-700.css";
+@import "@fontsource/share-tech-mono/latin-400.css";
+/* Theme tokens follow the landing page's instrument palette
+   (components/landing/space.css): near-black ground, neutral slate structure,
+   and colour used as data. Signal orange is the one actionable accent; the
+   former lime/green scheme is retired. */
 :root {
-  --bg: #070907;
-  --bg2: #0b0d0b;
-  --panel: #101410;
-  --panel2: #151a15;
-  --panel3: #1b211a;
-  --line: rgba(190, 210, 187, 0.12);
-  --line2: rgba(190, 210, 187, 0.22);
-  --text: #f0f4ee;
-  --muted: #8e998d;
-  --soft: #bac4b8;
-  --accent: #c8f77a;
-  --accent2: #99cf56;
-  --blue: #76aaf7;
-  --danger: #ff827b;
-  --warn: #e5b55c;
-  --shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
+  --bg: #080808;
+  --bg2: #0e0f10;
+  --panel: #0e0f10;
+  --panel2: #131416;
+  --panel3: #1a1c1f;
+  --line: rgba(152, 160, 168, 0.12);
+  --line2: rgba(152, 160, 168, 0.22);
+  --text: #ecedee;
+  --muted: #98a0a8;
+  --soft: #b9bec4;
+  --accent: #f87010;
+  --accent2: #ff8733;
+  --data-a: #30d098;
+  --data-b: #60a0f8;
+  --blue: #60a0f8;
+  --danger: #e84040;
+  --warn: #f8c810;
+  --shadow: 0 28px 90px rgba(0, 0, 0, 0.4);
 }
 html[data-theme="light"] {
-  --bg: #f4f6f1;
-  --bg2: #edf0ea;
+  --bg: #f4f5f6;
+  --bg2: #eceef0;
   --panel: rgba(255, 255, 255, 0.88);
   --panel2: #fff;
-  --panel3: #e9eee5;
-  --line: rgba(28, 42, 25, 0.11);
-  --line2: rgba(28, 42, 25, 0.2);
-  --text: #182016;
-  --muted: #6c7669;
-  --soft: #465143;
-  --accent: #6f9e31;
-  --accent2: #557d20;
+  --panel3: #e8eaec;
+  --line: rgba(28, 30, 34, 0.12);
+  --line2: rgba(28, 30, 34, 0.2);
+  --text: #17181a;
+  --muted: #6b7178;
+  --soft: #464b52;
+  --accent: #d95c07;
+  --accent2: #b34a02;
+  --data-a: #1ea87c;
+  --data-b: #3d75c7;
   --blue: #3d75c7;
-  --danger: #c9534b;
+  --danger: #d43a3a;
   --warn: #a87821;
-  --shadow: 0 24px 70px rgba(36, 52, 29, 0.12);
+  --shadow: 0 24px 70px rgba(20, 22, 26, 0.12);
 }
 * {
   box-sizing: border-box;
@@ -46,17 +58,12 @@ body {
   color: var(--text);
 }
 body {
-  font-family: Manrope, system-ui, sans-serif;
+  font-family: "Chakra Petch", system-ui, sans-serif;
   background:
     radial-gradient(
       circle at 72% -8%,
-      rgba(148, 199, 82, 0.13),
+      rgba(248, 112, 16, 0.06),
       transparent 30rem
-    ),
-    radial-gradient(
-      circle at -5% 80%,
-      rgba(84, 124, 98, 0.08),
-      transparent 28rem
     ),
     var(--bg);
 }
@@ -117,7 +124,7 @@ a {
 .brand span {
   display: block;
   color: var(--muted);
-  font: 500 8px "DM Mono";
+  font: 500 8px "Share Tech Mono";
   letter-spacing: 0.12em;
   margin-top: 2px;
 }
@@ -127,7 +134,7 @@ a {
 .meta-kicker,
 .section-strip span,
 .nav-label {
-  font: 500 9px "DM Mono";
+  font: 500 9px "Share Tech Mono";
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
@@ -212,7 +219,7 @@ a {
   margin-top: 4px;
 }
 .live-pill {
-  font: 500 8px "DM Mono";
+  font: 500 8px "Share Tech Mono";
   color: var(--accent);
   margin-left: 8px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
@@ -286,7 +293,7 @@ a {
   gap: 7px;
   padding: 0 9px;
   color: var(--soft);
-  font: 500 8px "DM Mono";
+  font: 500 8px "Share Tech Mono";
 }
 .run-pill span {
   color: var(--muted);
@@ -339,7 +346,7 @@ a {
 }
 .status-chip {
   color: var(--accent);
-  font: 500 8px "DM Mono";
+  font: 500 8px "Share Tech Mono";
   text-transform: uppercase;
 }
 .status-chip.busy {
@@ -491,7 +498,7 @@ html[data-theme="light"] .map-control {
   margin: 6px 0 3px;
 }
 .map-meta > span {
-  font: 500 8px "DM Mono";
+  font: 500 8px "Share Tech Mono";
   color: #a0aaa0;
 }
 .meta-stat {
@@ -503,7 +510,7 @@ html[data-theme="light"] .map-control {
   align-items: baseline;
 }
 .meta-stat b {
-  font: 700 13px "DM Mono";
+  font: 700 13px "Share Tech Mono";
   color: #d9f7aa;
 }
 .meta-stat span {
@@ -673,7 +680,7 @@ html[data-theme="light"] .map-control {
   align-items: center;
   gap: 5px;
   color: var(--muted);
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
 }
 .query-actions {
   display: flex;
@@ -743,7 +750,7 @@ html[data-theme="light"] .map-control {
 .confidence-ring span {
   position: relative;
   z-index: 1;
-  font: 800 15px "DM Mono";
+  font: 800 15px "Share Tech Mono";
 }
 .confidence-label {
   display: flex;
@@ -827,7 +834,7 @@ html[data-theme="light"] .map-control {
   display: flex;
   align-items: center;
   gap: 3px;
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
   text-transform: uppercase;
 }
 .evidence-tag.verified {
@@ -848,7 +855,7 @@ html[data-theme="light"] .map-control {
   gap: 5px;
   margin-top: 7px;
   color: #7f8a7d;
-  font: 500 6.5px "DM Mono";
+  font: 500 6.5px "Share Tech Mono";
   border-top: 1px solid var(--line);
   padding-top: 6px;
 }
@@ -859,7 +866,7 @@ html[data-theme="light"] .map-control {
   border: 0;
   background: transparent;
   color: var(--accent);
-  font: 500 8px "DM Mono";
+  font: 500 8px "Share Tech Mono";
   display: flex;
   align-items: center;
   gap: 5px;
@@ -902,7 +909,7 @@ html[data-theme="light"] .map-control {
   margin-top: 5px;
 }
 .success-text {
-  color: var(--accent);
+  color: var(--data-a);
 }
 .bottom-grid {
   display: grid;
@@ -919,7 +926,7 @@ html[data-theme="light"] .map-control {
 .mono-chip,
 .decision-badge,
 .status-dot-label {
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
   letter-spacing: 0.08em;
   color: var(--muted);
   border: 1px solid var(--line);
@@ -938,6 +945,24 @@ html[data-theme="light"] .map-control {
   padding: 6px 0 9px;
 }
 
+/* ─── The dashboard family wears the landing palette ───────────────────
+   mission.css is imported globally after this file and paints the console's
+   own tokens (black void, Inter) onto body for every route. The dashboard
+   re-asserts the landing's instrument scheme here, scoped via :has so only
+   pages that actually contain a dashboard wrapper switch over. The console
+   contains neither wrapper and keeps its look untouched. */
+body:has(.app-shell),
+body:has(.preview-shell) {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Chakra Petch", system-ui, sans-serif;
+  font-size: 14px;
+  /* The console locks body scroll (its panels scroll internally); the
+     dashboard is a normal scrolling document. */
+  overflow: auto;
+  height: auto;
+}
+
 /* ─── Secondary dashboard draft (/dashboard/preview) ─────────────────── */
 .preview-shell {
   position: relative;
@@ -950,8 +975,8 @@ html[data-theme="light"] .map-control {
   position: fixed;
   inset: 0;
   z-index: 0;
-  /* Dark base so the ray-marched glow reads without washing out text. */
-  background: #05040c;
+  /* The landing's ground so the field grows out of the same base. */
+  background: var(--bg);
 }
 
 /* The telemetry bar is static, so it would paint under the fixed bg without
@@ -980,75 +1005,95 @@ html[data-theme="light"] .map-control {
   grid-column: span 2;
 }
 
-.glass-card {
+/* Draft cards follow the landing's card language: a raise-step surface with
+   a hairline and a mono header — no glass, no gradients, no glow. */
+.draft-card {
   position: relative;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(13, 12, 26, 0.55);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+  border-radius: 6px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  transition: box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.glass-card-head {
+.draft-card:hover {
+  box-shadow:
+    inset 0 0 0 1px var(--line2),
+    0 0 0 1px var(--line);
+}
+
+.draft-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.glass-card-title {
-  font-family: "DM Mono", ui-monospace, monospace;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: rgba(255, 255, 255, 0.75);
+.draft-card-title {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-.glass-card-note {
+.draft-chip {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--warn);
+  border: 1px solid var(--line2);
+  border-radius: 3px;
+  padding: 2px 7px;
+}
+
+.draft-note {
   margin: auto 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--muted);
   font-style: italic;
 }
 
-.glass-draft-row {
+.draft-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
   margin: auto 0;
 }
 
-.glass-tile {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
+.draft-tile {
+  border: 1px solid var(--line);
+  border-radius: 6px;
   padding: 10px 12px;
   display: grid;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--panel2);
 }
 
-.glass-tile span {
+.draft-tile span {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
   font-size: 9.5px;
   letter-spacing: 0.12em;
-  color: rgba(255, 255, 255, 0.5);
-  font-family: "DM Mono", ui-monospace, monospace;
+  color: var(--muted);
 }
 
-.glass-tile b {
+.draft-tile b {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
   font-size: 15px;
-  color: #fff;
-  font-weight: 700;
+  color: var(--text);
+  font-weight: 400;
 }
 
-/* Reduced motion: no animation, no glass blur cost either. */
+.draft-tile b.draft-tile-accent {
+  color: var(--accent);
+}
+
+/* Reduced motion: the field is still, panels keep full opacity. */
 @media (prefers-reduced-motion: reduce) {
-  .glass-card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: rgba(13, 12, 26, 0.9);
+  .draft-card {
+    background: var(--panel2);
   }
 }
 
@@ -1106,7 +1151,7 @@ html[data-theme="light"] .map-control {
   margin-top: 2px;
 }
 .timeline-time {
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
   color: var(--muted);
 }
 .timeline-line {
@@ -1149,7 +1194,7 @@ html[data-theme="light"] .map-control {
 }
 .sensor strong {
   display: block;
-  font: 700 15px "DM Mono";
+  font: 700 15px "Share Tech Mono";
   margin-top: 7px;
   color: var(--accent);
 }
@@ -1226,7 +1271,7 @@ html[data-theme="light"] .map-control {
   background: color-mix(in srgb, var(--danger) 3%, transparent);
 }
 .brief-kicker {
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
   color: var(--danger);
   letter-spacing: 0.12em;
 }
@@ -1248,7 +1293,7 @@ html[data-theme="light"] .map-control {
   margin-top: 8px;
 }
 .brief-tags span {
-  font: 500 6.5px "DM Mono";
+  font: 500 6.5px "Share Tech Mono";
   padding: 4px 5px;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1366,11 +1411,11 @@ html[data-theme="light"] .map-control {
   gap: 3px;
 }
 .trace-stage b {
-  font: 700 8px "DM Mono";
+  font: 700 8px "Share Tech Mono";
   color: var(--soft);
 }
 .trace-stage span {
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
   color: var(--muted);
 }
 .trace-row strong {
@@ -1394,7 +1439,7 @@ html[data-theme="light"] .map-control {
   margin-top: 13px;
   padding: 9px;
   color: var(--muted);
-  font: 500 7px "DM Mono";
+  font: 500 7px "Share Tech Mono";
   border: 1px solid var(--line);
   border-radius: 9px;
 }

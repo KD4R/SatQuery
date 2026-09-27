@@ -21,11 +21,11 @@ import JellyRadio from "./jelly/JellyRadio";
 import type { Stage } from "../lib/types";
 
 const STATUS_COLOR: Record<Stage["status"], string> = {
-  done: "var(--accent, #c8f77a)",
-  active: "var(--blue, #76aaf7)",
-  warning: "var(--warn, #e5b55c)",
-  error: "var(--danger, #ff827b)",
-  pending: "var(--muted, #8e998d)",
+  done: "var(--data-a, #30d098)",
+  active: "var(--data-b, #60a0f8)",
+  warning: "var(--warn, #f8c810)",
+  error: "var(--danger, #e84040)",
+  pending: "var(--muted, #98a0a8)",
 };
 
 const STATUS_WORD: Record<Stage["status"], string> = {

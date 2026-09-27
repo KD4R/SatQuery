@@ -3,15 +3,14 @@
 /**
  * Secondary dashboard — DRAFT SURFACE, do not wire to real data yet.
  *
- * This page exists to finalise the look first: AcidSquares runs as the
- * full-bleed animated background (absolute, inset 0) and the working UI sits
- * above it on translucent glass panels so the background stays visible
- * between cards. Once the layout is signed off, real dashboard elements
- * (StageSteps, stat tiles, charts) get dropped into the placeholder slots.
+ * Styled after the landing page's instrument palette (space.css): near-black
+ * ground, slate raise-steps with hairlines, signal orange as the one accent,
+ * Share Tech Mono for anything measured. AcidSquares runs behind it, retuned
+ * to the same hues so the field reads as part of the product rather than a
+ * demo of the library.
  *
  * Honouring prefers-reduced-motion: the WebGL loop does not start (the
- * background stays a still dark field), so the page stays calm for people
- * who opt out of animation.
+ * background stays a still dark field).
  */
 
 import { useEffect, useState } from "react";
@@ -20,7 +19,7 @@ import AcidSquares from "../../../components/backgrounds/AcidSquares";
 import DashboardTopBar from "../../../components/DashboardTopBar";
 
 /** Placeholder card — replaced by real elements during integration. */
-function GlassCard({
+function DraftCard({
   title,
   span = "",
   height = 160,
@@ -33,15 +32,15 @@ function GlassCard({
 }) {
   return (
     <section
-      className={`glass-card ${span}`.trim()}
+      className={`draft-card ${span}`.trim()}
       style={{ minHeight: height }}
     >
-      <header className="glass-card-head">
-        <span className="glass-card-title">{title}</span>
-        <span className="mono-chip">DRAFT</span>
+      <header className="draft-card-head">
+        <span className="draft-card-title">{title}</span>
+        <span className="draft-chip">DRAFT</span>
       </header>
       {children ?? (
-        <p className="glass-card-note">
+        <p className="draft-note">
           Placeholder — real element lands here after the layout is locked.
         </p>
       )}
@@ -49,11 +48,16 @@ function GlassCard({
   );
 }
 
-/** The user's chosen background config, verbatim. */
+/**
+ * The user's chosen background config, retuned from the purple demo palette to
+ * the landing's instrument hues: the ray-marched energy reads signal orange
+ * rising through data-blue, on the near-black ground. opacity/exposure sit
+ * below the library defaults so panel text stays readable.
+ */
 const BG_PROPS = {
-  color1: "#5227FF",
-  color2: "#A855F7",
-  color3: "#FFFFFF",
+  color1: "#0e0f10",
+  color2: "#60a0f8",
+  color3: "#f87010",
   detail: "medium" as const,
   speed: 0.7,
   waveDepth: 1,
@@ -66,7 +70,7 @@ const BG_PROPS = {
   colorShift: 0,
   contrast: 1,
   brightness: 1.0,
-  opacity: 0.42,
+  opacity: 0.45,
   mouseInteraction: true,
   mouseStrength: 0.1,
   mouseRadius: 0.35,
@@ -104,8 +108,8 @@ export default function DashboardPreviewPage() {
               <span>reimagined.</span>
             </h1>
             <p className="subtitle">
-              The next dashboard, on an animated field. Layout draft — real
-              elements land here once the look is signed off.
+              The next dashboard, on the landing&apos;s instrument palette. Layout
+              draft — real elements land here once the look is signed off.
             </p>
           </div>
           <div className="head-actions">
@@ -116,57 +120,55 @@ export default function DashboardPreviewPage() {
         </div>
 
         <div className="preview-grid">
-          <GlassCard title="MISSION OVERVIEW" span="col-span-2" height={220}>
-            <div className="glass-draft-row">
-              <div className="glass-tile">
+          <DraftCard title="MISSION OVERVIEW" span="col-span-2" height={220}>
+            <div className="draft-row">
+              <div className="draft-tile">
                 <span>MISSION ID</span>
                 <b>—</b>
               </div>
-              <div className="glass-tile">
+              <div className="draft-tile">
                 <span>AOI</span>
                 <b>—</b>
               </div>
-              <div className="glass-tile">
+              <div className="draft-tile">
                 <span>RESULT</span>
                 <b>—</b>
               </div>
-              <div className="glass-tile">
+              <div className="draft-tile">
                 <span>STATUS</span>
-                <b>IDLE</b>
+                <b className="draft-tile-accent">IDLE</b>
               </div>
             </div>
-          </GlassCard>
+          </DraftCard>
 
-          <GlassCard title="RUN STEPS" height={220}>
-            <p className="glass-card-note">
-              Slot for the JellyRadio step strip.
-            </p>
-          </GlassCard>
+          <DraftCard title="RUN STEPS" height={220}>
+            <p className="draft-note">Slot for the JellyRadio step strip.</p>
+          </DraftCard>
 
-          <GlassCard title="CHANGE METRICS" height={180}>
-            <div className="glass-draft-row">
-              <div className="glass-tile">
+          <DraftCard title="CHANGE METRICS" height={200}>
+            <div className="draft-row">
+              <div className="draft-tile">
                 <span>FLOODED AREA</span>
                 <b>—</b>
               </div>
-              <div className="glass-tile">
+              <div className="draft-tile">
                 <span>CONFIDENCE</span>
                 <b>—</b>
               </div>
             </div>
-          </GlassCard>
+          </DraftCard>
 
-          <GlassCard title="SENSOR" height={180}>
-            <p className="glass-card-note">Slot for SensorCard.</p>
-          </GlassCard>
+          <DraftCard title="SENSOR" height={200}>
+            <p className="draft-note">Slot for SensorCard.</p>
+          </DraftCard>
 
-          <GlassCard title="EVIDENCE" span="col-span-2" height={180}>
-            <p className="glass-card-note">Slot for EvidencePanel.</p>
-          </GlassCard>
+          <DraftCard title="EVIDENCE" span="col-span-2" height={200}>
+            <p className="draft-note">Slot for EvidencePanel.</p>
+          </DraftCard>
 
-          <GlassCard title="MONITORING" height={180}>
-            <p className="glass-card-note">Slot for MonitoringCard.</p>
-          </GlassCard>
+          <DraftCard title="MONITORING" height={200}>
+            <p className="draft-note">Slot for MonitoringCard.</p>
+          </DraftCard>
         </div>
 
         <footer className="app-footer">

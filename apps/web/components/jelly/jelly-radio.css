@@ -28,7 +28,7 @@
   border: 1px solid var(--line);
   background: var(--jr-chip);
   color: var(--jr-text);
-  font: 500 var(--jr-font, 12px) / 1 "DM Mono", ui-monospace, monospace;
+  font: 500 var(--jr-font, 12px) / 1 "Share Tech Mono", ui-monospace, monospace;
   letter-spacing: 0.04em;
   padding: 0;
   display: inline-flex;
