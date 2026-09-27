@@ -62,6 +62,10 @@ export interface TopTelemetryBarProps {
   /** Replace the default link tabs with a custom nav (e.g. the dashboard's
    * JellyRadio). Rendered in the same slot, brand and telemetry untouched. */
   navSlot?: React.ReactNode;
+  /** Render as a page-level bar (below the MISSION CONTROL header) instead of
+   * the viewport-top chrome. Drops the SATQUERY brand cell and the Mission/Run
+   * breadcrumb row — the header above already carries that context. */
+  below?: boolean;
 }
 
 export function TopTelemetryBar({
@@ -75,6 +79,7 @@ export function TopTelemetryBar({
   activeHref = "/console",
   withIcons = false,
   navSlot,
+  below = false,
 }: TopTelemetryBarProps) {
   const [clock, setClock] = useState<string>(frozenClock ?? "--:--:--");
 
@@ -86,6 +91,60 @@ export function TopTelemetryBar({
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [frozenClock]);
+
+  if (below) {
+    return (
+      <header className="telemetry-below">
+        <div className="console-nav console-nav--below">
+          {navSlot ?? (
+            <nav className="console-nav-tabs" aria-label="Console sections">
+              {tabs.map((t) => {
+                const Icon = withIcons ? t.icon : undefined;
+                return (
+                  <a
+                    key={t.href}
+                    href={t.href}
+                    className={`console-nav-tab${
+                      t.href === activeHref ? " console-nav-tab-active" : ""
+                    }`}
+                    aria-current={t.href === activeHref ? "page" : undefined}
+                  >
+                    {Icon && <Icon size={13} />}
+                    {t.label}
+                  </a>
+                );
+              })
+              }
+            </nav>
+          )}
+
+          <div className="band-spacer" />
+
+          <div className="row" style={{ gap: 14 }}>
+            <span className="row" style={{ gap: 6 }}>
+              <span className="label label-faint">UTC</span>
+              <span className="mono dim" style={{ fontSize: 11 }}>
+                {clock}
+              </span>
+            </span>
+            <StatusChip
+              tone={gatewayReachable === false ? "warn" : gatewayReachable ? "ok" : "idle"}
+              title={
+                gatewayReachable === null
+                  ? "Gateway reachability not yet checked."
+                  : gatewayReachable
+                    ? "Gateway responded to the last health check."
+                    : "The gateway did not respond to the last health check."
+              }
+            >
+              {gatewayReachable === false ? "Gateway down" : "Gateway"}
+            </StatusChip>
+            <StatusChip tone={STATE_TONE[state]}>{state}</StatusChip>
+          </div>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header>

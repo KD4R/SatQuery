@@ -57,10 +57,13 @@ const DASHBOARD_TABS: DashboardTab[] = [
 export default function DashboardTopBar({
   run = null,
   activeHref,
+  below = false,
 }: {
   /** A run in flight on this page, if the page owns one. */
   run?: Pick<MissionRun, "phase" | "jobId" | "agentState"> | null;
   activeHref: string;
+  /** Page-level bar below the MISSION CONTROL header (drops brand/breadcrumb). */
+  below?: boolean;
 }) {
   const [gatewayUp, setGatewayUp] = useState<boolean | null>(null);
   const demo = demoModeEnabled();
@@ -98,6 +101,7 @@ export default function DashboardTopBar({
       activeHref={activeHref}
       withIcons
       navSlot={<JellyNav tabs={DASHBOARD_TABS} />}
+      below={below}
     />
   );
 }

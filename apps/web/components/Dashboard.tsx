@@ -133,7 +133,6 @@ export default function Dashboard() {
   // view is the mission page.
   return (
     <>
-      <DashboardTopBar run={run} activeHref="/dashboard" />
       <div className="app-shell app-shell--flat">
       <main className="main">
         <Topbar
@@ -141,6 +140,7 @@ export default function Dashboard() {
           onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
           runId={runId}
         />
+        <DashboardTopBar run={run} activeHref="/dashboard" below />
 
         <div className="content">
           {/* Page header */}

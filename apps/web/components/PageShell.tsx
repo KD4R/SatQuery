@@ -20,7 +20,7 @@ export default function PageShell({children}:{children:React.ReactNode}){
  const router=useRouter(); const pathname=usePathname(); const [theme,setTheme]=useState<Theme>('dark');
  useEffect(()=>{['/dashboard','/dashboard/map','/dashboard/monitoring','/dashboard/evidence','/dashboard/history','/dashboard/reports','/dashboard/alerts','/dashboard/settings','/dashboard/admin'].forEach(path=>router.prefetch(path))},[router]);
  useEffect(()=>{const stored=readTheme(); setTheme(stored); applyTheme(stored)},[]);
- return <><DashboardTopBar activeHref={pathname}/>
+ return <>
  <div className="app-shell app-shell--flat">
  <main className="main">
   <header className="topbar">
@@ -38,6 +38,7 @@ export default function PageShell({children}:{children:React.ReactNode}){
       <div className="avatar">SQ</div>
     </div>
   </header>
+  <DashboardTopBar activeHref={pathname} below/>
   <div className="content">{children}</div>
   <footer className="app-footer"><div><b>SatQuery AI</b><span>Evidence-first satellite intelligence</span></div><div><span>Gateway-only browser access</span><span>•</span><span>Traceable outputs</span><span>•</span><span>Accessible UI</span></div></footer>
  </main>
