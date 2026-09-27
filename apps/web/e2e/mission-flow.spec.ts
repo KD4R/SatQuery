@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { expect, test } from "@playwright/test";
 
 /**
@@ -30,25 +33,61 @@ test.describe("landing", () => {
     ).toBeVisible();
   });
 
-  test("quotes IoU and refuses to quote accuracy", async ({ page }) => {
+  test("never quotes an accuracy figure", async ({ page }) => {
     await page.goto("/");
-    // .first() — the landing shows the benchmark twice (hero stat + pipeline).
-    await expect(page.getByText("0.435").first()).toBeVisible();
-    // The landing page must keep explaining why accuracy is absent. If someone
-    // adds an "89% accurate" badge later, this fails.
-    await expect(page.getByText(/Accuracy is not quoted/i)).toBeVisible();
+    // Water is ~11% of the pixels, so a model that predicts no water at all is
+    // 89% "accurate". If someone adds an "89% accurate" badge later, this fails.
+    const body = (await page.locator("body").innerText()).toLowerCase();
+    expect(body).not.toMatch(/\d+(\.\d+)?\s*%\s*accura/);
+    expect(body).not.toMatch(/accuracy\s*(of|:)?\s*\d/);
   });
 
-  test("system checks report the calibration shortfall, not twelve green ticks", async ({
+  test("states the calibration shortfall, not a green tick", async ({
     page,
   }) => {
     await page.goto("/");
-    await expect(page.getByText("PARTIAL")).toBeVisible({ timeout: 10_000 });
+    const honesty = page.locator("#honesty");
+    await honesty.scrollIntoViewIfNeeded();
+    await expect(honesty.getByText(/still misses the bar/i)).toBeVisible();
+    await expect(honesty.getByText("0.0583")).toBeVisible();
+  });
+
+  test("every headline figure is one the generated reports state", async ({
+    page,
+  }) => {
+    // reports/evaluation.md: "No number about this subsystem may appear in a slide,
+    // a README or a demo script unless it appears here first." The landing page is
+    // the most-seen of those surfaces, so this reads the reports from the repo and
+    // requires each figure to be both on the page and in a report. Editing a number
+    // in facts.ts without regenerating the report fails here.
+    const reports =
+      readFileSync(join(__dirname, "../../../reports/evaluation.md"), "utf8") +
+      readFileSync(join(__dirname, "../../../reports/calibration.md"), "utf8");
+
+    await page.goto("/");
+    const figures: [string, string][] = [
+      [".sq-intro", "92"],
+      ["#honesty", "0.0583"],
+      ["#honesty", "0.0896"],
+    ];
+    for (const [where, figure] of figures) {
+      expect(
+        reports,
+        `${figure} is on the landing page but in neither report`,
+      ).toContain(figure);
+      const section = page.locator(where);
+      await section.scrollIntoViewIfNeeded();
+      await expect(
+        section.getByText(figure, { exact: false }).first(),
+      ).toBeVisible();
+    }
   });
 });
 
 test.describe("console — demo run", () => {
-  test("runs the full flow and reports the measured figures", async ({ page }) => {
+  test("runs the full flow and reports the measured figures", async ({
+    page,
+  }) => {
     await page.goto("/console");
 
     // Before the run there is nothing to show, and the panel says so rather than
@@ -74,7 +113,9 @@ test.describe("console — demo run", () => {
 
     // A green tick here would overclaim: 46% of the AOI was inside the swath.
     await expect(page.getByText("degraded").first()).toBeVisible();
-    await expect(page.getByText(/46% of the AOI inside the swath/i)).toBeVisible();
+    await expect(
+      page.getByText(/46% of the AOI inside the swath/i),
+    ).toBeVisible();
   });
 
   test("says NOT AVAILABLE for the acquisition time it does not have", async ({
@@ -227,7 +268,9 @@ test.describe("AOI validation", () => {
 
     await expect(page.getByText(/click to add corners/i)).toBeVisible();
     // Nothing drawn yet, so committing is blocked.
-    await expect(page.getByRole("button", { name: /^commit$/i })).toBeDisabled();
+    await expect(
+      page.getByRole("button", { name: /^commit$/i }),
+    ).toBeDisabled();
 
     await page.keyboard.press("Escape");
     await expect(page.getByText(/click to add corners/i)).toBeHidden();
@@ -241,7 +284,9 @@ test.describe("routes", () => {
     await expect(page.getByText(/New water detected/i)).toBeVisible();
   });
 
-  test("monitoring shows a countdown derived from timestamps", async ({ page }) => {
+  test("monitoring shows a countdown derived from timestamps", async ({
+    page,
+  }) => {
     await page.goto("/monitoring");
     await expect(page.getByText(/next observation/i).first()).toBeVisible();
     await expect(page.getByText("8h 40m")).toBeVisible();
