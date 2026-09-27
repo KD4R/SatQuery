@@ -10,15 +10,16 @@
  */
 
 import { useState, useEffect } from "react";
-import { Globe2, PanelRightClose, PanelRightOpen, RefreshCw } from "lucide-react";
+import { Globe2, PanelRightClose, PanelRightOpen } from "lucide-react";
 
 import PageTelemetry from "./PageTelemetry";
+import BeginnerGuide from "./BeginnerGuide";
 import MapCanvas from "./MapCanvas";
 import QueryConsole from "./QueryConsole";
 import ConfidenceCard from "./ConfidenceCard";
 import EvidencePanel from "./EvidencePanel";
 import RunTimeline from "./RunTimeline";
-import StageSteps from "./StageSteps";
+import StageList from "./StageList";
 import SensorCard from "./SensorCard";
 import MonitoringCard from "./MonitoringCard";
 import ReportCard from "./ReportCard";
@@ -137,33 +138,8 @@ export default function Dashboard() {
       <main className="main">
 
         <div className="content">
-          {/* Page header */}
-          <div className="page-head">
-            <div>
-              <div className="eyebrow">FLAGSHIP MISSION · FLOOD IMPACT</div>
-              <h1>
-                See what changed.
-                <br />
-                <span>Know why.</span>
-              </h1>
-              <p className="subtitle">
-                A map-first command center for evidence-backed satellite
-                intelligence. Plan the mission, inspect observations, arbitrate
-                sensors, measure change, and keep every conclusion auditable.
-              </p>
-            </div>
-            <div className="head-actions">
-              <span className="gateway-chip">
-                <i /> Gateway only · secured
-              </span>
-              <button className="primary-btn" onClick={handleReset}>
-                <RefreshCw size={14} /> New mission
-              </button>
-            </div>
-          </div>
-
-          {/* Workspace mode label */}
-          <div className="workspace-mode">
+          {/* Workspace label — bigger, left-aligned */}
+          <div className="workspace-mode mission-head">
             <div>
               <b>Mission overview</b>
               <span>Flagship flood mission and evidence-first workflow</span>
@@ -171,12 +147,8 @@ export default function Dashboard() {
             <span className="mono-chip">P5 / MISSION</span>
           </div>
 
-          {/* Main workspace */}
+          {/* Main workspace — query rail left, map right */}
           <div className="workspace">
-            <div className="map-card">
-              <MapCanvas />
-            </div>
-
             {rightRail && (
               <div className="right-rail">
                 <QueryConsole
@@ -186,6 +158,8 @@ export default function Dashboard() {
                   running={run.phase === "running"}
                   onReset={handleReset}
                 />
+                {/* Vertical step list directly under the query input */}
+                <StageList stages={stages} />
                 {/* Show confidence only once backend returns a value */}
                 {confidence !== null && (
                   <ConfidenceCard confidence={confidence} />
@@ -208,6 +182,10 @@ export default function Dashboard() {
               </div>
             )}
 
+            <div className="map-card">
+              <MapCanvas />
+            </div>
+
             <button
               className="rail-toggle"
               onClick={() => setRightRail(!rightRail)}
@@ -216,9 +194,6 @@ export default function Dashboard() {
               {rightRail ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
             </button>
           </div>
-
-          {/* Step strip — browsable pipeline steps (same live data as the timeline) */}
-          <StageSteps stages={stages} />
 
           {/* Mission stats strip */}
           <div className="section-strip">
@@ -259,6 +234,9 @@ export default function Dashboard() {
             <MonitoringCard />
             <ReportCard onReport={() => { window.location.href = "/dashboard/reports"; }} />
           </div>
+
+          {/* Beginner guide */}
+          <BeginnerGuide />
 
           <PageTelemetry run={run} />
 

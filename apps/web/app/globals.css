@@ -59,6 +59,7 @@ body {
 }
 body {
   font-family: "Chakra Petch", system-ui, sans-serif;
+  font-size: 16px;
   background:
     radial-gradient(
       circle at 72% -8%,
@@ -902,7 +903,7 @@ body:has(.preview-shell) {
   background: var(--bg);
   color: var(--text);
   font-family: "Chakra Petch", system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   /* The console locks body scroll (its panels scroll internally); the
      dashboard is a normal scrolling document. */
   overflow: auto;
@@ -915,6 +916,169 @@ body:has(.preview-shell) {
    the f95e796→125d998 rewrite. Restored and recolored to the landing's
    instrument palette: hairlines instead of soft shadows, signal orange as
    the only accent, Share Tech Mono for labels. */
+/* Mission page: label bigger and left-aligned; query rail LEFT, map RIGHT. */
+.mission-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.mission-head b {
+  display: block;
+  font-size: 30px;
+  letter-spacing: -0.03em;
+  text-align: left;
+}
+.mission-head span {
+  display: block;
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 5px;
+  text-align: left;
+}
+.mission-head .mono-chip {
+  font-size: 11px;
+}
+
+.workspace {
+  grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.1fr);
+}
+.workspace .map-card {
+  order: 2;
+}
+.workspace .right-rail {
+  order: 1;
+}
+.workspace .rail-toggle {
+  order: 3;
+}
+
+/* Vertical step list under the query input. */
+.stage-list-card {
+  margin-top: 0;
+}
+.stage-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.stage-list-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px 26px 1fr auto;
+  align-items: start;
+  gap: 9px;
+  padding: 10px 10px;
+  border-left: 2px solid var(--line);
+  border-radius: 0 8px 8px 0;
+  margin: 2px 0;
+}
+.stage-list-row + .stage-list-row::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: -4px;
+  height: 6px;
+  width: 2px;
+  background: var(--line);
+}
+.stage-list-row .stage-list-icon {
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+}
+.stage-list-row .stage-list-num {
+  font: 11px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.stage-list-row .stage-list-body b {
+  display: block;
+  font-size: 13px;
+}
+.stage-list-row .stage-list-body small {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 3px;
+  line-height: 1.45;
+}
+.stage-list-row .stage-list-state {
+  font: 9px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+  margin-top: 3px;
+}
+.stage-list-row.done .stage-list-icon { color: var(--data-a); }
+.stage-list-row.done .stage-list-state { color: var(--data-a); }
+.stage-list-row.done .stage-list-num { color: var(--data-a); }
+.stage-list-row.active,
+.stage-list-row.warning {
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border-left-color: var(--accent);
+}
+.stage-list-row.active .stage-list-icon,
+.stage-list-row.warning .stage-list-icon {
+  color: var(--accent);
+}
+.stage-list-row.active .stage-list-state { color: var(--accent); }
+.stage-list-row.warning .stage-list-state { color: var(--warn); }
+.stage-list-row.warning .stage-list-icon { color: var(--warn); }
+.stage-list-row.error {
+  border-left-color: var(--danger);
+}
+.stage-list-row.error .stage-list-icon,
+.stage-list-row.error .stage-list-state { color: var(--danger); }
+
+/* Beginner guide. */
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.guide-card {
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.guide-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  display: grid;
+  place-items: center;
+  color: var(--accent);
+}
+.guide-card b {
+  font-size: 14px;
+}
+.guide-card p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--soft);
+}
+@media (max-width: 980px) {
+  .guide-grid {
+    grid-template-columns: 1fr;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .workspace .map-card { order: 1; }
+  .workspace .right-rail { order: 2; }
+  .workspace .rail-toggle { display: none; }
+}
+
 /* Labelled content sections on sub-pages: an index, a title, a rule. */
 .dash-section {
   margin-top: 34px;
