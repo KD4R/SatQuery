@@ -583,12 +583,12 @@ html[data-theme="light"] .map-control {
   color: var(--accent);
 }
 .card-title {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 800;
   letter-spacing: 0.03em;
 }
 .card-sub {
-  font-size: 8px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -932,7 +932,7 @@ body:has(.preview-shell) {
 }
 .mission-head span {
   display: block;
-  font-size: 14px;
+  font-size: 15px;
   color: var(--muted);
   margin-top: 5px;
   text-align: left;
@@ -998,12 +998,12 @@ body:has(.preview-shell) {
 }
 .stage-list-row .stage-list-body b {
   display: block;
-  font-size: 13px;
+  font-size: 14.5px;
 }
 .stage-list-row .stage-list-body small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12.5px;
   margin-top: 3px;
   line-height: 1.45;
 }
@@ -1034,43 +1034,111 @@ body:has(.preview-shell) {
 .stage-list-row.error .stage-list-icon,
 .stage-list-row.error .stage-list-state { color: var(--danger); }
 
-/* Beginner guide. */
-.guide-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-}
-.guide-card {
+/* Beginner guide — a floating, collapsible, draggable panel. The header is
+   the drag handle; the collapse button stays clickable (pointer-down ignores
+   it). Docked bottom-right by default; once dragged, inline left/top styles
+   take over and the panel keeps its viewport-clamped position. */
+.guide-float {
+  position: fixed;
+  right: 24px;
+  bottom: 64px;
+  z-index: 60;
+  width: min(360px, calc(100vw - 48px));
   background: var(--panel);
-  box-shadow: inset 0 0 0 1px var(--line);
-  border-radius: 8px;
-  padding: 16px;
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    0 18px 50px rgba(0, 0, 0, 0.45);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.guide-float.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+.guide-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 12px;
+  cursor: grab;
+  background: var(--panel2);
+  border-bottom: 1px solid var(--line);
+  touch-action: none;
+}
+.guide-float[data-open="false"] .guide-head {
+  border-bottom-color: transparent;
+}
+.guide-float.is-dragging .guide-head {
+  cursor: grabbing;
+}
+.guide-grip {
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: -1px;
+}
+.guide-index {
+  font: 12px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--accent);
+}
+.guide-head b {
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  flex: 1;
+}
+.guide-toggle {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.guide-toggle:hover {
+  color: var(--text);
+  background: var(--panel3);
+}
+.guide-body {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  max-height: min(56vh, 460px);
+  overflow-y: auto;
+}
+.guide-item {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 8px;
+}
+.guide-item + .guide-item {
+  border-top: 1px solid var(--line);
 }
 .guide-icon {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 6px;
   box-shadow: inset 0 0 0 1px var(--line);
   display: grid;
   place-items: center;
   color: var(--accent);
 }
-.guide-card b {
-  font-size: 14px;
+.guide-text b {
+  display: block;
+  font-size: 14.5px;
 }
-.guide-card p {
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.6;
+.guide-text small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.5;
   color: var(--soft);
 }
 @media (max-width: 980px) {
-  .guide-grid {
-    grid-template-columns: 1fr;
-  }
   .workspace {
     grid-template-columns: 1fr;
   }
@@ -1099,7 +1167,7 @@ body:has(.preview-shell) {
 }
 .dash-section-head h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 17px;
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
