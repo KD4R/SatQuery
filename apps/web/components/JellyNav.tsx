@@ -11,9 +11,16 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import JellyRadio from "./jelly/JellyRadio";
-import { DashboardTopBarTabs, type DashboardTab } from "./DashboardTopBar";
+import type { DashboardTab } from "./DashboardTopBar";
 
-export default function JellyNav({ tabs }: { tabs: DashboardTab[] }) {
+export default function JellyNav({
+  tabs,
+  activeHref: activeHrefProp,
+}: {
+  tabs: DashboardTab[];
+  /** Resolved active section when the host already knows it. */
+  activeHref?: string;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   // The chip row only navigates on click; the displayed selection follows the
@@ -22,8 +29,10 @@ export default function JellyNav({ tabs }: { tabs: DashboardTab[] }) {
   const [pressed, setPressed] = useState<string | null>(null);
 
   const activeHref =
+    activeHrefProp ??
     tabs.filter((t) => pathname === t.href || pathname.startsWith(t.href + "/"))
-      .sort((a, b) => b.href.length - a.href.length)[0]?.href ?? tabs[0].href;
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href ??
+    tabs[0].href;
   const selected = pressed ?? activeHref;
 
   const change = useCallback(
@@ -44,7 +53,7 @@ export default function JellyNav({ tabs }: { tabs: DashboardTab[] }) {
   return (
     <div className="jelly-nav">
       <JellyRadio
-        items={DashboardTopBarTabs(tabs).map((t) => ({
+        items={tabs.map((t) => ({
           value: t.href,
           label: t.label,
           icon: t.icon ? <t.icon size={11} /> : undefined,

@@ -12,7 +12,7 @@
 import { useState, useEffect } from "react";
 import { Globe2, PanelRightClose, PanelRightOpen, RefreshCw } from "lucide-react";
 
-import Topbar from "./Topbar";
+import PageTelemetry from "./PageTelemetry";
 import MapCanvas from "./MapCanvas";
 import QueryConsole from "./QueryConsole";
 import ConfidenceCard from "./ConfidenceCard";
@@ -128,19 +128,13 @@ export default function Dashboard() {
     setQuery(INITIAL_QUERY);
   };
 
-  // The console's telemetry bar, retabbed for the dashboard's own sections.
-  // The sidebar is gone: the top nav carries every section, and the opening
-  // view is the mission page.
+  // Single nav bar (brand + section chips + icon actions); telemetry sits at
+  // the bottom of the page. The opening view is the mission page.
   return (
     <>
+      <DashboardTopBar activeHref="/dashboard" />
       <div className="app-shell app-shell--flat">
       <main className="main">
-        <Topbar
-          theme={theme}
-          onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
-          runId={runId}
-        />
-        <DashboardTopBar run={run} activeHref="/dashboard" below />
 
         <div className="content">
           {/* Page header */}
@@ -265,6 +259,8 @@ export default function Dashboard() {
             <MonitoringCard />
             <ReportCard onReport={() => { window.location.href = "/dashboard/reports"; }} />
           </div>
+
+          <PageTelemetry run={run} />
 
           <footer className="app-footer">
             <div>

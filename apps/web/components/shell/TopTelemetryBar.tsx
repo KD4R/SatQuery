@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 
 import { Label, StatusChip } from "../system/primitives";
 import type { DataSource } from "../../lib/api/source";
+import { utcClock } from "./utcClock";
 
 export interface NavTab {
   label: string;
@@ -39,11 +40,6 @@ const STATE_TONE = {
   degraded: "warn",
   offline: "warn",
 } as const;
-
-function utcClock(d: Date): string {
-  const p = (n: number) => n.toString().padStart(2, "0");
-  return `${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
-}
 
 export interface TopTelemetryBarProps {
   missionId: string | null;

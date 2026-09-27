@@ -1,33 +1,39 @@
 "use client";
 
 /**
- * The console's telemetry bar, retabbed for the dashboard's own sections:
- * Mission / Monitoring / Admin. Same chrome as the console (mission breadcrumb,
- * env chip, gateway chip, UTC clock) so the two surfaces read as one product.
+ * The dashboard family's single nav bar — replaces the old two-bar stack
+ * (brand/telemetry bar + MISSION CONTROL header).
  *
- * The gateway chip is a real health check, never an assumption. In demo mode
- * the clock freezes and ENV reads DEMO, same as the console. Pass `run` on
- * pages that own a run (the mission dashboard); pages without one report
- * honestly that they have nothing in flight.
+ * Layout: SATQUERY brand · jelly section chips · icon actions.
+ * Sections are the five product areas (Mission absorbs the map workspace);
+ * everything else the old UI spread across bars is an icon action:
+ * history, alerts, settings, theme, search, profile.
+ *
+ * The UTC clock / gateway / state telemetry lives at the bottom of the page
+ * (PageTelemetry), not in this bar.
+ *
+ * The gateway state is a real health check, never an assumption. In demo mode
+ * the clock freezes and ENV reads DEMO. Pass `run` on pages that own a run.
  */
 
 import { useEffect, useState } from "react";
 import {
-  Activity,
   Bell,
   FileText,
   Globe2,
   History,
+  Search,
+  Settings,
   ShieldCheck,
-  SlidersHorizontal,
+  Activity,
+  Moon,
+  Sun,
   type LucideIcon,
 } from "lucide-react";
 
-import { getHealth } from "../lib/api/client";
 import { demoModeEnabled } from "../lib/api/source";
-import type { MissionRun } from "../lib/useMissionRun";
-import { TopTelemetryBar, type SystemState } from "./shell/TopTelemetryBar";
 import JellyNav from "./JellyNav";
+import { applyTheme, readTheme, type Theme } from "../lib/theme";
 
 export interface DashboardTab {
   label: string;
@@ -35,73 +41,61 @@ export interface DashboardTab {
   icon?: LucideIcon;
 }
 
-/** The section tabs with their lucide icons resolved — used by the nav views. */
-export function DashboardTopBarTabs(tabs: DashboardTab[]) {
-  return tabs;
-}
-
-/** The old sidebar's items, promoted to the top nav. Order = workspace order. */
-const DASHBOARD_TABS: DashboardTab[] = [
+/** The five product sections. Mission absorbs the map workspace. */
+export const DASHBOARD_TABS: DashboardTab[] = [
   { label: "Mission", href: "/dashboard", icon: Globe2 },
-  { label: "Map", href: "/dashboard/map", icon: Globe2 },
   { label: "Monitoring", href: "/dashboard/monitoring", icon: Activity },
   { label: "Evidence", href: "/dashboard/evidence", icon: ShieldCheck },
-  { label: "History", href: "/dashboard/history", icon: History },
   { label: "Reports", href: "/dashboard/reports", icon: FileText },
-  { label: "Alerts", href: "/dashboard/alerts", icon: Bell },
-  { label: "Settings", href: "/dashboard/settings", icon: SlidersHorizontal },
   { label: "Admin", href: "/dashboard/admin", icon: ShieldCheck },
-  { label: "Preview", href: "/dashboard/preview" },
 ];
 
 export default function DashboardTopBar({
-  run = null,
   activeHref,
-  below = false,
 }: {
-  /** A run in flight on this page, if the page owns one. */
-  run?: Pick<MissionRun, "phase" | "jobId" | "agentState"> | null;
   activeHref: string;
-  /** Page-level bar below the MISSION CONTROL header (drops brand/breadcrumb). */
-  below?: boolean;
 }) {
-  const [gatewayUp, setGatewayUp] = useState<boolean | null>(null);
   const demo = demoModeEnabled();
+  const [theme, setTheme] = useState<Theme>("dark");
 
-  useEffect(() => {
-    let live = true;
-    const controller = new AbortController();
-    getHealth(controller.signal)
-      .then(() => live && setGatewayUp(true))
-      .catch(() => live && setGatewayUp(false));
-    return () => {
-      live = false;
-      controller.abort();
-    };
-  }, []);
-
-  const state: SystemState =
-    run?.phase === "running"
-      ? "processing"
-      : run?.phase === "failed"
-        ? "degraded"
-        : run?.phase === "complete"
-          ? "active"
-          : "idle";
+  useEffect(() => setTheme(readTheme()), []);
 
   return (
-    <TopTelemetryBar
-      missionId={run?.agentState?.mission_id ?? run?.jobId ?? null}
-      runId={run?.jobId ?? null}
-      state={state}
-      source={demo ? "fixture" : "gateway"}
-      frozenClock={demo ? "05:42:00" : undefined}
-      gatewayReachable={gatewayUp}
-      tabs={DASHBOARD_TABS}
-      activeHref={activeHref}
-      withIcons
-      navSlot={<JellyNav tabs={DASHBOARD_TABS} />}
-      below={below}
-    />
+    <header className="dash-navbar">
+      <span className="dash-brand heading">SATQUERY</span>
+
+      <JellyNav tabs={DASHBOARD_TABS} activeHref={activeHref} />
+
+      <div className="band-spacer" />
+
+      <div className="dash-nav-actions">
+        <a className="icon-btn" href="/dashboard/history" aria-label="History" title="History">
+          <History size={16} />
+        </a>
+        <a className="icon-btn" href="/dashboard/alerts" aria-label="Alerts and notifications" title="Alerts">
+          <Bell size={16} />
+        </a>
+        <a className="icon-btn" href="/dashboard/settings" aria-label="Settings" title="Settings">
+          <Settings size={16} />
+        </a>
+        <button
+          className="icon-btn"
+          aria-label="Toggle theme"
+          onClick={() => {
+            const next: Theme = theme === "dark" ? "light" : "dark";
+            applyTheme(next);
+            setTheme(next);
+          }}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button className="icon-btn" aria-label="Search">
+          <Search size={16} />
+        </button>
+        <div className="avatar" title={demo ? "Demo session" : "Signed in"}>
+          SQ
+        </div>
+      </div>
+    </header>
   );
 }

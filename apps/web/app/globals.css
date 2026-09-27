@@ -207,24 +207,6 @@ a {
 .main {
   min-width: 0;
 }
-.topbar {
-  height: 72px;
-  border-bottom: 1px solid var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 28px;
-  position: sticky;
-  top: 0;
-  z-index: 25;
-  background: color-mix(in srgb, var(--bg) 84%, transparent);
-  backdrop-filter: blur(18px);
-}
-.top-title {
-  font-size: 13px;
-  font-weight: 700;
-  margin-top: 4px;
-}
 .live-pill {
   font: 500 8px "Share Tech Mono";
   color: var(--accent);
@@ -245,11 +227,6 @@ a {
   box-shadow: 0 0 12px var(--accent);
   margin-right: 5px;
 }
-.top-actions {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
 .icon-btn,
 .small-icon {
   width: 36px;
@@ -266,44 +243,6 @@ a {
 .small-icon:hover {
   border-color: var(--line2);
   color: var(--text);
-}
-.help-btn {
-  height: 36px;
-  padding: 0 11px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-  font-size: 10px;
-  cursor: pointer;
-}
-.avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: var(--panel3);
-  border: 1px solid var(--line2);
-  font-size: 10px;
-  font-weight: 800;
-}
-.run-pill {
-  height: 30px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 9px;
-  color: var(--soft);
-  font: 500 8px "Share Tech Mono";
-}
-.run-pill span {
-  color: var(--muted);
 }
 .content {
   max-width: 1800px;
@@ -1518,10 +1457,6 @@ body:has(.preview-shell) {
   .report-meta {
     grid-template-columns: 1fr;
   }
-  .top-actions .help-btn,
-  .top-actions .run-pill {
-    display: none;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   .route-transition {
@@ -1578,7 +1513,40 @@ body:has(.preview-shell) {
   color: var(--accent);
 }
 
-/* The JellyRadio nav in the telemetry bar's first row. */
+/* The dashboard family's single nav bar: brand · jelly chips · icon actions. */
+.dash-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 52px;
+  padding: 0 18px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.dash-brand {
+  font-size: 13px;
+  letter-spacing: 0.28em;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.dash-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dash-nav-actions .icon-btn {
+  color: var(--soft);
+}
+.dash-nav-actions .icon-btn:hover {
+  color: var(--text);
+  border-color: var(--line2);
+}
+
+/* The JellyRadio nav inside the bar. */
 .jelly-nav {
   min-width: 0;
   overflow-x: auto;
@@ -1604,6 +1572,42 @@ body:has(.preview-shell) {
 }
 .jelly-nav .jelly-chip.is-active svg {
   color: var(--accent);
+}
+
+/* Page-bottom telemetry subset (UTC · gateway · state · env). */
+.page-telemetry {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 26px;
+  padding: 10px 2px 0;
+  border-top: 1px solid var(--line);
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+}
+.page-telemetry .pt-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.page-telemetry .pt-label {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.page-telemetry .pt-value {
+  font-size: 10px;
+  color: var(--soft);
+}
+.page-telemetry .pt-ok {
+  color: var(--data-a);
+}
+.page-telemetry .pt-warn {
+  color: var(--warn);
+}
+.page-telemetry .pt-sep {
+  color: var(--ink-ghost, var(--muted));
+  font-size: 9px;
 }
 
 /* The dashboard family renders on the plain themed ground — no animated
@@ -2186,22 +2190,6 @@ body:has(.app-shell) > *,
   }
 }
 @media (max-width: 680px) {
-  .topbar {
-    height: 62px;
-    padding: 0 14px;
-  }
-  .top-context .eyebrow {
-    font-size: 7px;
-  }
-  .top-title {
-    font-size: 10px;
-  }
-  .top-actions .help-btn,
-  .run-pill,
-  .top-actions .icon-btn:nth-child(2),
-  .top-actions .icon-btn:nth-child(3) {
-    display: none;
-  }
   .content {
     padding: 18px 13px 80px;
   }
