@@ -639,7 +639,22 @@
   overflow-x: clip;
 }
 
+/* React Bits Particles behind the globe: the whole stage, faint, never in the
+   way of the pointer. Fades up with the globe (sq-intro-wait on the wrapper);
+   the lightness is on the field itself so the intro rules can't override it. */
+.sq-stage-particles {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.sq-stage-particles .sq-particles-faint {
+  opacity: 0.35;
+}
+
 .sq-stage-figure {
+  z-index: 1;
   position: relative;
   flex: 1;
   display: flex;
