@@ -28,6 +28,7 @@ import TraceDrawer from "./TraceDrawer";
 import { useMissionRun } from "../lib/useMissionRun";
 import { demoModeEnabled } from "../lib/api/source";
 import DashboardTopBar from "./DashboardTopBar";
+import DitherBackground from "./DitherBackground";
 import type { Stage, Evidence } from "../lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -150,6 +151,7 @@ export default function Dashboard() {
   // The console's telemetry bar, retabbed for the dashboard's own sections.
   return (
     <>
+      <DitherBackground />
       <DashboardTopBar run={run} activeHref="/dashboard" />
       <div className="app-shell">
       {/* Mobile nav overlay */}

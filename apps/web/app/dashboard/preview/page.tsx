@@ -13,9 +13,7 @@
  * background stays a still dark field).
  */
 
-import { useEffect, useState } from "react";
-
-import AcidSquares from "../../../components/backgrounds/AcidSquares";
+import DitherBackground from "../../../components/DitherBackground";
 import DashboardTopBar from "../../../components/DashboardTopBar";
 
 /** Placeholder card — replaced by real elements during integration. */
@@ -48,54 +46,11 @@ function DraftCard({
   );
 }
 
-/**
- * The user's chosen background config, retuned from the purple demo palette to
- * the landing's instrument hues: the ray-marched energy reads signal orange
- * rising through data-blue, on the near-black ground. opacity/exposure sit
- * below the library defaults so panel text stays readable.
- */
-const BG_PROPS = {
-  color1: "#0e0f10",
-  color2: "#60a0f8",
-  color3: "#f87010",
-  detail: "medium" as const,
-  speed: 0.7,
-  waveDepth: 1,
-  zoom: 1.3,
-  density: 10.0,
-  glow: 1.0,
-  exposure: 1600,
-  spread: 0.3,
-  stepSize: 0.002,
-  colorShift: 0,
-  contrast: 1,
-  brightness: 1.0,
-  opacity: 0.45,
-  mouseInteraction: true,
-  mouseStrength: 0.1,
-  mouseRadius: 0.35,
-  blur: 0,
-  grain: true,
-  grainIntensity: 0.05,
-};
-
 export default function DashboardPreviewPage() {
-  const [reducedMotion, setReducedMotion] = useState(false);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReducedMotion(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-
   return (
     <main className="preview-shell">
       {/* Animated background — fixed, behind everything. */}
-      <div className="preview-bg" aria-hidden="true">
-        {reducedMotion ? null : <AcidSquares {...BG_PROPS} />}
-      </div>
+      <DitherBackground />
 
       <DashboardTopBar activeHref="/dashboard/preview" />
       <div className="preview-content">
