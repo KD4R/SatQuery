@@ -22,6 +22,7 @@ const DASHBOARD_TABS = [
   { label: "Mission", href: "/dashboard" },
   { label: "Monitoring", href: "/dashboard/monitoring" },
   { label: "Admin", href: "/dashboard/admin" },
+  { label: "Preview", href: "/dashboard/preview" },
 ];
 
 export default function DashboardTopBar({
