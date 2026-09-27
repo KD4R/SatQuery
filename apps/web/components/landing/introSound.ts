@@ -2,7 +2,7 @@
  * The two-second opening sound, played once per browser -- the first time
  * someone opens the site -- while the SatQuery mark is in the middle.
  *
- * If apps/web/public/sounds/intro.mp3 exists, that file is played (capped at 3 s
+ * If apps/web/public/sounds/intro.mp3 exists, that file is played (capped at 3.5 s
  * and faded out). Otherwise a sound is synthesised with the Web Audio API: a low
  * pad swells in, a tone sweeps up like a signal locking on, and two soft pings
  * land (a radar echo) as the cube settles. About 2 seconds.
@@ -20,7 +20,7 @@ const KEY = "sq-intro-sound-played";
 /** Drop an audio file here (apps/web/public/sounds/intro.mp3) to replace the
  *  synthesised sound. Any length; it is capped at MAX_FILE_S and faded out. */
 const SOUND_URL = "/sounds/intro.mp3";
-const MAX_FILE_S = 3;
+const MAX_FILE_S = 3.5;
 
 function alreadyPlayed(): boolean {
   try {

@@ -9,3 +9,7 @@ out
 /test-results/
 /playwright-report/
 /blob-report/
+
+# Local-only intro sound (see public/sounds/README.md). Kept out of the repo so
+# third-party audio is never published with the site's source.
+/public/sounds/intro.mp3
