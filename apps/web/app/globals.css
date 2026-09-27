@@ -88,6 +88,13 @@ a {
   display: grid;
   grid-template-columns: 230px minmax(0, 1fr);
 }
+
+/* Sidebar-less variant: the top nav carries every section, so the workspace
+   is a single full-width column. Doubled class beats the width media queries
+   that re-introduce the sidebar column further down. */
+.app-shell.app-shell--flat {
+  grid-template-columns: minmax(0, 1fr);
+}
 .sidebar {
   position: sticky;
   top: 0;
@@ -984,6 +991,20 @@ body:has(.preview-shell) {
 .preview-shell > header {
   position: relative;
   z-index: 1;
+}
+
+/* Top nav with icons: roomier tabs for the promoted sidebar items. */
+.console-nav-tabs .console-nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.console-nav-tab svg {
+  opacity: 0.7;
+}
+.console-nav-tab-active svg {
+  opacity: 1;
+  color: var(--accent);
 }
 
 /* ─── Dither background (shared by the whole dashboard family) ─────────── */

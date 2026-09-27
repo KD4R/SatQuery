@@ -10,9 +10,8 @@
  */
 
 import { useState, useEffect } from "react";
-import { Globe2, Menu, PanelRightClose, PanelRightOpen, RefreshCw } from "lucide-react";
+import { Globe2, PanelRightClose, PanelRightOpen, RefreshCw } from "lucide-react";
 
-import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import MapCanvas from "./MapCanvas";
 import QueryConsole from "./QueryConsole";
@@ -80,9 +79,7 @@ function extractEvidence(agentState: any): Evidence[] {
 export default function Dashboard() {
   // Theme
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  // Nav
-  const [active, setActive] = useState("mission");
-  const [mobileNav, setMobileNav] = useState(false);
+  // Right rail
   const [rightRail, setRightRail] = useState(true);
   // Trace drawer
   const [trace, setTrace] = useState(false);
@@ -132,55 +129,20 @@ export default function Dashboard() {
     setQuery(INITIAL_QUERY);
   };
 
-  const contentTitle =
-    active === "mission" ? "Mission overview" :
-    active === "map" ? "Map workspace" :
-    active === "monitor" ? "Persistent monitoring" :
-    active === "evidence" ? "Evidence chain" :
-    active === "history" ? "Mission history" :
-    "Reports & decision briefs";
-
-  const contentSubtitle =
-    active === "mission" ? "Flagship flood mission and evidence-first workflow" :
-    active === "map" ? "Inspect AOI, observations, overlays and confidence layers" :
-    active === "monitor" ? "Recurring acquisition, alerting and mission watch state" :
-    active === "evidence" ? "Provenance, observations, model metadata and audit trace" :
-    active === "history" ? "Temporal mission memory and prior runs" :
-    "Decision briefs, report generation and export surfaces";
-
   // The console's telemetry bar, retabbed for the dashboard's own sections.
+  // The sidebar is gone: the top nav carries every section, and the opening
+  // view is the mission page.
   return (
     <>
       <DitherBackground />
       <DashboardTopBar run={run} activeHref="/dashboard" />
-      <div className="app-shell">
-      {/* Mobile nav overlay */}
-      <div className={`mobile-nav ${mobileNav ? "open" : ""}`}>
-        <Sidebar
-          active={active}
-          onSelect={(id) => { setActive(id); setMobileNav(false); }}
-        />
-      </div>
-
-      {/* Desktop sidebar */}
-      <div className="desktop-sidebar">
-        <Sidebar active={active} onSelect={setActive} />
-      </div>
-
+      <div className="app-shell app-shell--flat">
       <main className="main">
         <Topbar
           theme={theme}
           onTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
           runId={runId}
         />
-
-        {/* Mobile topbar */}
-        <div className="mobile-top">
-          <button className="icon-btn" onClick={() => setMobileNav(true)}>
-            <Menu size={17} />
-          </button>
-          <span>{contentTitle}</span>
-        </div>
 
         <div className="content">
           {/* Page header */}
@@ -211,10 +173,10 @@ export default function Dashboard() {
           {/* Workspace mode label */}
           <div className="workspace-mode">
             <div>
-              <b>{contentTitle}</b>
-              <span>{contentSubtitle}</span>
+              <b>Mission overview</b>
+              <span>Flagship flood mission and evidence-first workflow</span>
             </div>
-            <span className="mono-chip">P5 / {active.toUpperCase()}</span>
+            <span className="mono-chip">P5 / MISSION</span>
           </div>
 
           {/* Main workspace */}
@@ -303,7 +265,7 @@ export default function Dashboard() {
             <RunTimeline stages={stages} />
             <SensorCard />
             <MonitoringCard />
-            <ReportCard onReport={() => setActive("reports")} />
+            <ReportCard onReport={() => { window.location.href = "/dashboard/reports"; }} />
           </div>
 
           <footer className="app-footer">
@@ -332,7 +294,6 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="mobile-nav-overlay" onClick={() => setMobileNav(false)} />
       </div>
     </>
   );

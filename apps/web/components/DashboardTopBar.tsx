@@ -12,16 +12,39 @@
  */
 
 import { useEffect, useState } from "react";
+import {
+  Activity,
+  Bell,
+  FileText,
+  Globe2,
+  History,
+  ShieldCheck,
+  SlidersHorizontal,
+  type LucideIcon,
+} from "lucide-react";
 
 import { getHealth } from "../lib/api/client";
 import { demoModeEnabled } from "../lib/api/source";
 import type { MissionRun } from "../lib/useMissionRun";
 import { TopTelemetryBar, type SystemState } from "./shell/TopTelemetryBar";
 
-const DASHBOARD_TABS = [
-  { label: "Mission", href: "/dashboard" },
-  { label: "Monitoring", href: "/dashboard/monitoring" },
-  { label: "Admin", href: "/dashboard/admin" },
+export interface DashboardTab {
+  label: string;
+  href: string;
+  icon?: LucideIcon;
+}
+
+/** The old sidebar's items, promoted to the top nav. Order = workspace order. */
+const DASHBOARD_TABS: DashboardTab[] = [
+  { label: "Mission", href: "/dashboard", icon: Globe2 },
+  { label: "Map", href: "/dashboard/map", icon: Globe2 },
+  { label: "Monitoring", href: "/dashboard/monitoring", icon: Activity },
+  { label: "Evidence", href: "/dashboard/evidence", icon: ShieldCheck },
+  { label: "History", href: "/dashboard/history", icon: History },
+  { label: "Reports", href: "/dashboard/reports", icon: FileText },
+  { label: "Alerts", href: "/dashboard/alerts", icon: Bell },
+  { label: "Settings", href: "/dashboard/settings", icon: SlidersHorizontal },
+  { label: "Admin", href: "/dashboard/admin", icon: ShieldCheck },
   { label: "Preview", href: "/dashboard/preview" },
 ];
 
@@ -67,6 +90,7 @@ export default function DashboardTopBar({
       gatewayReachable={gatewayUp}
       tabs={DASHBOARD_TABS}
       activeHref={activeHref}
+      withIcons
     />
   );
 }

@@ -20,6 +20,8 @@ import type { DataSource } from "../../lib/api/source";
 export interface NavTab {
   label: string;
   href: string;
+  /** Optional icon rendered before the label (dashboard top nav). */
+  icon?: React.ComponentType<{ size?: number | string }>;
 }
 
 const NAV_TABS: NavTab[] = [
@@ -55,6 +57,8 @@ export interface TopTelemetryBarProps {
   tabs?: NavTab[];
   /** Which tab renders active (matched by href; defaults to /console). */
   activeHref?: string;
+  /** Render tab icons when the tabs carry them (dashboard top nav). */
+  withIcons?: boolean;
 }
 
 export function TopTelemetryBar({
@@ -66,6 +70,7 @@ export function TopTelemetryBar({
   gatewayReachable,
   tabs = NAV_TABS,
   activeHref = "/console",
+  withIcons = false,
 }: TopTelemetryBarProps) {
   const [clock, setClock] = useState<string>(frozenClock ?? "--:--:--");
 
@@ -101,18 +106,22 @@ export function TopTelemetryBar({
         </div>
 
         <nav className="console-nav-tabs" aria-label="Console sections">
-          {tabs.map((t) => (
-            <a
-              key={t.href}
-              href={t.href}
-              className={`console-nav-tab${
-                t.href === activeHref ? " console-nav-tab-active" : ""
-              }`}
-              aria-current={t.href === activeHref ? "page" : undefined}
-            >
-              {t.label}
-            </a>
-          ))
+          {tabs.map((t) => {
+            const Icon = withIcons ? t.icon : undefined;
+            return (
+              <a
+                key={t.href}
+                href={t.href}
+                className={`console-nav-tab${
+                  t.href === activeHref ? " console-nav-tab-active" : ""
+                }`}
+                aria-current={t.href === activeHref ? "page" : undefined}
+              >
+                {Icon && <Icon size={13} />}
+                {t.label}
+              </a>
+            );
+          })
           }
         </nav>
 
