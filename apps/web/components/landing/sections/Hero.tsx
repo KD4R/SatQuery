@@ -20,6 +20,7 @@ import type { IntroPhase } from "../BrandIntro";
 import { HEADLINE, ratio } from "../facts";
 import { HeroHeadline } from "../HeroHeadline";
 import { QueryConsole } from "../QueryConsole";
+import Particles from "../effects/Particles";
 import { SpaceGlobe } from "../SpaceGlobe";
 import { IconArrow, Reveal } from "../ui";
 
@@ -64,6 +65,20 @@ export function Hero({ phase }: { phase: IntroPhase }) {
         className="sq-stage"
         aria-label="The ten evaluation regions on a globe"
       >
+        {/* React Bits Particles, faint, behind the globe */}
+        <div className="sq-stage-particles sq-intro-wait" aria-hidden="true">
+          <Particles
+            particleColors={["#ffffff"]}
+            particleCount={200}
+            particleSpread={10}
+            speed={0.1}
+            particleBaseSize={100}
+            moveParticlesOnHover={true}
+            alphaParticles={false}
+            disableRotation={false}
+            className="sq-particles-faint"
+          />
+        </div>
         <div className="sq-stage-figure sq-intro-wait">
           <div ref={zoomRef} className="sq-stage-zoom">
             <SpaceGlobe className="sq-globe--stage" spinIn={phase === "done"} />

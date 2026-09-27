@@ -355,9 +355,32 @@ export function SpaceGlobe({
       const sx = cx + SUN[0] * R;
       const sy = cy + SUN[1] * R;
 
-      /* atmosphere + ocean: independent of rotation, so rendered once per size */
-      const layers = lighting(w, h, cx, cy, R, sx, sy);
-      ctx.drawImage(layers.under, 0, 0, w, h);
+      /* atmosphere + ocean: independent of rotation, so rendered once per size,
+         always at the full-size radius. During the entrance the planet grows from
+         92% to 100%, so the cached layers are scaled about the centre to the
+         current R -- every gradient in them is proportional to R, so that is
+         exact. (Caching them at whatever R the first frame had left the ocean
+         and limb 8% smaller than the land drawn over them: land "floating".) */
+      const fullR = Math.min(w, h) * 0.4;
+      const layers = lighting(
+        w,
+        h,
+        cx,
+        cy,
+        fullR,
+        cx + SUN[0] * fullR,
+        cy + SUN[1] * fullR,
+      );
+      const grow = R / fullR;
+      const blit = (img: HTMLCanvasElement) => {
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(grow, grow);
+        ctx.translate(-cx, -cy);
+        ctx.drawImage(img, 0, 0, w, h);
+        ctx.restore();
+      };
+      blit(layers.under);
 
       /* land */
       if (land) {
@@ -400,7 +423,7 @@ export function SpaceGlobe({
       ctx.restore();
 
       /* night side + inner rim: also rotation-independent */
-      ctx.drawImage(layers.over, 0, 0, w, h);
+      blit(layers.over);
 
       /* arcs: learned there, tested here */
       const lift = (p: [number, number], k: number) => {
