@@ -916,3 +916,38 @@ a {
   font-size: 10.5px;
   text-align: center;
 }
+
+/* ── Map layers panel (MapWorkspace, top-left) ───────────────────────────────
+   Console tokens; the dashboard re-skins these in globals.css so both surfaces
+   can theme the panel without a prop. */
+.mw-layers {
+  z-index: 15;
+  background: var(--surface-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+}
+.mw-layers-head {
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--hairline);
+}
+.mw-layers-body {
+  padding: 4px;
+}
+.mw-layers-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.mw-layers-row:hover {
+  background: var(--surface-2);
+}
+.mw-layers-row input[type="checkbox"] {
+  width: 11px;
+  height: 11px;
+  margin: 0;
+  accent-color: var(--accent);
+}

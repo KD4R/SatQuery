@@ -356,14 +356,20 @@ a {
   gap: 14px;
   position: relative;
 }
+/* Map fills the first desktop viewport, chrome and all. Below the fold, the
+   strip and bottom grid carry the rest — no card stretches past the screen.
+   (The rail beside it is allowed to overflow into that lower region; the card
+   itself stays put.) */
 .map-card {
-  min-height: 650px;
+  min-height: clamp(430px, calc(100vh - 350px), 720px);
+  max-height: calc(100vh - 290px);
   border: 1px solid var(--line);
   border-radius: 18px;
   overflow: hidden;
   background: var(--bg2);
   position: relative;
   box-shadow: var(--shadow);
+  align-self: start;
 }
 /* Host for the console's MapWorkspace inside the dashboard's map card. The
    workspace positions itself absolute inset-0 and pulls console tokens from
@@ -371,6 +377,42 @@ a {
 .map-canvas-host {
   position: absolute;
   inset: 0;
+}
+/* The map's layers panel, re-skinned for this dashboard's theme (dark and
+   light) — the console's --surface-1/--hairline tokens read wrong here.
+   Selectors carry .map-card so they win over mission.css, which imports
+   after globals.css. */
+.map-card .mw-layers {
+  background: var(--panel);
+  border-color: var(--line);
+  border-radius: 11px;
+  box-shadow: var(--shadow);
+}
+.map-card .mw-layers-head {
+  border-bottom-color: var(--line);
+}
+.map-card .mw-layers-head .label {
+  font-size: 8px;
+  color: var(--muted);
+}
+.map-card .mw-layers-row {
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.map-card .mw-layers-row:hover {
+  background: var(--panel3);
+}
+.map-card .mw-layers-row .label {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--soft);
+  white-space: normal;
+}
+.map-card .mw-layers-row:hover .label {
+  color: var(--text);
 }
 .map-wrap {
   position: absolute;

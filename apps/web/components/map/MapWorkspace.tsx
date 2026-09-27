@@ -508,38 +508,22 @@ export function MapWorkspace({
         aria-label="Mission map. Use the layer controls to change what is shown."
       />
 
-      {/* Layers — top left */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          background: "var(--surface-1)",
-          border: "1px solid var(--hairline)",
-          borderRadius: "var(--radius)",
-        }}
-      >
-        <div
-          style={{ padding: "5px 8px", borderBottom: "1px solid var(--hairline)" }}
-        >
+      {/* Layers — top left. Visuals come from .mw-layers in mission.css, so
+          both surfaces can theme the panel (dashboard overrides in globals.css). */}
+      <div className="mw-layers" style={{ position: "absolute", top: 10, left: 10 }}>
+        <div className="mw-layers-head">
           <Label>Layers</Label>
         </div>
-        <div style={{ padding: 4 }} role="group" aria-label="Map layers">
+        <div className="mw-layers-body" role="group" aria-label="Map layers">
           {(Object.keys(LAYER_LABELS) as LayerId[]).map((id) => (
-            <label
-              key={id}
-              className="row"
-              style={{ padding: "3px 6px", cursor: "pointer", gap: 7 }}
-            >
+            <label key={id} className="mw-layers-row">
               <input
                 type="checkbox"
                 checked={visible[id]}
                 onChange={() => onToggleLayer(id)}
-                style={{ accentColor: LAYER_ACCENT[id], width: 11, height: 11 }}
+                style={{ accentColor: LAYER_ACCENT[id] }}
               />
-              <span className="label" style={{ color: "var(--ink)" }}>
-                {LAYER_LABELS[id]}
-              </span>
+              <span className="label">{LAYER_LABELS[id]}</span>
             </label>
           ))}
         </div>
