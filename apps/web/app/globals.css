@@ -1566,6 +1566,34 @@ body:has(.preview-shell) {
   color: var(--accent);
 }
 
+/* The JellyRadio nav in the telemetry bar's first row. */
+.jelly-nav {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: 100%;
+}
+.jelly-nav::-webkit-scrollbar {
+  display: none;
+}
+.jelly-nav .jelly-nav-radio {
+  padding: 0;
+  gap: 2px;
+}
+.jelly-nav .jelly-chip {
+  border-color: transparent;
+  height: 28px;
+  letter-spacing: 0.02em;
+}
+.jelly-nav .jelly-chip.is-active {
+  background: rgba(255, 255, 255, 0.06);
+  outline: 1px solid var(--hairline-bright, var(--line2));
+  color: var(--text);
+}
+.jelly-nav .jelly-chip.is-active svg {
+  color: var(--accent);
+}
+
 /* The dashboard family renders on the plain themed ground — no animated
    background layer. Chrome still lifts above any fixed layer out of habit
    from the background experiments. */

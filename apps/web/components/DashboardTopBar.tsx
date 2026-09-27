@@ -27,11 +27,17 @@ import { getHealth } from "../lib/api/client";
 import { demoModeEnabled } from "../lib/api/source";
 import type { MissionRun } from "../lib/useMissionRun";
 import { TopTelemetryBar, type SystemState } from "./shell/TopTelemetryBar";
+import JellyNav from "./JellyNav";
 
 export interface DashboardTab {
   label: string;
   href: string;
   icon?: LucideIcon;
+}
+
+/** The section tabs with their lucide icons resolved — used by the nav views. */
+export function DashboardTopBarTabs(tabs: DashboardTab[]) {
+  return tabs;
 }
 
 /** The old sidebar's items, promoted to the top nav. Order = workspace order. */
@@ -91,6 +97,7 @@ export default function DashboardTopBar({
       tabs={DASHBOARD_TABS}
       activeHref={activeHref}
       withIcons
+      navSlot={<JellyNav tabs={DASHBOARD_TABS} />}
     />
   );
 }

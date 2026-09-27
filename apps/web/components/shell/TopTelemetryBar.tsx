@@ -59,6 +59,9 @@ export interface TopTelemetryBarProps {
   activeHref?: string;
   /** Render tab icons when the tabs carry them (dashboard top nav). */
   withIcons?: boolean;
+  /** Replace the default link tabs with a custom nav (e.g. the dashboard's
+   * JellyRadio). Rendered in the same slot, brand and telemetry untouched. */
+  navSlot?: React.ReactNode;
 }
 
 export function TopTelemetryBar({
@@ -71,6 +74,7 @@ export function TopTelemetryBar({
   tabs = NAV_TABS,
   activeHref = "/console",
   withIcons = false,
+  navSlot,
 }: TopTelemetryBarProps) {
   const [clock, setClock] = useState<string>(frozenClock ?? "--:--:--");
 
@@ -105,6 +109,7 @@ export function TopTelemetryBar({
           </span>
         </div>
 
+        {navSlot ?? (
         <nav className="console-nav-tabs" aria-label="Console sections">
           {tabs.map((t) => {
             const Icon = withIcons ? t.icon : undefined;
@@ -124,6 +129,7 @@ export function TopTelemetryBar({
           })
           }
         </nav>
+        )}
 
         <div className="band-spacer" />
 
