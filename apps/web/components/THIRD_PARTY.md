@@ -3,7 +3,7 @@
 | Component | Source | License | Where used |
 | --- | --- | --- | --- |
 | `components/backgrounds/AcidSquares.tsx` / `.css` | [React Bits](https://reactbits.dev) — `DavidHDev/react-bits`, `src/ts-default/Backgrounds/AcidSquares` | MIT + Commons Clause v1.0, © 2026 David Haz | available; currently unused |
-| `components/backgrounds/DitherImpl.tsx` / `.css` (re-exported by `Dither.tsx`) | [React Bits](https://reactbits.dev) — `DavidHDev/react-bits`, `src/ts-default/Backgrounds/Dither` | MIT + Commons Clause v1.0, © 2026 David Haz | dashboard background (`/dashboard`, `/dashboard/monitoring`, `/dashboard/admin`, `/dashboard/preview`) |
+| `components/backgrounds/DitherImpl.tsx` / `.css` (re-exported by `Dither.tsx`) | [React Bits](https://reactbits.dev) — `DavidHDev/react-bits`, `src/ts-default/Backgrounds/Dither` | MIT + Commons Clause v1.0, © 2026 David Haz | available; currently unused (was the dashboard background) |
 
 ## MIT + Commons Clause v1.0 (React Bits)
 

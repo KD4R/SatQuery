@@ -5,7 +5,6 @@ import {usePathname,useRouter} from 'next/navigation';
 import {Bell,Command,HelpCircle,Search,Sun,Moon} from 'lucide-react';
 import {useEffect,useState} from 'react';
 import DashboardTopBar from './DashboardTopBar';
-import DitherBackground from './DitherBackground';
 import {applyTheme,readTheme,Theme} from '../lib/theme';
 
 const titles:Record<string,string>={
@@ -21,7 +20,7 @@ export default function PageShell({children}:{children:React.ReactNode}){
  const router=useRouter(); const pathname=usePathname(); const [theme,setTheme]=useState<Theme>('dark');
  useEffect(()=>{['/dashboard','/dashboard/map','/dashboard/monitoring','/dashboard/evidence','/dashboard/history','/dashboard/reports','/dashboard/alerts','/dashboard/settings','/dashboard/admin'].forEach(path=>router.prefetch(path))},[router]);
  useEffect(()=>{const stored=readTheme(); setTheme(stored); applyTheme(stored)},[]);
- return <><DitherBackground/><DashboardTopBar activeHref={pathname}/>
+ return <><DashboardTopBar activeHref={pathname}/>
  <div className="app-shell app-shell--flat">
  <main className="main">
   <header className="topbar">

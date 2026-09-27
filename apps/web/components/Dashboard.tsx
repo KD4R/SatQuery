@@ -27,7 +27,6 @@ import TraceDrawer from "./TraceDrawer";
 import { useMissionRun } from "../lib/useMissionRun";
 import { demoModeEnabled } from "../lib/api/source";
 import DashboardTopBar from "./DashboardTopBar";
-import DitherBackground from "./DitherBackground";
 import type { Stage, Evidence } from "../lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -134,7 +133,6 @@ export default function Dashboard() {
   // view is the mission page.
   return (
     <>
-      <DitherBackground />
       <DashboardTopBar run={run} activeHref="/dashboard" />
       <div className="app-shell app-shell--flat">
       <main className="main">

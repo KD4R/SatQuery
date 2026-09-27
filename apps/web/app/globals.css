@@ -1007,45 +1007,13 @@ body:has(.preview-shell) {
   color: var(--accent);
 }
 
-/* ─── Dither background (shared by the whole dashboard family) ─────────── */
-.dither-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: var(--bg);
-}
-.dither-bg canvas {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* Every dashboard page lifts its chrome above the fixed canvas. */
-body:has(.app-shell) > *:not(.dither-bg),
-.preview-shell > *:not(.dither-bg),
-.preview-shell .preview-content {
+/* The dashboard family renders on the plain themed ground — no animated
+   background layer. Chrome still lifts above any fixed layer out of habit
+   from the background experiments. */
+body:has(.app-shell) > *,
+.preview-shell > * {
   position: relative;
   z-index: 1;
-}
-
-/* Panels sit on the dither field: translucent surfaces with a blur, so the
-   animation reads through without fighting the text. */
-body:has(.dither-bg) .card,
-body:has(.dither-bg) .sidebar,
-body:has(.dither-bg) .surface,
-body:has(.dither-bg) .glass-card,
-.draft-card {
-  background: rgba(14, 15, 16, 0.72);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .draft-card,
-  body:has(.dither-bg) .card {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: var(--panel2);
-  }
 }
 
 .preview-content {
@@ -1067,13 +1035,12 @@ body:has(.dither-bg) .glass-card,
   grid-column: span 2;
 }
 
-/* Draft cards follow the landing's card language: a translucent raise-step
-   surface with a hairline and a mono header — no gradients, no glow. The
-   blur/translucency (so the dither reads through) comes from the shared
-   .dither-bg rules above. */
+/* Draft cards follow the landing's card language: a raise-step surface with
+   a hairline and a mono header — no gradients, no glow. */
 .draft-card {
   position: relative;
   border-radius: 6px;
+  background: var(--panel);
   box-shadow: inset 0 0 0 1px var(--line);
   padding: 16px 18px;
   display: flex;

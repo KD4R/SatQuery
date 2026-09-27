@@ -5,15 +5,10 @@
  *
  * Styled after the landing page's instrument palette (space.css): near-black
  * ground, slate raise-steps with hairlines, signal orange as the one accent,
- * Share Tech Mono for anything measured. AcidSquares runs behind it, retuned
- * to the same hues so the field reads as part of the product rather than a
- * demo of the library.
- *
- * Honouring prefers-reduced-motion: the WebGL loop does not start (the
- * background stays a still dark field).
+ * Share Tech Mono for anything measured. Plain themed ground — no animated
+ * background layer.
  */
 
-import DitherBackground from "../../../components/DitherBackground";
 import DashboardTopBar from "../../../components/DashboardTopBar";
 
 /** Placeholder card — replaced by real elements during integration. */
@@ -49,9 +44,6 @@ function DraftCard({
 export default function DashboardPreviewPage() {
   return (
     <main className="preview-shell">
-      {/* Animated background — fixed, behind everything. */}
-      <DitherBackground />
-
       <DashboardTopBar activeHref="/dashboard/preview" />
       <div className="preview-content">
         <div className="page-head">
