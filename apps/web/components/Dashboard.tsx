@@ -19,6 +19,7 @@ import QueryConsole from "./QueryConsole";
 import ConfidenceCard from "./ConfidenceCard";
 import EvidencePanel from "./EvidencePanel";
 import RunTimeline from "./RunTimeline";
+import StageSteps from "./StageSteps";
 import SensorCard from "./SensorCard";
 import MonitoringCard from "./MonitoringCard";
 import ReportCard from "./ReportCard";
@@ -255,6 +256,9 @@ export default function Dashboard() {
               {rightRail ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
             </button>
           </div>
+
+          {/* Step strip — browsable pipeline steps (same live data as the timeline) */}
+          <StageSteps stages={stages} />
 
           {/* Mission stats strip */}
           <div className="section-strip">

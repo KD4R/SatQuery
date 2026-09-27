@@ -937,6 +937,42 @@ html[data-theme="light"] .map-control {
   gap: 7px;
   padding: 6px 0 9px;
 }
+
+/* StageSteps — the JellyRadio step strip and its detail readout. */
+.timeline-card > .stage-steps-radio {
+  max-width: 100%;
+}
+.stage-steps-radio {
+  margin: 10px 0 4px;
+}
+
+.stage-steps-detail {
+  border-top: 1px solid var(--line);
+  margin-top: 10px;
+  padding-top: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.stage-steps-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stage-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.stage-steps-detail p {
+  margin: 0;
+  color: var(--soft);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
 .timeline-icon {
   color: var(--muted);
   z-index: 1;

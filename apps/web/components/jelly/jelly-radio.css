@@ -1,0 +1,111 @@
+/* JellyRadio — squishy segmented control used by the dashboard's stage viewer.
+   All state is driven from the component via CSS custom properties; this file
+   only maps them onto visual properties. Palette comes from the dashboard's
+   theme tokens so dark/light both hold. */
+
+.jelly-radio {
+  --jr-chip: var(--panel3, #27272a);
+  --jr-active: var(--accent, #f5f5f5);
+  --jr-text: var(--muted, #f5f5f5);
+  --jr-active-text: var(--bg, #18181b);
+  --jr-gap: 8px;
+  --jr-radius: 18px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--jr-gap);
+  padding: 3px;
+  border-radius: calc(var(--jr-radius) + 3px);
+}
+
+.jelly-radio:focus-visible {
+  outline: 1px solid var(--line2);
+  outline-offset: 2px;
+}
+
+.jelly-chip {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: var(--jr-chip);
+  color: var(--jr-text);
+  font: 500 var(--jr-font, 12px) / 1 "DM Mono", ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--jr-height, 30px);
+  width: var(--jr-width, 64px);
+  border-radius: var(--jr-radius);
+  cursor: pointer;
+
+  /* The transition is the jelly: transform eases with overshoot while width
+     tracks the active chip's barge. Durations are driven by the component so
+     bounce/stiffness actually mean something. */
+  transition:
+    transform calc(var(--jr-settle, 320) * 1ms) cubic-bezier(0.34, 1.56, 0.64, 1),
+    width calc(var(--jr-settle, 320) * 1ms) cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color calc(var(--jr-settle, 320) * 0.6ms) ease,
+    color calc(var(--jr-settle, 320) * 0.6ms) ease,
+    border-color calc(var(--jr-settle, 320) * 0.6ms) ease;
+  /* 3D wobble inputs (rotateX/rotateY per chip). */
+  transform: perspective(600px) rotateX(var(--jr-rot-x, 0deg))
+    rotateY(var(--jr-rot-y, 0deg)) scale(var(--jr-scale, 1));
+  transform-style: preserve-3d;
+  will-change: transform, width;
+}
+
+.jelly-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Squeeze on press — physical feedback before the value even changes. */
+.jelly-chip:not(:disabled):active {
+  transform: perspective(600px) scale(calc(var(--jr-scale, 1) * 0.93));
+  transition-duration: 60ms;
+}
+
+.jelly-chip.is-active {
+  background: var(--jr-active);
+  border-color: var(--jr-active);
+  color: var(--jr-active-text);
+  font-weight: 600;
+}
+
+/* Inactive chips dip slightly when a neighbour takes the hit. */
+.jelly-chip.is-shrunk {
+  --jr-scale: calc(1 - var(--jr-shrink, 0.05));
+}
+
+.jelly-chip .jelly-chip-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Rows can overflow on narrow rails: let them scroll, not wrap or clip. */
+.jelly-radio.is-scrollable {
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.jelly-radio.is-scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jelly-chip {
+    transition:
+      background-color 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+    transform: none;
+  }
+  .jelly-chip:not(:disabled):active {
+    transform: none;
+  }
+}
