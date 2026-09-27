@@ -27,6 +27,7 @@ import TraceDrawer from "./TraceDrawer";
 
 import { useMissionRun } from "../lib/useMissionRun";
 import { demoModeEnabled } from "../lib/api/source";
+import DashboardTopBar from "./DashboardTopBar";
 import type { Stage, Evidence } from "../lib/types";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -146,8 +147,11 @@ export default function Dashboard() {
     active === "history" ? "Temporal mission memory and prior runs" :
     "Decision briefs, report generation and export surfaces";
 
+  // The console's telemetry bar, retabbed for the dashboard's own sections.
   return (
-    <div className="app-shell">
+    <>
+      <DashboardTopBar run={run} activeHref="/dashboard" />
+      <div className="app-shell">
       {/* Mobile nav overlay */}
       <div className={`mobile-nav ${mobileNav ? "open" : ""}`}>
         <Sidebar
@@ -327,6 +331,7 @@ export default function Dashboard() {
       )}
 
       <div className="mobile-nav-overlay" onClick={() => setMobileNav(false)} />
-    </div>
+      </div>
+    </>
   );
 }

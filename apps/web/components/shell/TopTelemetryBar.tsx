@@ -17,7 +17,12 @@ import { useEffect, useState } from "react";
 import { Label, StatusChip } from "../system/primitives";
 import type { DataSource } from "../../lib/api/source";
 
-const NAV_TABS = [
+export interface NavTab {
+  label: string;
+  href: string;
+}
+
+const NAV_TABS: NavTab[] = [
   { label: "Mission", href: "/console" },
   { label: "Monitoring", href: "/monitoring" },
   { label: "Archive", href: "/missions" },
@@ -46,6 +51,10 @@ export interface TopTelemetryBarProps {
   /** Fixed clock for the deterministic demo and for tests. */
   frozenClock?: string;
   gatewayReachable: boolean | null;
+  /** Override the tab row (defaults to the console's Mission/Monitoring/Archive). */
+  tabs?: NavTab[];
+  /** Which tab renders active (matched by href; defaults to /console). */
+  activeHref?: string;
 }
 
 export function TopTelemetryBar({
@@ -55,6 +64,8 @@ export function TopTelemetryBar({
   source,
   frozenClock,
   gatewayReachable,
+  tabs = NAV_TABS,
+  activeHref = "/console",
 }: TopTelemetryBarProps) {
   const [clock, setClock] = useState<string>(frozenClock ?? "--:--:--");
 
@@ -90,13 +101,14 @@ export function TopTelemetryBar({
         </div>
 
         <nav className="console-nav-tabs" aria-label="Console sections">
-          {NAV_TABS.map((t) => (
+          {tabs.map((t) => (
             <a
-              key={t.label}
+              key={t.href}
               href={t.href}
               className={`console-nav-tab${
-                t.label === "Mission" ? " console-nav-tab-active" : ""
+                t.href === activeHref ? " console-nav-tab-active" : ""
               }`}
+              aria-current={t.href === activeHref ? "page" : undefined}
             >
               {t.label}
             </a>
