@@ -16,7 +16,11 @@
  * page does not scroll, the globe fades up once the mark has landed.
  *
  * The very first time a browser opens the site, a two-second opening sound plays
- * with it (see introSound.ts); never again after that.
+ * with it (see introSound.ts); never again after that. Browsers only allow sound
+ * after a click or key press, so on that first visit -- if the browser is holding
+ * the sound -- the mark waits in the middle with "Click anywhere to enter", and
+ * the click starts the sound and the cube together. If nobody clicks within ten
+ * seconds, it carries on silently (and the sound stays owed for next time).
  *
  * Skipped under reduced motion: a small inline script, run while the HTML is still
  * being parsed, hides the overlay before first paint so there is no flash. With
@@ -24,9 +28,9 @@
  * straight to the flight.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { playIntroSoundOnce } from "./introSound";
+import { createIntroSound } from "./introSound";
 
 export type IntroPhase = "logo" | "fly" | "done";
 
@@ -48,16 +52,24 @@ export function BrandIntro({
   onPhase: (p: IntroPhase) => void;
 }) {
   const markRef = useRef<HTMLSpanElement | null>(null);
+  // "armed" = the cube is turning and the two-second hold is running.
+  // "gated" = first visit, waiting for the click that lets the sound play.
+  const [armed, setArmed] = useState(false);
+  const [gated, setGated] = useState(false);
 
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       onPhase("done");
       return;
     }
-    const stopSound = playIntroSoundOnce();
+    const sound = createIntroSound();
 
+    let hold: ReturnType<typeof setTimeout>;
     let landed: ReturnType<typeof setTimeout>;
+    let giveUp: ReturnType<typeof setTimeout>;
     let flown = false;
+    let running = false;
+
     const fly = () => {
       if (flown) return;
       flown = true;
@@ -72,28 +84,55 @@ export function BrandIntro({
       onPhase("fly");
       landed = setTimeout(() => {
         onPhase("done");
-        // give a sound that started late (on a click) time to finish
-        setTimeout(stopSound, 2200);
+        setTimeout(sound.stop, 2400); // let the sound finish
       }, FLY_MS);
     };
 
-    const hold = setTimeout(fly, HOLD_MS);
-    const skip = () => fly();
-    window.addEventListener("keydown", skip, { once: true });
-    window.addEventListener("pointerdown", skip, { once: true });
+    // Start the cube and the two-second hold.
+    const run = () => {
+      if (running) return;
+      running = true;
+      clearTimeout(giveUp);
+      setGated(false);
+      setArmed(true);
+      hold = setTimeout(fly, HOLD_MS);
+    };
+
+    const onGesture = () => {
+      if (!running) {
+        sound.play(); // inside the gesture, so the browser allows it
+        run();
+      } else fly(); // a second click or key skips ahead
+    };
+
+    if (sound.needsGesture) {
+      setGated(true);
+      giveUp = setTimeout(run, 10_000);
+    } else {
+      sound.play();
+      run();
+    }
+
+    window.addEventListener("keydown", onGesture);
+    window.addEventListener("pointerdown", onGesture);
     return () => {
       clearTimeout(hold);
       clearTimeout(landed);
-      window.removeEventListener("keydown", skip);
-      window.removeEventListener("pointerdown", skip);
-      stopSound();
+      clearTimeout(giveUp);
+      window.removeEventListener("keydown", onGesture);
+      window.removeEventListener("pointerdown", onGesture);
+      sound.stop();
     };
   }, [onPhase]);
 
   if (phase === "done") return null;
 
   return (
-    <div className="sq-boot" data-phase={phase} aria-hidden="true">
+    <div
+      className={`sq-boot${armed ? " is-armed" : ""}${gated ? " is-gated" : ""}`}
+      data-phase={phase}
+      aria-hidden="true"
+    >
       <script dangerouslySetInnerHTML={{ __html: SKIP_SCRIPT }} />
       <noscript>
         <style>{NOSCRIPT_STYLE}</style>
@@ -107,6 +146,10 @@ export function BrandIntro({
           </span>
         </span>
         <span className="sq-boot-word">SatQuery</span>
+      </span>
+      <span className="sq-boot-enter">
+        <i />
+        Click anywhere to enter · sound on
       </span>
     </div>
   );

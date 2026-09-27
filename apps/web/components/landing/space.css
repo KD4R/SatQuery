@@ -533,6 +533,61 @@
   }
 }
 
+/* Until the intro starts (first visit: until the click), the cube waits
+   face-on; it turns once armed. */
+.sq-boot:not(.is-armed) .sq-cube {
+  animation-play-state: paused;
+}
+
+.sq-boot.is-gated .sq-cube {
+  animation: none;
+  transform: translateZ(-27px);
+}
+
+.sq-boot-enter {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 64px);
+  translate: -50% 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 400ms var(--e-out),
+    transform 400ms var(--e-out);
+  pointer-events: none;
+}
+
+.sq-boot-enter i {
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--c-signal);
+  animation: sq-enter-pulse 1.2s ease-in-out infinite;
+}
+
+.sq-boot.is-gated .sq-boot-enter {
+  opacity: 1;
+  transform: none;
+}
+
+.sq-boot.is-gated {
+  cursor: pointer;
+}
+
+@keyframes sq-enter-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
 .sq-boot-word {
   animation: sq-boot-word 700ms var(--e-out) 250ms both;
 }

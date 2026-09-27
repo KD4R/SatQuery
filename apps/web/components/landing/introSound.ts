@@ -6,12 +6,12 @@
  * license: a low pad swells in, a tone sweeps up like a signal locking on, and
  * two soft pings land (a radar echo) as the cube settles. About 2 seconds.
  *
- * Browsers only allow sound after the visitor has interacted with a page. On a
- * truly first visit that usually means the sound cannot start on its own. So:
- * try to start it immediately; if the browser holds it, start it on the first
- * click or key press during the intro instead. It is marked as played only once
- * it has actually been heard, so a visitor who never got to hear it gets another
- * chance on their next visit -- and nobody hears it twice.
+ * Browsers only allow sound after the visitor has interacted with a page, and a
+ * website cannot override that. So on a first visit where the browser holds the
+ * sound, the intro shows "Click anywhere to enter" and waits: that click is what
+ * lets the sound play, in sync with the cube. Where the browser already allows
+ * sound, it simply plays. It is marked as played only once it has actually
+ * started, so nobody hears it twice, and nobody who missed it loses it.
  */
 
 const KEY = "sq-intro-sound-played";
@@ -86,23 +86,39 @@ function compose(ctx: AudioContext) {
   ping(t0 + 1.45, 1318.5, 0.06);
 }
 
+export interface IntroSound {
+  /** True when the sound is still owed but the browser will only allow it after
+   *  a click or key press -- the intro then waits for one ("click to enter"). */
+  needsGesture: boolean;
+  /** Start the sound. Call it synchronously inside the click/key handler. */
+  play: () => void;
+  /** Release the audio context (call when the intro is over). */
+  stop: () => void;
+}
+
+const SILENT: IntroSound = {
+  needsGesture: false,
+  play: () => {},
+  stop: () => {},
+};
+
 /**
- * Plays the sound if this browser has never heard it. Returns a cleanup that
- * removes the gesture fallback (call it when the intro ends).
+ * Prepares the opening sound for this load. Silent (no-op) if this browser has
+ * already heard it or cannot make sound at all.
  */
-export function playIntroSoundOnce(): () => void {
-  if (typeof window === "undefined" || alreadyPlayed()) return () => {};
+export function createIntroSound(): IntroSound {
+  if (typeof window === "undefined" || alreadyPlayed()) return SILENT;
   const AC =
     window.AudioContext ??
     (window as unknown as { webkitAudioContext?: typeof AudioContext })
       .webkitAudioContext;
-  if (!AC) return () => {};
+  if (!AC) return SILENT;
 
   let ctx: AudioContext;
   try {
     ctx = new AC();
   } catch {
-    return () => {};
+    return SILENT;
   }
 
   let done = false;
@@ -112,26 +128,17 @@ export function playIntroSoundOnce(): () => void {
     compose(ctx);
     markPlayed();
     setTimeout(() => void ctx.close().catch(() => undefined), 2600);
-    removeGesture();
   };
 
-  const onGesture = () => {
-    void ctx.resume().then(start, () => undefined);
-  };
-  const removeGesture = () => {
-    window.removeEventListener("pointerdown", onGesture, true);
-    window.removeEventListener("keydown", onGesture, true);
-  };
-
-  if (ctx.state === "running") start();
-  else {
-    void ctx.resume().then(start, () => undefined);
-    window.addEventListener("pointerdown", onGesture, true);
-    window.addEventListener("keydown", onGesture, true);
-  }
-
-  return () => {
-    removeGesture();
-    if (!done) void ctx.close().catch(() => undefined);
+  return {
+    needsGesture: ctx.state !== "running",
+    play: () => {
+      if (done) return;
+      if (ctx.state === "running") start();
+      else void ctx.resume().then(start, () => undefined);
+    },
+    stop: () => {
+      if (!done) void ctx.close().catch(() => undefined);
+    },
   };
 }
