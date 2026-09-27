@@ -1044,18 +1044,20 @@ body:has(.preview-shell) {
 /* Beginner guide — a floating, collapsible, draggable panel. The header is
    the drag handle; the collapse button stays clickable (pointer-down ignores
    it). Docked bottom-right by default; once dragged, inline left/top styles
-   take over and the panel keeps its viewport-clamped position. */
+   take over and the panel keeps its viewport-clamped position.
+   Visuals — background, border, rounded corners and the cursor-following
+   glow — come from the BorderGlow card inside; the host only positions. */
 .guide-float {
   position: fixed;
   right: 24px;
   bottom: 64px;
   z-index: 60;
   width: min(360px, calc(100vw - 48px));
-  background: var(--panel);
-  box-shadow:
-    inset 0 0 0 1px var(--line),
-    0 18px 50px rgba(0, 0, 0, 0.45);
-  border-radius: 10px;
+}
+/* Clip the head/body to the card's rounded corners; the body still scrolls
+   itself, so nothing inside ever needs the inner to scroll. */
+.guide-float .border-glow-inner {
+  border-radius: inherit;
   overflow: hidden;
 }
 .guide-float.is-dragging {
@@ -1066,9 +1068,9 @@ body:has(.preview-shell) {
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 11px 12px;
+  padding: 11px 14px;
   cursor: grab;
-  background: var(--panel2);
+  background: color-mix(in srgb, #120F17 88%, white 12%);
   border-bottom: 1px solid var(--line);
   touch-action: none;
 }

@@ -5,6 +5,10 @@
  * drag anywhere on the page. The drag handle is the header; position is
  * clamped to the viewport and re-clamped on resize. Steps are one-liners that
  * point only at controls that actually exist — no invented figures.
+ *
+ * The visuals live on the React Bits BorderGlow card inside: its mesh-gradient
+ * border follows the cursor and intensifies near the panel's edges. This
+ * section only positions the panel and hosts the drag handlers.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +22,8 @@ import {
   PenLine,
   Play,
 } from "lucide-react";
+
+import BorderGlow from "./system/BorderGlow";
 
 const STEPS: { icon: React.ReactNode; title: string; body: string }[] = [
   {
@@ -112,44 +118,56 @@ export default function BeginnerGuide() {
       data-open={open}
       aria-label="Step by step guide"
     >
-      <div
-        className="guide-head"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
+      <BorderGlow
+        edgeSensitivity={30}
+        glowColor="40 80 80"
+        backgroundColor="#120F17"
+        borderRadius={28}
+        glowRadius={40}
+        glowIntensity={1.0}
+        coneSpread={25}
+        animated={false}
+        colors={["#c084fc", "#f472b6", "#38bdf8"]}
       >
-        <span className="guide-grip" aria-hidden="true">
-          ⠿
-        </span>
-        <span className="guide-index" aria-hidden="true">
-          ?
-        </span>
-        <b>Step by step guide</b>
-        <button
-          type="button"
-          className="guide-toggle"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-label={open ? "Collapse guide" : "Expand guide"}
+        <div
+          className="guide-head"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
         >
-          {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-        </button>
-      </div>
+          <span className="guide-grip" aria-hidden="true">
+            ⠿
+          </span>
+          <span className="guide-index" aria-hidden="true">
+            ?
+          </span>
+          <b>Step by step guide</b>
+          <button
+            type="button"
+            className="guide-toggle"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-label={open ? "Collapse guide" : "Expand guide"}
+          >
+            {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+          </button>
+        </div>
 
-      {open && (
-        <ol className="guide-body">
-          {STEPS.map((s) => (
-            <li className="guide-item" key={s.title}>
-              <span className="guide-icon">{s.icon}</span>
-              <span className="guide-text">
-                <b>{s.title}</b>
-                <small>{s.body}</small>
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
+        {open && (
+          <ol className="guide-body">
+            {STEPS.map((s) => (
+              <li className="guide-item" key={s.title}>
+                <span className="guide-icon">{s.icon}</span>
+                <span className="guide-text">
+                  <b>{s.title}</b>
+                  <small>{s.body}</small>
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </BorderGlow>
     </section>
   );
 }
