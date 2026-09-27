@@ -1,0 +1,79 @@
+/* RubberSegment — track, thumb and slots. The thumb is absolutely positioned
+   and moved purely with transform + width so the compositor owns the motion.
+   Palette comes in through CSS custom properties set by the component, so
+   dark/light both hold and callers can theme per-instance. */
+
+.rubber-segment {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  height: var(--rs-height);
+  padding: var(--rs-inset);
+  background: var(--rs-track, var(--panel3));
+  border-radius: var(--rs-radius);
+  box-shadow: inset 0 0 0 1px var(--line);
+  isolation: isolate;
+  user-select: none;
+}
+
+.rubber-segment.is-draggable .rubber-thumb {
+  cursor: grab;
+}
+.rubber-segment.is-draggable .rubber-thumb:active {
+  cursor: grabbing;
+}
+
+/* The rubber thumb: one element, stretched/squashed via transform. */
+.rubber-thumb {
+  position: absolute;
+  top: var(--rs-inset);
+  bottom: var(--rs-inset);
+  left: 0;
+  width: 0;
+  background: var(--rs-thumb, var(--panel));
+  border-radius: calc(var(--rs-radius) - var(--rs-inset));
+  box-shadow:
+    0 1px 6px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 1px var(--line2);
+  transform-origin: left center;
+  will-change: transform, width;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.rubber-slot {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 14px;
+  font-size: var(--rs-font);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--rs-text, var(--soft));
+  border-radius: calc(var(--rs-radius) - var(--rs-inset));
+  cursor: pointer;
+  transition: color 140ms ease;
+  outline: none;
+}
+.rubber-slot:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.rubber-slot.is-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.rubber-slot.is-active {
+  color: var(--rs-active-text, var(--text));
+}
+.rubber-slot.is-active svg {
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rubber-thumb {
+    transition: none;
+  }
+}

@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * The dashboard's top nav: the JellyRadio segmented control carrying the
- * section tabs. Selecting a chip plays the jelly wobble and navigates
- * client-side; the radio always reflects the real route, so back/forward
- * and external links stay truthful. The active tab shows a small icon.
+ * The dashboard's top nav: the RubberSegment segmented control carrying the
+ * section tabs. Selecting a section sends the rubber thumb gliding into its
+ * slot (stretch/squash) and navigates client-side; the control always
+ * reflects the real route, so back/forward and external links stay truthful.
+ * The active tab shows a small icon.
  */
 
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
-import JellyRadio from "./jelly/JellyRadio";
+import RubberSegment from "./rubber/RubberSegment";
 import type { DashboardTab } from "./DashboardTopBar";
 
 export default function JellyNav({
@@ -52,24 +53,22 @@ export default function JellyNav({
 
   return (
     <div className="jelly-nav">
-      <JellyRadio
+      <RubberSegment
         items={tabs.map((t) => ({
           value: t.href,
           label: t.label,
-          icon: t.icon ? <t.icon size={11} /> : undefined,
+          icon: t.icon ? <t.icon size={12} /> : undefined,
         }))}
         value={selected}
         onChange={(v) => change(v)}
-        size="xs"
-        gap={2}
-        radius={8}
-        swell={0.08}
-        barge={3}
-        shrink={0.03}
-        jelly={0.8}
-        bounce={0.22}
-        stagger={16}
-        stiffness={620}
+        size="sm"
+        radius={10}
+        inset={3}
+        equalSlots
+        stretch={100}
+        squash={3}
+        speed={1}
+        glide={75}
         ariaLabel="Dashboard sections"
         className="jelly-nav-radio"
       />

@@ -1778,7 +1778,7 @@ body:has(.preview-shell) {
   border-color: var(--line2);
 }
 
-/* The JellyRadio nav inside the bar. */
+/* The RubberSegment nav inside the bar. */
 .jelly-nav {
   min-width: 0;
   overflow-x: auto;
@@ -1789,21 +1789,11 @@ body:has(.preview-shell) {
   display: none;
 }
 .jelly-nav .jelly-nav-radio {
-  padding: 0;
-  gap: 2px;
+  height: 32px;
 }
-.jelly-nav .jelly-chip {
-  border-color: transparent;
-  height: 28px;
+.jelly-nav .rubber-slot {
+  height: 100%;
   letter-spacing: 0.02em;
-}
-.jelly-nav .jelly-chip.is-active {
-  background: rgba(255, 255, 255, 0.06);
-  outline: 1px solid var(--hairline-bright, var(--line2));
-  color: var(--text);
-}
-.jelly-nav .jelly-chip.is-active svg {
-  color: var(--accent);
 }
 
 /* Page-bottom telemetry subset (UTC · gateway · state · env). */
