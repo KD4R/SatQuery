@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * The opening beat: the SatQuery mark alone in the middle of the screen, then,
- * after two seconds, it flies to its place in the nav's top-left corner, and the
- * planet comes up behind it.
+ * The opening beat, on every load: the SatQuery mark alone in the middle of the
+ * screen -- its cube turning in 3D and settling face-on -- then, after two
+ * seconds, it flies to its place in the nav's top-left corner and the planet
+ * comes up behind it.
  *
  * The flight is a FLIP: measure the big mark and the nav brand, then transform the
  * big one onto the small one (translate + uniform scale -- the big mark is drawn
@@ -14,23 +15,27 @@
  * and space.css keys everything else off that: the nav brand and links wait, the
  * page does not scroll, the globe fades up once the mark has landed.
  *
- * Once per browser session. A small inline script, run while the HTML is still
- * being parsed, hides the overlay before first paint on later visits (and under
- * reduced motion), so there is no flash of the mark. With JavaScript off, a
- * <noscript> style does the same. A click or any key skips straight to the flight.
+ * The very first time a browser opens the site, a two-second opening sound plays
+ * with it (see introSound.ts); never again after that.
+ *
+ * Skipped under reduced motion: a small inline script, run while the HTML is still
+ * being parsed, hides the overlay before first paint so there is no flash. With
+ * JavaScript off, a <noscript> style does the same. A click or any key skips
+ * straight to the flight.
  */
 
 import { useEffect, useRef } from "react";
+
+import { playIntroSoundOnce } from "./introSound";
 
 export type IntroPhase = "logo" | "fly" | "done";
 
 const HOLD_MS = 2000;
 const FLY_MS = 850;
-const KEY = "sq-intro-seen";
 
 /* Runs during HTML parsing, before first paint. Inserts a style rather than
    touching <html> or <body> attributes, so React's hydration sees nothing changed. */
-const SKIP_SCRIPT = `try{if(sessionStorage.getItem("${KEY}")||matchMedia("(prefers-reduced-motion: reduce)").matches){var s=document.createElement("style");s.id="sq-intro-skip";s.textContent=".sq-boot{display:none!important}.sq-landing[data-intro] .sq-intro-wait,.sq-landing[data-intro] .sq-intro-brand{opacity:1!important;transform:none!important;transition:none!important}.sq-landing[data-intro]{overflow-y:auto!important}";document.head.appendChild(s)}}catch(e){}`;
+const SKIP_SCRIPT = `try{if(matchMedia("(prefers-reduced-motion: reduce)").matches){var s=document.createElement("style");s.id="sq-intro-skip";s.textContent=".sq-boot{display:none!important}.sq-landing[data-intro] .sq-intro-wait,.sq-landing[data-intro] .sq-intro-brand{opacity:1!important;transform:none!important;transition:none!important}.sq-landing[data-intro]{overflow-y:auto!important}";document.head.appendChild(s)}}catch(e){}`;
 
 const NOSCRIPT_STYLE =
   ".sq-boot{display:none!important}.sq-landing[data-intro] .sq-intro-wait,.sq-landing[data-intro] .sq-intro-brand{opacity:1!important;transform:none!important}.sq-landing[data-intro]{overflow-y:auto!important}";
@@ -45,21 +50,11 @@ export function BrandIntro({
   const markRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
-    let seen = false;
-    try {
-      seen = !!sessionStorage.getItem(KEY);
-    } catch {
-      /* storage blocked: just play it */
-    }
-    if (seen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       onPhase("done");
       return;
     }
-    try {
-      sessionStorage.setItem(KEY, "1");
-    } catch {
-      /* fine */
-    }
+    const stopSound = playIntroSoundOnce();
 
     let landed: ReturnType<typeof setTimeout>;
     let flown = false;
@@ -75,7 +70,11 @@ export function BrandIntro({
         mark.style.transform = `translate(${b.left - a.left}px, ${b.top - a.top}px) scale(${s})`;
       }
       onPhase("fly");
-      landed = setTimeout(() => onPhase("done"), FLY_MS);
+      landed = setTimeout(() => {
+        onPhase("done");
+        // give a sound that started late (on a click) time to finish
+        setTimeout(stopSound, 2200);
+      }, FLY_MS);
     };
 
     const hold = setTimeout(fly, HOLD_MS);
@@ -87,6 +86,7 @@ export function BrandIntro({
       clearTimeout(landed);
       window.removeEventListener("keydown", skip);
       window.removeEventListener("pointerdown", skip);
+      stopSound();
     };
   }, [onPhase]);
 
@@ -99,7 +99,13 @@ export function BrandIntro({
         <style>{NOSCRIPT_STYLE}</style>
       </noscript>
       <span ref={markRef} className="sq-boot-brand">
-        <span className="sq-boot-mark" />
+        <span className="sq-boot-mark">
+          <span className="sq-cube">
+            {["front", "back", "right", "left", "top", "bottom"].map((f) => (
+              <i key={f} className={`sq-cube-face sq-cube-${f}`} />
+            ))}
+          </span>
+        </span>
         <span className="sq-boot-word">SatQuery</span>
       </span>
     </div>
