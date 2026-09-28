@@ -42,6 +42,16 @@ class AuthSettings:
             raise ValueError("AUTH_JWKS_URL is required when AUTH_ALGORITHM=RS256")
         if self.algorithm == "HS256" and not self.secret_key:
             raise ValueError("AUTH_SECRET_KEY is required when AUTH_ALGORITHM=HS256")
+        # A shared-secret (HS256) verifier cannot be a production issuer: every
+        # service holding the secret can mint tokens for any tenant. Refusing it
+        # here turns "someone copied the dev compose env to prod" into a startup
+        # failure instead of a silent tenant-isolation hole (A02, P1-03).
+        environment = os.getenv("ENVIRONMENT", "development").strip().lower()
+        if self.algorithm == "HS256" and environment in {"production", "prod", "staging"}:
+            raise ValueError(
+                "AUTH_ALGORITHM=HS256 is not permitted when ENVIRONMENT="
+                f"{environment}; configure RS256 with AUTH_JWKS_URL"
+            )
         if (
             self.algorithm == "RS256"
             and self.jwks_url
