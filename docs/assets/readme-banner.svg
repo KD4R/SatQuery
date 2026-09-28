@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-label="SatQuery AI — natural-language Earth observation">
+  <defs>
+    <radialGradient id="ocean" cx="38%" cy="34%" r="75%">
+      <stop offset="0" stop-color="#1d4f80"/>
+      <stop offset="0.35" stop-color="#123553"/>
+      <stop offset="0.7" stop-color="#0a1e33"/>
+      <stop offset="1" stop-color="#02060c"/>
+    </radialGradient>
+    <radialGradient id="halo" cx="50%" cy="50%" r="50%">
+      <stop offset="0.78" stop-color="#4a9eff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#4a9eff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f87010" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#f87010" stop-opacity="0.02"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#98a0a8" stroke-opacity="0.07" stroke-width="1"/>
+    </pattern>
+    <clipPath id="disc"><circle cx="1010" cy="190" r="150"/></clipPath>
+  </defs>
+
+  <rect width="1280" height="320" fill="#080808"/>
+  <rect width="1280" height="320" fill="url(#grid)"/>
+
+  <!-- stars -->
+  <g fill="#ecedee">
+    <circle cx="690" cy="40" r="1.2" opacity=".7"/><circle cx="742" cy="118" r=".9" opacity=".5"/>
+    <circle cx="812" cy="30" r="1.4" opacity=".6"/><circle cx="1210" cy="46" r="1" opacity=".6"/>
+    <circle cx="1248" cy="150" r="1.3" opacity=".5"/><circle cx="1180" cy="290" r="1" opacity=".5"/>
+    <circle cx="760" cy="262" r="1.1" opacity=".5"/><circle cx="640" cy="200" r=".8" opacity=".4"/>
+  </g>
+
+  <!-- planet -->
+  <circle cx="1010" cy="190" r="190" fill="url(#halo)"/>
+  <circle cx="1010" cy="190" r="150" fill="url(#ocean)"/>
+  <g clip-path="url(#disc)" fill="none" stroke="#ffffff" stroke-opacity="0.06">
+    <ellipse cx="1010" cy="190" rx="150" ry="40"/><ellipse cx="1010" cy="190" rx="150" ry="95"/>
+    <ellipse cx="1010" cy="190" rx="45" ry="150"/><ellipse cx="1010" cy="190" rx="105" ry="150"/>
+    <line x1="860" y1="190" x2="1160" y2="190"/><line x1="1010" y1="40" x2="1010" y2="340"/>
+  </g>
+  <!-- land (stylised) -->
+  <g clip-path="url(#disc)" fill="#39472f" stroke="#96c8ff" stroke-opacity=".18" stroke-width=".8">
+    <path d="M905 120c22-18 58-22 80-12 14 7 30 4 44 12 12 8 6 22-8 28-20 9-18 26-36 32-22 8-40-6-58-2-18 4-34-10-30-28 2-12-4-20 8-30z"/>
+    <path d="M1040 150c18-6 44 2 58 16 12 12 30 18 32 36 2 20-16 34-34 42-16 8-22 26-40 28-14 2-18-14-16-28 2-16-10-26-14-42-4-20 0-46 14-52z"/>
+    <path d="M950 238c16-4 30 8 34 20 4 14-8 28-22 30-16 2-28-10-28-24 0-12 4-24 16-26z"/>
+  </g>
+  <circle cx="1010" cy="190" r="150" fill="none" stroke="#78beff" stroke-opacity=".25"/>
+
+  <!-- orbit + Sentinel-1 -->
+  <ellipse cx="1010" cy="190" rx="230" ry="70" transform="rotate(-18 1010 190)" fill="none" stroke="#98a0a8" stroke-opacity=".35"/>
+  <path d="M1128 78 L1086 196 L1124 204 Z" fill="url(#beam)"/>
+  <g transform="translate(1128 78) rotate(-18)">
+    <rect x="-24" y="-3" width="16" height="6" fill="#60a0f8" opacity=".85"/>
+    <rect x="8" y="-3" width="16" height="6" fill="#60a0f8" opacity=".85"/>
+    <rect x="-6" y="-5" width="12" height="10" fill="#ecedee"/>
+    <rect x="-5" y="5" width="10" height="3" fill="#f87010"/>
+  </g>
+
+  <!-- water detections -->
+  <g fill="#30d098">
+    <circle cx="1098" cy="198" r="4"/><circle cx="936" cy="150" r="3"/><circle cx="1004" cy="232" r="3"/>
+  </g>
+  <circle cx="1098" cy="198" r="10" fill="none" stroke="#30d098" stroke-opacity=".5"/>
+  <path d="M936 150 Q1010 120 1098 198" fill="none" stroke="#30d098" stroke-opacity=".7" stroke-width="1.4"/>
+
+  <!-- wordmark -->
+  <g transform="translate(72 96)">
+    <rect x="0" y="0" width="44" height="44" rx="4" fill="none" stroke="#ecedee" stroke-width="2.5"/>
+    <rect x="15" y="15" width="14" height="14" fill="#f87010"/>
+    <text x="64" y="37" font-family="'Share Tech Mono','Chakra Petch',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="44" font-weight="700" fill="#ecedee" letter-spacing="1">SatQuery AI</text>
+  </g>
+  <text x="72" y="190" font-family="'Chakra Petch',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif" font-size="22" fill="#b9bec4">Ask the planet a question. Get an answer with its evidence.</text>
+  <text x="72" y="236" font-family="'Share Tech Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="14" fill="#98a0a8" letter-spacing="2">NATURAL-LANGUAGE EARTH OBSERVATION · SAR FLOOD MAPPING · EVIDENCE-FIRST</text>
+  <g font-family="'Share Tech Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="12" letter-spacing="1.5">
+    <rect x="72" y="258" width="10" height="10" fill="#f87010"/><text x="90" y="267" fill="#98a0a8">SIGNAL</text>
+    <rect x="172" y="258" width="10" height="10" fill="#30d098"/><text x="190" y="267" fill="#98a0a8">WATER</text>
+    <rect x="262" y="258" width="10" height="10" fill="#60a0f8"/><text x="280" y="267" fill="#98a0a8">HELD-OUT</text>
+    <text x="400" y="267" fill="#626970">SMART INDIA HACKATHON 2026</text>
+  </g>
+</svg>
