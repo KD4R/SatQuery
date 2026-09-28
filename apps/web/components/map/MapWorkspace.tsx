@@ -73,13 +73,41 @@ const LAYER_ACCENT: Record<LayerId, string> = {
   aoi: "rgba(80, 200, 120, 0.85)",
 };
 
-/** A bare dark canvas — no third-party tile hosts. See the note above. */
 const EMPTY_STYLE = {
   version: 8 as const,
-  sources: {},
+  sources: {
+    "esri-world-imagery": {
+      type: "raster" as const,
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+      ],
+      tileSize: 256,
+      attribution: "Tiles &copy; Esri"
+    },
+    "esri-world-labels": {
+      type: "raster" as const,
+      tiles: [
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+      ],
+      tileSize: 256
+    }
+  },
   layers: [
-    { id: "bg", type: "background" as const, paint: { "background-color": "#04060a" } },
-  ],
+    {
+      id: "world-imagery",
+      type: "raster" as const,
+      source: "esri-world-imagery",
+      minzoom: 0,
+      maxzoom: 22
+    },
+    {
+      id: "world-labels",
+      type: "raster" as const,
+      source: "esri-world-labels",
+      minzoom: 0,
+      maxzoom: 22
+    }
+  ]
 };
 
 export function MapWorkspace({

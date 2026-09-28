@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
             // /ws/v1 rewrites), so images and fetch/XHR are 'self'; ws:/wss: is
             // kept for the mission event socket. It used to be `*` for both.
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:; font-src 'self' https://fonts.gstatic.com; worker-src 'self' blob:;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https://*.arcgisonline.com https://*.cartocdn.com https://basemaps.cartocdn.com; connect-src 'self' ws: wss: https://*.arcgisonline.com https://*.cartocdn.com https://basemaps.cartocdn.com; font-src 'self' https://fonts.gstatic.com; worker-src 'self' blob:;",
           },
         ],
       },

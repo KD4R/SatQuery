@@ -5,7 +5,7 @@ nodes/intent_extractor.py — NLP/heuristic intent extraction and mission planni
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, SecretStr
 from langchain_core.prompts import PromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import PydanticOutputParser
 
 from services.agent.schemas import PlanStep
@@ -40,7 +40,7 @@ def extract_intent_and_plan(
 ) -> Tuple[Dict[str, Any], List[PlanStep], List[str]]:
     """
     Parses a natural language mission prompt into structured intent, candidate sensors,
-    and an ordered execution plan using LangChain and ChatOpenAI. Fallback to heuristics.
+    and an ordered execution plan using LangChain and ChatGoogleGenerativeAI. Fallback to heuristics.
     """
     clean_query = sanitize_prompt(query)
     if aoi:
@@ -49,7 +49,7 @@ def extract_intent_and_plan(
     settings = get_agent_settings()
     intent_parsed = None
 
-    if settings.openai_api_key:
+    if settings.gemini_api_key:
         try:
             parser = PydanticOutputParser(pydantic_object=IntentSchema)
             prompt = PromptTemplate(
@@ -60,7 +60,7 @@ def extract_intent_and_plan(
                 input_variables=["query"],
                 partial_variables={"format_instructions": parser.get_format_instructions()},
             )
-            llm = ChatOpenAI(model="gpt-4o-mini", api_key=SecretStr(settings.openai_api_key))
+            llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=SecretStr(settings.gemini_api_key))
             llm_chain = prompt | llm | parser
             intent_parsed = llm_chain.invoke({"query": clean_query})
         except Exception as e:

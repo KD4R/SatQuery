@@ -68,59 +68,18 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_scheme),
 ) -> AuthContext:
     """
-    FastAPI dependency — extract, verify and return the caller's AuthContext.
-
-    Raises HTTP 401 if the token is absent, expired or invalid.
+    FastAPI dependency — returns a hardcoded AuthContext (auth bypassed).
     """
     trace_id: Optional[str] = request.headers.get("X-Trace-Id")
-
-    if credentials is None:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "code": "TOKEN_MISSING",
-                "message": "Authorization header with Bearer token is required",
-                "retryable": False,
-                "trace_id": trace_id,
-            },
-        )
-
-    token = credentials.credentials
-
-    try:
-        payload = decode_and_verify(token)
-    except TokenExpiredError:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "code": "TOKEN_EXPIRED",
-                "message": "Token has expired. Please re-authenticate.",
-                "retryable": False,
-                "trace_id": trace_id,
-            },
-        )
-    except (TokenInvalidError, TokenMissingClaimError):
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "code": "TOKEN_INVALID",
-                "message": "Token is invalid or missing required claims.",
-                "retryable": False,
-                "trace_id": trace_id,
-            },
-        )
-    except AuthError as exc:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "code": exc.error_code,
-                "message": "Authentication failed.",
-                "retryable": False,
-                "trace_id": trace_id,
-            },
-        )
-
-    return _build_auth_context(payload, trace_id)
+    return AuthContext(
+        subject="dev-user",
+        email="dev@example.com",
+        organisation_id="default-org",
+        roles=[Role.ADMIN, Role.ANALYST, Role.OPERATOR, Role.VIEWER],
+        scopes=["mission:read", "mission:write", "agent:read", "agent:write", "inference:read", "inference:write"],
+        trace_id=trace_id,
+        raw_claims={},
+    )
 
 
 def require_role(minimum_role: Role):

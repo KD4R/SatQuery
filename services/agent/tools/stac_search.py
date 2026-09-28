@@ -65,7 +65,7 @@ class STACSearchTool(BaseTool):
             # Call P4 search service (defaults to bhoonidhi internally if not specified,
             # we will just use bhoonidhi for now)
             observations = search_service.search_observations(
-                provider_name="bhoonidhi",
+                provider_name="planetary_computer",
                 polygon=geo_polygon,
                 start_date=start,
                 end_date=end,
