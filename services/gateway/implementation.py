@@ -10,9 +10,12 @@ Registers:
 
 import os
 
-from fastapi import APIRouter, FastAPI, Response
+from fastapi import APIRouter, FastAPI, Request, Response
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from packages.observability import setup_logging, setup_telemetry
 from packages.observability.metrics import MetricsMiddleware, render_metrics
@@ -34,6 +37,31 @@ app = FastAPI(
 )
 
 app.add_middleware(IdempotencyMiddleware)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def canonical_error_response(request: Request, exc: StarletteHTTPException):
+    """Emit the frozen ErrorResponse shape (P1-02, P1-10) for gateway-raised errors.
+
+    Routers raise ``HTTPException(detail={"code", "message", "retryable"})``, which
+    FastAPI would serialise as ``{"detail": {...}}``. The contract, the browser
+    client and the integration tests all expect the flat envelope
+    ``{code, message, details, retryable, trace_id}``, so a circuit-open 503 or a
+    mapped upstream error must not arrive wrapped. Anything that is not already
+    shaped like an envelope keeps FastAPI's default rendering.
+    """
+    detail = exc.detail
+    if isinstance(detail, dict) and "code" in detail and "message" in detail:
+        body = {
+            "code": detail["code"],
+            "message": detail["message"],
+            "details": detail.get("details", []),
+            "retryable": bool(detail.get("retryable", False)),
+            "trace_id": detail.get("trace_id") or request.headers.get("X-Trace-Id"),
+        }
+        return JSONResponse(body, status_code=exc.status_code, headers=exc.headers)
+    return await http_exception_handler(request, exc)
+
 
 # ── Middleware ─────────────────────────────────────────────────────────────────
 settings = get_gateway_settings()

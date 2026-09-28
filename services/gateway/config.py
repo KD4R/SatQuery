@@ -32,6 +32,10 @@ class GatewaySettings:
             "Content-Type",
             "X-Trace-Id",
             "X-Request-Id",
+            # The web client sends this on every duplicate-sensitive write
+            # (P1-12). A cross-origin preflight that omits it is rejected by the
+            # browser, so a split-origin deployment could not submit a run at all.
+            "Idempotency-Key",
         ]
         self.rate_limit_requests: int = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
         self.rate_limit_window_s: int = int(os.getenv("RATE_LIMIT_WINDOW_S", "60"))

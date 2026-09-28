@@ -119,6 +119,26 @@ async function readError(
         trace_id: fallbackTraceId,
       };
     }
+    // Downstream services (agent, mission) raise HTTPException(detail={code, ...}),
+    // which FastAPI renders as {detail: {code, message}}. The gateway forwards
+    // those bodies verbatim, so unwrap them here: the run poller keys its 404
+    // grace window on code === "RUN_NOT_FOUND" and would otherwise never match.
+    if (
+      record.detail &&
+      typeof record.detail === "object" &&
+      !Array.isArray(record.detail)
+    ) {
+      const inner = record.detail as Record<string, unknown>;
+      if (typeof inner.code === "string" && typeof inner.message === "string") {
+        return {
+          code: inner.code,
+          message: inner.message,
+          details: Array.isArray(inner.details) ? inner.details : [],
+          trace_id:
+            typeof inner.trace_id === "string" ? inner.trace_id : fallbackTraceId,
+        };
+      }
+    }
     if (typeof record.code === "string" && typeof record.message === "string") {
       return {
         code: record.code,
