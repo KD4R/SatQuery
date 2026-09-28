@@ -205,7 +205,7 @@ export function MapWorkspace({
             "raster-fade-duration": 180,
             "raster-resampling": "nearest",
           },
-        });
+        }, "world-labels");
       }
     }
   }, [overlays, ready]);
@@ -252,7 +252,7 @@ export function MapWorkspace({
             "raster-fade-duration": 0,
             "raster-resampling": "nearest",
           },
-        });
+        }, "world-labels");
       }
     }
   }, [timeMachine, ready]);
@@ -368,13 +368,13 @@ export function MapWorkspace({
       type: "fill",
       source: "change-src",
       paint: { "fill-color": "#ff3b30", "fill-opacity": 0.22 },
-    });
+    }, "world-labels");
     m.addLayer({
       id: "change-outline",
       type: "line",
       source: "change-src",
       paint: { "line-color": "#ff3b30", "line-width": 1 },
-    });
+    }, "world-labels");
 
     if (onSelectChange) {
       m.on("click", "change-fill", (e) => {

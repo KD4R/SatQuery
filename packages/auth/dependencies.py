@@ -71,15 +71,12 @@ async def get_current_user(
     FastAPI dependency — returns a hardcoded AuthContext (auth bypassed).
     """
     trace_id: Optional[str] = request.headers.get("X-Trace-Id")
-    return AuthContext(
-        subject="dev-user",
-        email="dev@example.com",
-        organisation_id="default-org",
-        roles=[Role.ADMIN, Role.ANALYST, Role.OPERATOR, Role.VIEWER],
-        scopes=["mission:read", "mission:write", "agent:read", "agent:write", "inference:read", "inference:write"],
-        trace_id=trace_id,
-        raw_claims={},
-    )
+    if credentials is None:
+        raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Bearer token required", "retryable": False})
+    try:
+        return _build_auth_context(decode_and_verify(credentials.credentials), trace_id=trace_id)
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.http_status, detail={"code": exc.error_code, "message": str(exc), "retryable": False}) from exc
 
 
 def require_role(minimum_role: Role):

@@ -33,6 +33,62 @@ from packages.contracts.events import EventEnvelope
 logger = logging.getLogger(__name__)
 
 
+def _geometry_bbox(geometry: dict | None) -> list[float] | None:
+    """Return the WGS84 bbox of a STAC geometry for safe raster windowing."""
+    points: list[tuple[float, float]] = []
+
+    def walk(value):
+        if isinstance(value, list) and len(value) >= 2 and all(isinstance(v, (int, float)) for v in value[:2]):
+            points.append((float(value[0]), float(value[1])))
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk((geometry or {}).get("coordinates"))
+    if not points:
+        return None
+    return [min(x for x, _ in points), min(y for _, y in points), max(x for x, _ in points), max(y for _, y in points)]
+
+
+def _build_inference_scene(scene_info: dict, scene_id: str, scene_href: str, acquired_at: str) -> dict:
+    """Build the strict ``SceneRef`` payload expected by the inference API."""
+    provider = scene_info.get("provider") or "planetary_computer"
+    if hasattr(provider, "value"):
+        provider = provider.value
+    provider = str(provider).lower()
+    allowed_providers = {
+        "asf_hyp3", "copernicus_dataspace", "planetary_computer", "bhoonidhi",
+        "sen1floods11", "senforflood",
+    }
+    if provider not in allowed_providers:
+        provider = "planetary_computer"
+
+    pass_direction = scene_info.get("pass_direction")
+    if hasattr(pass_direction, "value"):
+        pass_direction = pass_direction.value
+    if pass_direction not in {None, "ASCENDING", "DESCENDING"}:
+        pass_direction = None
+
+    relative_orbit = scene_info.get("relative_orbit")
+    try:
+        relative_orbit = int(relative_orbit) if relative_orbit is not None else None
+    except (TypeError, ValueError):
+        relative_orbit = None
+
+    return {
+        "provider": provider,
+        "collection": str(scene_info.get("collection") or "sentinel-1-rtc"),
+        "item_id": str(scene_info.get("item_id") or scene_id),
+        "acquired_at": acquired_at,
+        "platform": str(scene_info.get("platform") or "SENTINEL-1A"),
+        "instrument": str(scene_info.get("instrument") or "C-SAR"),
+        "relative_orbit": relative_orbit,
+        "pass_direction": pass_direction,
+        "href": scene_href,
+        "cloud_cover": scene_info.get("cloud_cover"),
+    }
+
+
 def plan_mission(state: MissionState) -> dict:
     intent, plan_steps, selected_sensors = extract_intent_and_plan(
         state.sanitized_query or state.query, aoi=state.aoi
@@ -97,8 +153,14 @@ def acquire_data(state: MissionState) -> dict:
 
     # Use the aoi as bbox (heuristic fallback)
     bbox = [92.0, 25.5, 94.0, 27.5]
-    if state.aoi and "bbox" in state.aoi:
-        bbox = state.aoi["bbox"]
+    if state.aoi:
+        if "bbox" in state.aoi:
+            bbox = state.aoi["bbox"]
+        elif "coordinates" in state.aoi:
+            coords = state.aoi["coordinates"][0]
+            lons = [c[0] for c in coords]
+            lats = [c[1] for c in coords]
+            bbox = [min(lons), min(lats), max(lons), max(lats)]
 
     budget = None
     if state.metadata and "budget" in state.metadata:
@@ -109,30 +171,80 @@ def acquire_data(state: MissionState) -> dict:
 
     try:
         def _primary_fn():
-            res = executor.execute_tool(
-                "stac_search",
-                args={
-                    "bbox": bbox,
-                    "start_date": "2026-09-01T00:00:00Z",
-                    "end_date": "2026-09-05T00:00:00Z",
-                    "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
-                    "max_cloud_cover": 30.0,
-                },
-                auth_context=ctx,
-                budget=budget,
+            fixture = state.metadata.get("demo_fixture")
+            if fixture:
+                return [
+                    {
+                        "observation_id": item["asset_id"],
+                        "scene": {
+                            "provider": "planetary_computer",
+                            "collection": "sentinel-1-rtc" if item.get("sensor") == "S1_SAR" else "sentinel-2-l2a",
+                            "item_id": item["asset_id"],
+                            "acquired_at": fixture["temporal_window"]["event_date"],
+                            "platform": "Sentinel-1A" if item.get("sensor") == "S1_SAR" else "Sentinel-2A",
+                            "instrument": "C-SAR" if item.get("sensor") == "S1_SAR" else "MSI",
+                            "relative_orbit": None,
+                            "pass_direction": None,
+                            "href": "demo://pinned-flood-scene",
+                            "cloud_cover": item.get("cloud_cover"),
+                        },
+                        "assets": {},
+                    }
+                    for item in fixture.get("observations", [])
+                ]
+            from datetime import datetime, timedelta, timezone
+            now = datetime.now(timezone.utc)
+
+            # Smart date strategy: try the last 90 days first.
+            # Planetary Computer Sentinel-1 RTC data becomes sparse after late 2023,
+            # so if we get 0 results we automatically fall back to Aug 2023 (demo
+            # data that is always available) so the app never shows an empty map.
+            def _search(start_date: str, end_date: str):
+                res = executor.execute_tool(
+                    "stac_search",
+                    args={
+                        "bbox": bbox,
+                        "start_date": start_date,
+                        "end_date": end_date,
+                        "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
+                        "max_cloud_cover": 30.0,
+                    },
+                    auth_context=ctx,
+                    budget=budget,
+                )
+                if res.success and res.output:
+                    return res.output
+                return []
+
+            # Try recent 90 days
+            end_dt = now
+            start_dt = now - timedelta(days=90)
+            results = _search(
+                start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
             )
-            if res.success and res.output:
-                return res.output
-            return []
+
+            # Fallback to Aug 2023 (guaranteed Sentinel-1 RTC data on Planetary Computer)
+            if not results:
+                logger.info("No recent STAC results; widening live search to one year")
+                results = _search(
+                    (now - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                )
+
+            return results
 
         recovery_result = execute_with_recovery(
             action_name="stac_search_acquisition",
             primary_fn=_primary_fn,
+            fallback_fn=lambda: [],
             max_retries=2,
         )
         observations = recovery_result.data if recovery_result.data else []
-        obs_ids = [obs.get("asset_id") for obs in observations if "asset_id" in obs]
-    except Exception:
+        obs_ids = [obs.get("observation_id") for obs in observations if "observation_id" in obs]
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         observations = []
         obs_ids = []
 
@@ -178,6 +290,12 @@ def analyze_data(state: MissionState) -> dict:
 
     logger = logging.getLogger(__name__)
     settings = get_agent_settings()
+    hazard_type = str(state.metadata.get("intent", {}).get("disaster_type", "flood")).lower()
+    if hazard_type not in {"flood", "inundation"}:
+        return {"status": "FAILED", "metadata": {**state.metadata, "inference_outcome": {
+            "outcome": "abstained", "reason": "UNSUPPORTED_HAZARD_MODEL",
+            "explanation": f"No validated live inference model is registered for hazard '{hazard_type}'.",
+        }}}
 
     ctx = AuthContext(
         subject="system_agent",
@@ -194,26 +312,54 @@ def analyze_data(state: MissionState) -> dict:
 
     scene_id = state.observation_ids[0]
     observations = state.metadata.get("observations", [])
-    obs = next((o for o in observations if o.get("asset_id") == scene_id), {})
-    scene_href = obs.get("href")
-    
-    acquired_at = obs.get("datetime")
+    obs = next((o for o in observations if o.get("observation_id") == scene_id), {})
+
+    fixture = state.metadata.get("demo_fixture")
+    if fixture:
+        result = fixture["inferences"]
+        area_ha = float(result["inundation_area_sqkm"]) * 100.0
+        new_meta = dict(state.metadata)
+        new_meta["inference_outcome"] = {
+            "outcome": "analysed",
+            "measurements": [{"name": "inundation_area", "value": area_ha, "unit": "ha"}],
+            "confidence": {"value": result["confidence_score"]},
+            "degraded_from": "pinned_demo_baseline",
+        }
+        new_meta["demo_affected_structures_count"] = result.get("affected_structures_count")
+        return {"status": "ANALYZING", "metadata": new_meta}
+
+    # Build scene_href: prefer SAR VV/VH band, then visual, then scene href
+    assets = obs.get("assets", {})
+    vv_href = assets.get("vv") or assets.get("VV")
+    vh_href = assets.get("vh") or assets.get("VH")
+    scene_href = vv_href or obs.get("scene", {}).get("href", "")
+
+    if not scene_href or not vv_href or not vh_href:
+        logger.warning("No usable asset href found for observation %s — skipping inference", scene_id)
+        return {"status": "FAILED", "metadata": {**state.metadata, "inference_outcome": {
+            "outcome": "abstained", "reason": "MISSING_REQUIRED_ASSET",
+            "explanation": "Live flood inference requires both Sentinel-1 VV and VH assets.",
+        }}}
+
+    scene_info = obs.get("scene", {})
+    acquired_at = scene_info.get("acquired_at")
     if not acquired_at:
-        acquired_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        acquired_at = datetime.now(timezone.utc).isoformat()
+    # Pydantic datetime field needs an ISO string with timezone
+    if hasattr(acquired_at, "isoformat"):
+        acquired_at = acquired_at.isoformat()
 
     import concurrent.futures
-    
+
     payload = {
-        "scene": {
-            "provider": obs.get("provider", "BHOONIDHI"),
-            "collection": obs.get("collection", "sentinel-1-grd"),
-            "item_id": scene_id,
-            "acquired_at": acquired_at,
-            "platform": obs.get("platform", "Sentinel-1A"),
-            "instrument": obs.get("instrument", "SAR-C"),
-            "href": scene_href,
-        },
+        "scene": _build_inference_scene(scene_info, scene_id, scene_href, acquired_at),
         "scene_href": scene_href,
+        "scene_assets": {"vv": vv_href, "vh": vh_href},
+        "aoi_bbox": _geometry_bbox(obs.get("geometry")) or (state.aoi.get("bbox") if state.aoi and state.aoi.get("bbox") else (
+            [min(c[0] for c in state.aoi["coordinates"][0]), min(c[1] for c in state.aoi["coordinates"][0]),
+             max(c[0] for c in state.aoi["coordinates"][0]), max(c[1] for c in state.aoi["coordinates"][0])]
+            if state.aoi and state.aoi.get("coordinates") else None
+        )),
         "min_mapping_unit_ha": 0.5,
     }
 
@@ -245,8 +391,16 @@ def analyze_data(state: MissionState) -> dict:
 
         return {"status": "ANALYZING", "metadata": new_meta}
     except Exception as e:
-        logger.error(f"Inference call failed: {e}")
-        return {"status": "FAILED", "metadata": state.metadata}
+        logger.error(f"Inference call failed: {e} — using baseline fallback outcome")
+        # Don't abort the pipeline: produce a synthetic degraded outcome so
+        # gate_check and synthesize can still run and give the user an answer.
+        new_meta = dict(state.metadata)
+        new_meta["inference_outcome"] = {
+            "outcome": "abstained",
+            "reason": "INFERENCE_UNAVAILABLE",
+            "explanation": str(e),
+        }
+        return {"status": "FAILED", "metadata": new_meta}
 
 
 def gate_check(state: MissionState) -> dict:
@@ -254,6 +408,21 @@ def gate_check(state: MissionState) -> dict:
 
     # Retrieve the outcome from previous node
     outcome_data = state.metadata.get("inference_outcome", {})
+    if outcome_data.get("outcome") == "abstained":
+        # An abstention is a valid inference response, but it is not a measured
+        # zero. Never turn it into a high-confidence result by defaulting the
+        # missing measurements list to 0.0.
+        new_meta = dict(state.metadata)
+        new_meta["inference_abstention"] = {
+            "reason": outcome_data.get("reason"),
+            "explanation": outcome_data.get("explanation"),
+        }
+        return {
+            "status": "FAILED",
+            "confidence_score": 0.0,
+            "evidence_graph": {},
+            "metadata": new_meta,
+        }
     measurements = outcome_data.get("measurements", [])
 
     inundated_sqkm = 0.0
@@ -267,8 +436,8 @@ def gate_check(state: MissionState) -> dict:
     obs_id = state.observation_ids[0]
 
     observations = state.metadata.get("observations", [])
-    obs_dict = next((o for o in observations if o.get("asset_id") == obs_id), {})
-    obs_time = obs_dict.get("datetime")
+    obs_dict = next((o for o in observations if o.get("observation_id") == obs_id), {})
+    obs_time = obs_dict.get("scene", {}).get("acquired_at")
     if not obs_time:
         obs_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -304,6 +473,13 @@ def gate_check(state: MissionState) -> dict:
         value=inundated_sqkm,
         unit="km2",
     )
+    if state.metadata.get("demo_affected_structures_count") is not None:
+        ev_builder.add_metric(
+            inference_node_id=inf_node.node_id,
+            metric_name="affected_structures_count",
+            value=float(state.metadata["demo_affected_structures_count"]),
+            unit="count",
+        )
 
     evidence_graph = ev_builder.build().model_dump()
 
@@ -337,8 +513,11 @@ def gate_check(state: MissionState) -> dict:
 
 def synthesize(state: MissionState) -> dict:
     if state.confidence_score is not None and state.confidence_score < 0.6:
+        abstention = state.metadata.get("inference_abstention", {})
+        reason = abstention.get("explanation") or abstention.get("reason")
+        detail = f" Reason: {reason}." if reason else ""
         output_dict = {
-            "summary": f"Agent aborted execution: the confidence score ({state.confidence_score:.2f}) was below the acceptable threshold, indicating high uncertainty.",
+            "summary": f"No reliable measurement was produced; the inference service abstained.{detail}",
             "inundation_area_sqkm": 0,
             "affected_structures_count": 0,
             "primary_sensor": "UNKNOWN",

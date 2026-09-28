@@ -88,6 +88,8 @@ async def create_analysis(
     outcome = service.analyse(
         scene=request.scene,
         scene_href=request.scene_href,
+        scene_assets=request.scene_assets,
+        scene_bbox=request.aoi_bbox,
         permanent_water_href=request.permanent_water_href,
         model_name=request.model,
         min_mapping_unit_ha=request.min_mapping_unit_ha,

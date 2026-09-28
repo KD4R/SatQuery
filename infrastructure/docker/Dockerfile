@@ -93,6 +93,8 @@ COPY infrastructure/models/ ./infrastructure/models/
 COPY infrastructure/docker/sitecustomize.py /usr/local/lib/python3.10/site-packages/sitecustomize.py
 COPY pyproject.toml .
 COPY setup.cfg .
+COPY alembic.ini .
+COPY migrations/ ./migrations/
 
 # Ownership
 RUN chown -R satquery:satquery /app

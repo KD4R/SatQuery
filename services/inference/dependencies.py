@@ -21,7 +21,7 @@ from pathlib import Path
 from services.inference.artifacts import ArtifactSink, LocalArtifactSink, S3ArtifactSink
 from services.inference.registry import ModelRegistry
 from services.inference.service import AnalysisService
-from services.inference.sources import LocalRasterSource, RasterSource
+from services.inference.sources import RemoteRasterSource, RasterSource
 
 #: Version recorded in every Measurement this service produces. Bumped when the
 #: analysis path changes in a way that could move a number -- it is what lets a
@@ -36,7 +36,7 @@ def get_registry() -> ModelRegistry:
 
 @lru_cache(maxsize=1)
 def get_raster_source() -> RasterSource:
-    return LocalRasterSource()
+    return RemoteRasterSource()
 
 
 @lru_cache(maxsize=1)

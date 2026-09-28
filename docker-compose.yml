@@ -57,6 +57,21 @@ services:
       retries: 5
     networks:
     - satquery
+  migrate:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile
+    image: satquery-migrate
+    container_name: satquery-migrate
+    command: alembic upgrade head
+    environment:
+      DATABASE_URL_SYNC: postgresql+psycopg2://satquery:${POSTGRES_PASSWORD:-satquery_dev}@postgres:5432/satquery
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+    - satquery
   api:
     build:
       context: .
@@ -91,6 +106,7 @@ services:
       RATE_LIMIT_WINDOW_S: '60'
       AUTH_ALGORITHM: HS256
       AUTH_SECRET_KEY: e2e-test-secret
+      SATQUERY_USE_ALEMBIC: 'true'
     ports:
     - ${API_PORT:-8000}:8000
     depends_on:
@@ -98,6 +114,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       s3:
         condition: service_healthy
     networks:
@@ -133,6 +151,7 @@ services:
       ENVIRONMENT: development
       AUTH_ALGORITHM: HS256
       AUTH_SECRET_KEY: e2e-test-secret
+      SATQUERY_USE_ALEMBIC: 'true'
     ports:
     - ${MISSION_PORT:-8001}:8000
     healthcheck:
@@ -150,6 +169,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
     - satquery
     volumes:
@@ -178,7 +199,8 @@ services:
       S3_BUCKET: satquery
       TITILER_URL: http://titiler:8081
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: satquery-agent
       PYTHONPATH: /app

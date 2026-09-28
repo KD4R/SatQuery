@@ -5,7 +5,7 @@ nodes/intent_extractor.py — NLP/heuristic intent extraction and mission planni
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, SecretStr
 from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import PydanticOutputParser
 
 from services.agent.schemas import PlanStep
@@ -40,7 +40,7 @@ def extract_intent_and_plan(
 ) -> Tuple[Dict[str, Any], List[PlanStep], List[str]]:
     """
     Parses a natural language mission prompt into structured intent, candidate sensors,
-    and an ordered execution plan using LangChain and ChatGoogleGenerativeAI. Fallback to heuristics.
+    and an ordered execution plan using LangChain and ChatOpenAI (GPT-4o). Fallback to heuristics.
     """
     clean_query = sanitize_prompt(query)
     if aoi:
@@ -49,7 +49,14 @@ def extract_intent_and_plan(
     settings = get_agent_settings()
     intent_parsed = None
 
-    if settings.gemini_api_key:
+    # Groq exposes an OpenAI-compatible API. Prefer it when configured so local
+    # demos do not accidentally consume the OpenAI key; retain OpenAI as a
+    # fallback for deployments that have not switched providers yet.
+    llm_api_key = settings.groq_api_key or settings.openai_api_key
+    llm_base_url = "https://api.groq.com/openai/v1" if settings.groq_api_key else None
+    llm_model = settings.llm_model if settings.groq_api_key else "gpt-4o"
+
+    if llm_api_key:
         try:
             parser = PydanticOutputParser(pydantic_object=IntentSchema)
             prompt = PromptTemplate(
@@ -60,7 +67,14 @@ def extract_intent_and_plan(
                 input_variables=["query"],
                 partial_variables={"format_instructions": parser.get_format_instructions()},
             )
-            llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", google_api_key=SecretStr(settings.gemini_api_key))
+            llm_kwargs = {
+                "model": llm_model,
+                "openai_api_key": SecretStr(llm_api_key),
+                "temperature": 0.0,
+            }
+            if llm_base_url:
+                llm_kwargs["base_url"] = llm_base_url
+            llm = ChatOpenAI(**llm_kwargs)
             llm_chain = prompt | llm | parser
             intent_parsed = llm_chain.invoke({"query": clean_query})
         except Exception as e:
@@ -99,7 +113,14 @@ def extract_intent_and_plan(
         "confidence_threshold": 0.70,
         "requires_multi_sensor": intent_parsed.disaster_type in ("flood", "landslide"),
     }
-    validate_intent(intent)
+    try:
+        validate_intent(intent)
+    except ValueError as e:
+        import logging
+        logging.getLogger(__name__).warning("Intent validation failed: %s. Falling back to flood.", e)
+        intent["disaster_type"] = "flood"
+        intent["requires_multi_sensor"] = True
+        intent_parsed.disaster_type = "flood"
 
     selected_sensors = _SENSOR_PREFERENCES.get(
         intent_parsed.disaster_type, ["S1_SAR", "S2_OPTICAL"]

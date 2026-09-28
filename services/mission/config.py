@@ -8,7 +8,7 @@ class MissionSettings(BaseSettings):
     database_url: str = os.getenv("MISSION_DATABASE_URL", "sqlite+aiosqlite:///./mission.db")
     redis_url: str = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 def get_mission_settings() -> MissionSettings:

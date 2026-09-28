@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -22,6 +23,8 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def init_db():
+    if os.getenv("SATQUERY_USE_ALEMBIC", "false").lower() == "true":
+        return
     async with engine.begin() as conn:
         # For simplicity in local testing, we create all tables automatically.
         # In production, Alembic migrations should be used.

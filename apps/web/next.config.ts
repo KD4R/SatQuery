@@ -12,12 +12,6 @@ const nextConfig: NextConfig = {
   // directory nests the standalone server at .next/standalone/<path>/server.js
   // and the Playwright/Docker copy steps silently miss it.
   outputFileTracingRoot: path.join(__dirname),
-  eslint: {
-    // The generated OpenAPI client has eslint-disable headers that Next.js flags
-    // as unused. Ignore that directory during builds; it is linted separately.
-    ignoreDuringBuilds: false,
-    dirs: ["app", "components", "lib/api/gateway.ts", "lib/api/client.ts", "lib/api/source.ts", "lib/api/types.ts", "lib/api/claims.ts", "lib/api/routes.ts"],
-  },
   async redirects() {
     // Superseded routes -> the canonical mission console and its sections. Query
     // strings are carried through by Next, so deep links keep their parameters.

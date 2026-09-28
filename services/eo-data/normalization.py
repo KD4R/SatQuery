@@ -33,6 +33,8 @@ def normalize_stac_item(provider_name: str, item: Dict[str, Any]) -> Observation
 
     relative_orbit = properties.get("sat:relative_orbit")
     pass_direction = properties.get("sat:orbit_state")
+    if pass_direction:
+        pass_direction = pass_direction.upper()
     cloud_cover = properties.get("eo:cloud_cover")
 
     # Safely extract STAC href to avoid IndexError if links array is empty

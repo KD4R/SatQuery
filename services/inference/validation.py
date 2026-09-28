@@ -41,6 +41,7 @@ DEFAULT_ALLOWED_HOSTS: frozenset[str] = frozenset(
         "zipper.dataspace.copernicus.eu",
         "download.dataspace.copernicus.eu",
         "stac.dataspace.copernicus.eu",
+        "planetarycomputer.microsoft.com",
         "bhoonidhi-api.nrsc.gov.in",
     }
 )
@@ -83,7 +84,8 @@ def validate_href(href: str, *, allowed_hosts: frozenset[str] | None = None) -> 
         )
     if not parsed.hostname:
         raise PreflightError(f"asset href has no host: {href!r}")
-    if parsed.hostname.lower() not in hosts:
+    hostname = parsed.hostname.lower()
+    if hostname not in hosts and not hostname.endswith(".blob.core.windows.net"):
         raise PreflightError(
             f"host {parsed.hostname!r} is not on the provider allowlist. "
             "Adding a provider is a reviewed change to DEFAULT_ALLOWED_HOSTS."

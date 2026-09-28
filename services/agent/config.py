@@ -12,7 +12,8 @@ class AgentSettings(BaseSettings):
     """
 
     openai_api_key: Optional[str] = None
-    gemini_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    llm_model: str = "openai/gpt-oss-120b"
     inference_service_url: str = "http://inference:8000"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

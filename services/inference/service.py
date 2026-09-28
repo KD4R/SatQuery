@@ -77,13 +77,15 @@ class AnalysisService:
         *,
         scene: SceneRef,
         scene_href: str,
+        scene_assets: dict[str, str] | None = None,
+        scene_bbox: list[float] | None = None,
         trace_id: str,
         permanent_water_href: str | None = None,
         model_name: str | None = None,
         min_mapping_unit_ha: float = 0.5,
     ) -> MissionOutcome:
         try:
-            raster = self._load(scene_href)
+            raster = self._load(scene_href, scene_assets=scene_assets, scene_bbox=scene_bbox)
         except (PreflightError, RasterReadError) as error:
             return self._abstain(
                 AbstentionReason.INPUT_FAILED_PREFLIGHT, str(error), scene, trace_id
@@ -179,7 +181,8 @@ class AnalysisService:
 
     # -- loading ------------------------------------------------------------- #
 
-    def _load(self, href: str) -> Raster:
+    def _load(self, href: str, *, scene_assets: dict[str, str] | None = None,
+              scene_bbox: list[float] | None = None) -> Raster:
         """Resolve, read and reproject. Reprojection first, always.
 
         Area measured in a geographic CRS is wrong by a latitude-dependent factor,
@@ -188,8 +191,10 @@ class AnalysisService:
         backscatter is resampled bilinearly, a mask would need nearest, and the
         two must not be confused.
         """
+        resolver = getattr(self.source, "resolve_scene", None)
+        path = resolver(scene_assets, scene_bbox) if scene_assets and resolver else self.source.resolve(href)
         raster = read_raster(
-            self.source.resolve(href),
+            path,
             declared_band_order=MODEL_BANDS,
             declared_scale=BackscatterScale.DECIBEL,
         )

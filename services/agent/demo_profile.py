@@ -38,7 +38,7 @@ def run_pinned_demo_mission(org_id: str = "org-isro") -> MissionState:
         query=profile["query"],
         trace_id="tr-pinned-demo-assam-001",
         aoi=profile["aoi"],
-        metadata={"fixture_type": "pinned_backup"},  # Instructs nodes to use fallback if needed
+        metadata={"fixture_type": "pinned_backup", "demo_fixture": profile},
     )
 
     # Use real graph execution instead of manually fabricating state

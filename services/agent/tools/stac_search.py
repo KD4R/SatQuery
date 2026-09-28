@@ -71,10 +71,19 @@ class STACSearchTool(BaseTool):
                 end_date=end,
                 cloud_cover=args.max_cloud_cover,
                 context=context,
+                collections=["sentinel-2-l2a", "sentinel-1-rtc"],
             )
 
             for obs in observations:
-                if obs.sensor in args.sensors:
+                inst = obs.scene.instrument.lower() if obs.scene.instrument else ""
+                plat = obs.scene.platform.lower() if obs.scene.platform else ""
+                mapped_sensor = "UNKNOWN"
+                if "c-sar" in inst or "sar" in inst or "sentinel-1" in plat:
+                    mapped_sensor = "S1_SAR"
+                elif "msi" in inst or "optical" in inst or "sentinel-2" in plat:
+                    mapped_sensor = "S2_OPTICAL"
+
+                if mapped_sensor in args.sensors:
                     results.append(obs.model_dump())
 
         except Exception as e:

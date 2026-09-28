@@ -1,5 +1,5 @@
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 import pystac_client
@@ -45,19 +45,37 @@ class STACProvider(AbstractProvider):
         with tracer.start_as_current_span(f"stac_search_{self.name}") as span:
             inject_context_to_span(span, context)
             try:
-                datetime_str = f"{start_date.isoformat()}Z/{end_date.isoformat()}Z"
+                start_iso = start_date.strftime("%Y-%m-%dT%H:%M:%SZ") if not start_date.tzinfo else start_date.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                end_iso = end_date.strftime("%Y-%m-%dT%H:%M:%SZ") if not end_date.tzinfo else end_date.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                datetime_str = f"{start_iso}/{end_iso}"
 
-                search_args = {"intersects": polygon, "datetime": datetime_str, "query": {}}
+                search_args = {"intersects": polygon, "datetime": datetime_str}
 
-                if cloud_cover < 100.0:
-                    search_args["query"]["eo:cloud_cover"] = {"lt": cloud_cover}  # type: ignore
+                collections = kwargs.get("collections", [None])
+                if not isinstance(collections, list):
+                    collections = [collections]
 
-                if "collections" in kwargs:
-                    search_args["collections"] = kwargs["collections"]
+                items = []
+                for coll in collections:
+                    search_args_copy = dict(search_args)
+                    if coll is not None:
+                        search_args_copy["collections"] = [coll]
 
-                search = self.client.search(**search_args)  # type: ignore
+                    # Only apply cloud cover to optical collections (exclude SAR/Sentinel-1)
+                    if cloud_cover < 100.0 and coll and "sentinel-1" not in coll.lower():
+                        search_args_copy["query"] = {"eo:cloud_cover": {"lt": cloud_cover}}
 
-                items = list(search.items())
+                    search = self.client.search(**search_args_copy)  # type: ignore
+                    batch = list(search.items())
+                    if self.name == "planetary_computer":
+                        # Planetary Computer STAC metadata contains unsigned Azure
+                        # Blob asset links. Sign the item before passing assets to
+                        # the inference service; the signature is time-limited and
+                        # never stored as an application credential.
+                        import planetary_computer
+                        batch = [planetary_computer.sign(item) for item in batch]
+                    items.extend(batch)
+
                 logger.info(f"STACProvider '{self.name}' found {len(items)} items.")
                 return [item.to_dict() for item in items]
             except Exception as e:

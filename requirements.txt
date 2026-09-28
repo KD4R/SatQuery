@@ -15,10 +15,12 @@ titiler.core
 numpy>=1.24          # ml/ (P3) -- raster maths
 scipy>=1.10          # ml/pipeline (P3) -- connected components, morphology
 pystac-client
+planetary-computer
 prometheus-client
 
 uvicorn
 sqlalchemy
+alembic
 greenlet  # SQLAlchemy asyncio needs it; not auto-installed on macOS arm64
 geoalchemy2
 asyncpg
@@ -55,4 +57,3 @@ import-linter>=2.15
 langgraph
 langchain-core
 langchain-openai
-langchain-google-genai

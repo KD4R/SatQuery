@@ -33,6 +33,8 @@ class AnalysisRequest(BaseModel):
         description="Where the raster is. Checked against the provider allowlist "
         "before anything dereferences it.",
     )
+    scene_assets: dict[str, str] | None = None
+    aoi_bbox: list[float] | None = None
     permanent_water_href: str | None = Field(
         default=None,
         description="Optional mask of water present before the event. Strongly "

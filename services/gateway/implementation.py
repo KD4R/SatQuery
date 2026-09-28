@@ -105,7 +105,14 @@ class HealthStatus(BaseModel):
 
 
 @_api_router.get("/health", response_model=HealthStatus)
+@_api_router.get("/ready", response_model=HealthStatus)
 async def health_check():
+    return HealthStatus(status="ok", service="gateway")
+
+
+@app.get("/health", response_model=HealthStatus, include_in_schema=False)
+@app.get("/ready", response_model=HealthStatus, include_in_schema=False)
+async def root_health_check():
     return HealthStatus(status="ok", service="gateway")
 
 

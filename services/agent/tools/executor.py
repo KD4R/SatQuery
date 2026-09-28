@@ -15,6 +15,7 @@ _ROLE_PERMITTED_TIERS = {
     Role.OPERATOR: {ToolPermissionTier.READ, ToolPermissionTier.EXECUTE},
     Role.ANALYST: {ToolPermissionTier.READ, ToolPermissionTier.EXECUTE},
     Role.VIEWER: {ToolPermissionTier.READ},
+    Role.SYSTEM: {ToolPermissionTier.READ, ToolPermissionTier.EXECUTE, ToolPermissionTier.ADMIN},
 }
 
 
