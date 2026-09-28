@@ -103,7 +103,10 @@ services:
       MISSION_SERVICE_URL: http://mission:8000
       AGENT_SERVICE_URL: http://agent:8000
       INFERENCE_SERVICE_URL: http://inference:8000
-      CORS_ALLOW_ORIGINS: http://localhost:3000,http://localhost:8080
+      # Set CORS_ALLOW_ORIGINS in .env for any non-local deployment. The web app
+      # reaches the gateway same-origin through its /api/v1 rewrite, so this only
+      # matters for a browser talking to the gateway directly.
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000,http://localhost:8080}
       RATE_LIMIT_REQUESTS: "200"
       RATE_LIMIT_WINDOW_S: "60"
     ports:
@@ -427,12 +430,21 @@ services:
     build:
       context: ../../apps/web
       dockerfile: Dockerfile
+      args:
+        # next.config.ts rewrites /api/v1/* to the gateway. Next evaluates that at
+        # BUILD time and bakes it into the image, so the origin has to be a build
+        # arg: a runtime env var (as this service used to set, pointing at
+        # localhost) is never read. Inside the compose network the gateway is "api".
+        GATEWAY_ORIGIN: ${GATEWAY_ORIGIN:-http://api:8000}
+        NEXT_PUBLIC_DEMO_MODE: ${NEXT_PUBLIC_DEMO_MODE:-0}
     container_name: satquery-web
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
-      NEXT_PUBLIC_GATEWAY_URL: /api/v1
     ports:
       - "${WEB_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/dashboard >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     depends_on:
       api:
         condition: service_healthy

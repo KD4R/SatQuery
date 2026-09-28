@@ -41,8 +41,11 @@ const nextConfig: NextConfig = {
             value: "nosniff",
           },
           {
+            // The browser talks to this origin only (gateway via /api/v1 and
+            // /ws/v1 rewrites), so images and fetch/XHR are 'self'; ws:/wss: is
+            // kept for the mission event socket. It used to be `*` for both.
             key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src * data: blob:; connect-src * ws: wss:; font-src 'self' https://fonts.gstatic.com; worker-src 'self' blob:;",
+            value: "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:; font-src 'self' https://fonts.gstatic.com; worker-src 'self' blob:;",
           },
         ],
       },
@@ -62,6 +65,15 @@ const nextConfig: NextConfig = {
       {
         source: "/api/v1/:path*",
         destination: `${gatewayOrigin}/api/v1/:path*`,
+      },
+      // The mission event socket (lib/ws/useMissionEvents.ts) connects to
+      // ws(s)://<this host>/ws/v1/missions/<id>. Without this rule that path is a
+      // 404 on the web server and live agent events never arrive. Behind a
+      // separate reverse proxy, route /ws/ to the gateway with Upgrade headers
+      // instead and this rewrite is simply never reached.
+      {
+        source: "/ws/v1/:path*",
+        destination: `${gatewayOrigin}/ws/v1/:path*`,
       },
     ];
   },

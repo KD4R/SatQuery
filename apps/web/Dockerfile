@@ -19,6 +19,11 @@ COPY . .
 # demo build (P5-17).
 ARG NEXT_PUBLIC_DEMO_MODE=0
 ENV NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE}
+# The gateway origin the /api/v1 rewrite proxies to. next.config.ts evaluates
+# rewrites at build time, so this is baked in; override per environment with
+# --build-arg GATEWAY_ORIGIN=https://gateway.internal:8000.
+ARG GATEWAY_ORIGIN=http://api:8000
+ENV GATEWAY_ORIGIN=${GATEWAY_ORIGIN}
 RUN npm run build
 
 # ── Production ────────────────────────────────────────────────────────────────

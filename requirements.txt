@@ -19,6 +19,7 @@ prometheus-client
 
 uvicorn
 sqlalchemy
+greenlet  # SQLAlchemy asyncio needs it; not auto-installed on macOS arm64
 geoalchemy2
 asyncpg
 psycopg2-binary
