@@ -2,18 +2,15 @@
 services/agent/app/api/routers/execute.py — Async agent execute router (P2-04).
 """
 
-import asyncio
-import json
 import logging
+import os
 import threading
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-import redis as redis_sync
 
-from packages.providers.config import config
 from services.agent.graph.orchestrator import get_orchestrator
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
@@ -30,8 +27,9 @@ router = APIRouter(prefix="/api/v1/agent", tags=["agent-execute"])
 # process-local cache, so a run created in this process is visible to every
 # other consumer: the mission service polling GET /runs/{job_id}, the gateway
 # WS bridging status, and a Celery worker if execution is enqueued there.
-# The graph still streams in this process (daemon thread) — the publishes are
-# what the gateway's mission WS bridges to the browser.
+# By default the graph streams in this process (daemon thread); set
+# AGENT_EXECUTION_MODE=celery to hand it to worker-analysis instead. Either way the
+# publishes are what the gateway's mission WS bridges to the browser.
 
 
 def _execute_run(job_id: str) -> None:
@@ -42,6 +40,58 @@ def _execute_run(job_id: str) -> None:
         _stream_run(job_id)
     except Exception:  # noqa: BLE001 — background thread; log, never crash the app
         logger.exception("Background agent run failed: job_id=%s", job_id)
+
+
+def _execution_mode() -> str:
+    """``thread`` (default) or ``celery``, from AGENT_EXECUTION_MODE.
+
+    thread  runs the graph in a daemon thread of this process. It needs no worker
+            but is lost if the process restarts mid-run and cannot be scaled or
+            retried.
+    celery  enqueues ``process_agent_run`` for worker-analysis (durable, retried,
+            horizontally scalable). Run state is in Redis, so the worker sees the
+            run this process just created.
+
+    Read per request so the mode can be flipped without a code change; anything
+    unrecognised falls back to ``thread`` rather than dropping the run.
+    """
+    mode = os.getenv("AGENT_EXECUTION_MODE", "thread").strip().lower()
+    return mode if mode in {"thread", "celery"} else "thread"
+
+
+def _dispatch_run(job_id: str) -> None:
+    """Start the run in the configured execution mode.
+
+    Raises ``HTTPException(503)`` when the celery broker refuses the task: the
+    caller has been promised a run, so a silent drop would leave it ``INITIALIZED``
+    forever.
+    """
+    if _execution_mode() == "celery":
+        from services.agent.worker import process_agent_run
+
+        try:
+            process_agent_run.delay(job_id)
+        except Exception as exc:  # noqa: BLE001 — any broker fault means "not queued"
+            logger.exception("Could not enqueue agent run %s", job_id)
+            orchestrator = get_orchestrator()
+            run = orchestrator.get_run(job_id)
+            if run:
+                run.status = "FAILED"
+                run.errors.append(f"Run could not be queued: {exc}")
+                orchestrator.save_run(run)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail={
+                    "code": "QUEUE_UNAVAILABLE",
+                    "message": "The analysis queue is unavailable; the run was not started.",
+                    "retryable": True,
+                },
+            )
+        return
+
+    threading.Thread(
+        target=_execute_run, args=(job_id,), name=f"agent-run-{job_id}", daemon=True
+    ).start()
 
 
 @router.post("/execute", status_code=status.HTTP_202_ACCEPTED, response_model=ExecuteResponse)
@@ -95,12 +145,7 @@ async def execute_agent(
         metadata={"budget": budget_dict} if budget_dict else None,
     )
 
-    # Execute in this process (daemon thread) so the just-created run state is
-    # visible to the executor. See the comment on _execute_run.
-    thread = threading.Thread(
-        target=_execute_run, args=(state.job_id,), name=f"agent-run-{state.job_id}", daemon=True
-    )
-    thread.start()
+    _dispatch_run(state.job_id)
 
     response_data = ExecuteResponse(
         job_id=state.job_id or "job_unknown",
