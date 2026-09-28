@@ -973,11 +973,15 @@ body:has(.preview-shell) {
   border-bottom: 1px solid var(--line);
   padding-bottom: 12px;
 }
-.mission-head b {
+.mission-head b,
+.mission-head .mission-title {
   display: block;
   font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
   letter-spacing: -0.03em;
   text-align: left;
+  margin: 0;
 }
 .mission-head span {
   display: block;

@@ -16,6 +16,7 @@
  * the clock freezes and ENV reads DEMO. Pass `run` on pages that own a run.
  */
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Bell,
@@ -33,6 +34,7 @@ import {
 
 import { demoModeEnabled } from "../lib/api/source";
 import JellyNav from "./JellyNav";
+import { ROUTES } from "../lib/nav";
 import { applyTheme, readTheme, type Theme } from "../lib/theme";
 
 export interface DashboardTab {
@@ -43,11 +45,11 @@ export interface DashboardTab {
 
 /** The five product sections. Mission absorbs the map workspace. */
 export const DASHBOARD_TABS: DashboardTab[] = [
-  { label: "Mission", href: "/dashboard", icon: Globe2 },
-  { label: "Monitoring", href: "/dashboard/monitoring", icon: Activity },
-  { label: "Evidence", href: "/dashboard/evidence", icon: ShieldCheck },
-  { label: "Reports", href: "/dashboard/reports", icon: FileText },
-  { label: "Admin", href: "/dashboard/admin", icon: ShieldCheck },
+  { label: "Mission", href: ROUTES.console, icon: Globe2 },
+  { label: "Monitoring", href: ROUTES.monitoring, icon: Activity },
+  { label: "Evidence", href: ROUTES.evidence, icon: ShieldCheck },
+  { label: "Reports", href: ROUTES.reports, icon: FileText },
+  { label: "Admin", href: ROUTES.admin, icon: ShieldCheck },
 ];
 
 export default function DashboardTopBar({
@@ -62,22 +64,24 @@ export default function DashboardTopBar({
 
   return (
     <header className="dash-navbar">
-      <span className="dash-brand heading">SATQUERY</span>
+      <Link className="dash-brand heading" href={ROUTES.home} aria-label="SatQuery home">
+        SATQUERY
+      </Link>
 
       <JellyNav tabs={DASHBOARD_TABS} activeHref={activeHref} />
 
       <div className="band-spacer" />
 
       <div className="dash-nav-actions">
-        <a className="icon-btn" href="/dashboard/history" aria-label="History" title="History">
+        <Link className="icon-btn" href={ROUTES.history} aria-label="History" title="History">
           <History size={16} />
-        </a>
-        <a className="icon-btn" href="/dashboard/alerts" aria-label="Alerts and notifications" title="Alerts">
+        </Link>
+        <Link className="icon-btn" href={ROUTES.alerts} aria-label="Alerts and notifications" title="Alerts">
           <Bell size={16} />
-        </a>
-        <a className="icon-btn" href="/dashboard/settings" aria-label="Settings" title="Settings">
+        </Link>
+        <Link className="icon-btn" href={ROUTES.settings} aria-label="Settings" title="Settings">
           <Settings size={16} />
-        </a>
+        </Link>
         <button
           className="icon-btn"
           aria-label="Toggle theme"

@@ -1,12 +1,31 @@
+import path from "node:path";
+
 import type { NextConfig } from "next";
+
+import { LEGACY_REDIRECTS } from "./lib/nav";
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone",
+  // Pin the tracing root to this app. Without it Next infers the root from the
+  // nearest lockfile up the tree, so a stray package-lock.json in a parent
+  // directory nests the standalone server at .next/standalone/<path>/server.js
+  // and the Playwright/Docker copy steps silently miss it.
+  outputFileTracingRoot: path.join(__dirname),
   eslint: {
     // The generated OpenAPI client has eslint-disable headers that Next.js flags
     // as unused. Ignore that directory during builds; it is linted separately.
     ignoreDuringBuilds: false,
     dirs: ["app", "components", "lib/api/gateway.ts", "lib/api/client.ts", "lib/api/source.ts", "lib/api/types.ts", "lib/api/claims.ts", "lib/api/routes.ts"],
+  },
+  async redirects() {
+    // Superseded routes -> the canonical mission console and its sections. Query
+    // strings are carried through by Next, so deep links keep their parameters.
+    return LEGACY_REDIRECTS.map(({ source, destination }) => ({
+      source,
+      destination,
+      permanent: false,
+    }));
   },
   async headers() {
     return [

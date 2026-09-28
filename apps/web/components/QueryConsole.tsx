@@ -20,12 +20,15 @@ export default function QueryConsole({
   onRun,
   running,
   onReset,
+  blockedReason = null,
 }: {
   value: string;
   onChange: (v: string) => void;
   onRun: () => void;
   running: boolean;
   onReset: () => void;
+  /** Non-null blocks the run and says why, in words, next to the input. */
+  blockedReason?: string | null;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -66,7 +69,7 @@ export default function QueryConsole({
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              onRun();
+              if (!running && !blockedReason) onRun();
             }
           }}
           aria-label="Mission query"
@@ -76,13 +79,19 @@ export default function QueryConsole({
             <Command size={10} /> CTRL K · ENTER TO RUN · SHIFT ENTER
           </span>
           <div className="query-actions">
-            <button className="small-icon" title="Attach context">
+            <button className="small-icon" title="Attach context" aria-label="Attach context" disabled>
               <Paperclip size={14} />
             </button>
-            <button className="small-icon" title="Reset" onClick={onReset}>
+            <button className="small-icon" title="Reset" aria-label="Reset mission" onClick={onReset}>
               <RotateCcw size={14} />
             </button>
-            <button className="send" onClick={onRun} disabled={running}>
+            <button
+              className="send"
+              onClick={onRun}
+              disabled={running || Boolean(blockedReason)}
+              aria-label="Run analysis"
+              title={blockedReason ?? "Run analysis"}
+            >
               {running ? (
                 <LoaderCircle className="spin" size={16} />
               ) : (
@@ -92,6 +101,11 @@ export default function QueryConsole({
           </div>
         </div>
       </div>
+      {blockedReason ? (
+        <p className="hint" role="alert" style={{ margin: "6px 2px 0" }}>
+          {blockedReason}
+        </p>
+      ) : null}
       <div className="template-row">
         {templates.map((t) => (
           <button
@@ -100,7 +114,7 @@ export default function QueryConsole({
             onClick={() =>
               onChange(
                 t === "Flood impact"
-                  ? "Show me the flooded areas around Guntur and explain why you chose SAR."
+                  ? "Show flood-affected areas in the selected AOI and explain why you chose SAR."
                   : `Analyze ${t.toLowerCase()} for the selected AOI and show the evidence.`,
               )
             }

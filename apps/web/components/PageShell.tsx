@@ -1,32 +1,60 @@
-/* eslint-disable */
-'use client';
-import {usePathname,useRouter} from 'next/navigation';
-import {useEffect} from 'react';
-import DashboardTopBar from './DashboardTopBar';
-import PageTelemetry from './PageTelemetry';
+"use client";
+
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+import DashboardTopBar, { DASHBOARD_TABS } from "./DashboardTopBar";
+import PageTelemetry from "./PageTelemetry";
+import { ROUTES } from "../lib/nav";
 
 /**
  * Sub-page shell for the dashboard family. One nav bar (DashboardTopBar:
- * brand + section chips + icon actions, active tab from the pathname); the
- * UTC/gateway/state telemetry is a quiet subset at the bottom of the page.
- * The old MISSION CONTROL header is gone.
+ * brand + section chips + icon actions); the UTC/gateway/state telemetry is a
+ * quiet subset at the bottom of the page.
+ *
+ * The active tab is the section whose href is the longest prefix of the pathname,
+ * so /dashboard/reports/<mission> still lights "Reports". Passing the raw
+ * pathname would match no tab on any nested route.
  */
 
-const titles:Record<string,string>={
- '/dashboard':'Mission overview','/dashboard/map':'Map workspace','/dashboard/monitoring':'Persistent monitoring','/dashboard/evidence':'Evidence chain','/dashboard/history':'Mission history','/dashboard/reports':'Reports & decision briefs','/dashboard/alerts':'Alerts & events','/dashboard/settings':'Settings & preferences','/dashboard/admin':'Admin & security'
-};
+export function activeSection(pathname: string): string {
+  const match = DASHBOARD_TABS.filter(
+    (t) => pathname === t.href || pathname.startsWith(`${t.href}/`),
+  ).sort((a, b) => b.href.length - a.href.length)[0];
+  return match?.href ?? ROUTES.console;
+}
 
-export default function PageShell({children}:{children:React.ReactNode}){
- const router=useRouter(); const pathname=usePathname();
- useEffect(()=>{['/dashboard','/dashboard/map','/dashboard/monitoring','/dashboard/evidence','/dashboard/history','/dashboard/reports','/dashboard/alerts','/dashboard/settings','/dashboard/admin'].forEach(path=>router.prefetch(path))},[router]);
- return <>
-  <DashboardTopBar activeHref={pathname}/>
-  <div className="app-shell app-shell--flat">
-  <main className="main">
-   <div className="content">{children}</div>
-   <PageTelemetry/>
-   <footer className="app-footer"><div><b>SatQuery AI</b><span>Evidence-first satellite intelligence</span></div><div><span>Gateway-only browser access</span><span>•</span><span>Traceable outputs</span><span>•</span><span>Accessible UI</span></div></footer>
-  </main>
-  </div>
- </>
+export default function PageShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    Object.values(ROUTES).forEach((path) => router.prefetch(path));
+  }, [router]);
+
+  return (
+    <>
+      <DashboardTopBar activeHref={activeSection(pathname)} />
+      <div className="app-shell app-shell--flat">
+        {/* #mission-main is the skip-link target declared in the root layout. */}
+        <main className="main" id="mission-main" tabIndex={-1}>
+          <div className="content">{children}</div>
+          <PageTelemetry />
+          <footer className="app-footer">
+            <div>
+              <b>SatQuery AI</b>
+              <span>Evidence-first satellite intelligence</span>
+            </div>
+            <div>
+              <span>Gateway-only browser access</span>
+              <span>•</span>
+              <span>Traceable outputs</span>
+              <span>•</span>
+              <span>Accessible UI</span>
+            </div>
+          </footer>
+        </main>
+      </div>
+    </>
+  );
 }

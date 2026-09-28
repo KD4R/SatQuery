@@ -45,16 +45,27 @@ const ENV_READER = "lib/api/source.ts";
 const FIXTURE_CONSUMERS = new Set([
   // Each of these either renders <ProvenanceBadge> itself or is owned by a
   // component that does.
-  "components/MissionConsole.tsx",
+  // The canonical mission console (/dashboard). Reads the pinned scenario in demo
+  // and hands it to IntelligencePanel, which renders the badge; the empty state
+  // renders it directly.
+  "components/Dashboard.tsx",
   // The dashboard's map card. Renders the badge itself (top centre) and hosts
   // the console's MapWorkspace, which carries the Time Machine epochs.
   "components/MapCanvas.tsx",
+  // Evidence and alerts sections: demo rows come from the scenario and carry the
+  // fixture badge in the section header; live renders an honest empty state.
+  "components/evidence/EvidenceScreen.tsx",
+  "components/mission/AlertsScreen.tsx",
+  "components/report/ReportsIndex.tsx",
   "components/mission/MissionMemory.tsx",
   "components/mission/MonitoringScreen.tsx",
   "components/report/ReportScreen.tsx",
   // The demo run's state machine. It has no UI of its own; it feeds the console,
   // which badges. It is listed because it reads DEMO_STAGES.
   "lib/useMissionRun.ts",
+  // Replays the pinned agent narratives on the run script's schedule. No UI of
+  // its own; the toasts it feeds are only ever mounted by the console.
+  "lib/useAgentActivity.ts",
 ]);
 
 function walk(dir: string, out: string[] = []): string[] {

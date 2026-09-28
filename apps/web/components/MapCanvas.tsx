@@ -1,43 +1,78 @@
 "use client";
 
 /**
- * The dashboard's map card, wrapping the console's MapWorkspace so the map
- * speaks the same language on both surfaces. In demo mode, once the run
- * completes, the Earth Time Machine rail (Before → After → Change) appears on
- * the map, built from the same pinned Assam scenario the console uses — one
- * source of truth, no invented dates (the fixture's honesty rules carry over).
+ * The mission console's map card, wrapping MapWorkspace (MapLibre, AOI draw/edit,
+ * layer toggles).
  *
- * The run itself belongs to the Dashboard (its QueryConsole drives it); this
- * card only observes its phase. Owning a second run here would leave it idle
- * forever — its `complete` would never turn true and the Time Machine rail
- * would never appear.
+ * The AOI, the layer visibility and the run phase all belong to the Dashboard,
+ * because the query, the parameters card and the intelligence section have to
+ * quote the same AOI the map is drawing — this card only renders them. In demo
+ * mode, once the run completes, the Earth Time Machine rail (Before → After →
+ * Change) appears, built from the pinned Assam scenario — one source of truth, no
+ * invented dates.
+ *
+ * Nothing scenario-shaped is drawn in live mode. The pinned rasters are a demo
+ * artefact; painting them over a live AOI would present a fixture as an observation.
  */
 
+import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
 import { ProvenanceBadge } from "./system/primitives";
 import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
 import { buildTimeMachine } from "../lib/map/timeLayers";
 import { demoModeEnabled } from "../lib/api/source";
-import { MapWorkspace } from "./map/MapWorkspace";
 import type { LayerId } from "./map/MapWorkspace";
 import type { GeoJSONPolygon } from "../lib/api/types";
 
-const ALL_LAYERS: Record<LayerId, boolean> = {
-  observation: true,
-  baseline: true,
-  change: true,
-  confidence: true,
-  aoi: true,
-};
+/**
+ * MapLibre is ~800 KB of WebGL. Loading it on demand keeps it off the critical
+ * path (P5-16); ssr:false because it needs a canvas.
+ */
+const MapWorkspace = dynamic(
+  () => import("./map/MapWorkspace").then((m) => m.MapWorkspace),
+  {
+    ssr: false,
+    loading: () => (
+      <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+        <span className="label label-faint">Loading map…</span>
+      </div>
+    ),
+  },
+);
 
-export default function MapCanvas({ complete = false }: { complete?: boolean }) {
+/** Where the map opens with no AOI: India, country scale. */
+const INDIA_CENTER: [number, number] = [78.9, 22.6];
+const ASSAM_CENTER: [number, number] = [93.8962, 26.7914];
+
+export default function MapCanvas({
+  complete = false,
+  aoi,
+  onAoiChange,
+  visible,
+  onToggleLayer,
+}: {
+  complete?: boolean;
+  aoi: GeoJSONPolygon | null;
+  onAoiChange: (aoi: GeoJSONPolygon | null) => void;
+  visible: Record<LayerId, boolean>;
+  onToggleLayer: (id: LayerId) => void;
+}) {
   const demo = demoModeEnabled();
 
   const timeMachine = useMemo(
     () => (demo && complete ? buildTimeMachine(ASSAM_SCENARIO) : null),
     [demo, complete],
   );
+
+  // Only the pre-run backdrop lives here: once a run completes the Time Machine
+  // owns the baseline/observed/change rasters as crossfade epochs, so listing
+  // them as static overlays too would draw every scene twice.
+  const overlays = useMemo(() => {
+    if (!demo) return [];
+    const s = ASSAM_SCENARIO.overlays["s1-vv"];
+    return s ? [{ id: "s1-vv", url: s.url, bbox: s.bbox }] : [];
+  }, [demo]);
 
   return (
     <div className="map-canvas-host">
@@ -55,25 +90,17 @@ export default function MapCanvas({ complete = false }: { complete?: boolean }) 
         </div>
       )}
       <MapWorkspace
-        center={[93.8962, 26.7914]}
-        zoom={12.4}
-        aoi={ASSAM_SCENARIO.aoi as GeoJSONPolygon}
-        onAoiChange={() => {
-          /* AOI editing stays console-only for now. */
-        }}
-        overlays={Object.entries(ASSAM_SCENARIO.overlays).map(([id, ov]) => ({
-          id,
-          url: ov.url,
-          bbox: ov.bbox,
-        }))}
+        center={demo ? ASSAM_CENTER : INDIA_CENTER}
+        zoom={demo ? 12.4 : 4}
+        aoi={aoi}
+        onAoiChange={onAoiChange}
+        overlays={overlays}
         changeGeoJsonUrl={
           complete && demo ? ASSAM_SCENARIO.changeGeoJsonUrl : null
         }
         timeMachine={timeMachine}
-        visible={ALL_LAYERS}
-        onToggleLayer={() => {
-          /* Layer toggles stay console-only for now. */
-        }}
+        visible={visible}
+        onToggleLayer={onToggleLayer}
       />
     </div>
   );

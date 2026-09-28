@@ -39,6 +39,7 @@ import { BeforeAfterViewer } from "../observe/BeforeAfterViewer";
 import { InfrastructureImpact } from "../impact/InfrastructureImpact";
 import type { ConsoleScenario } from "../../lib/model/console";
 import type { DataSource } from "../../lib/api/source";
+import { reportRoute } from "../../lib/nav";
 
 /**
  * React Flow is ~100 kB of canvas code. Like MapWorkspace, it is loaded on demand
@@ -459,7 +460,7 @@ export function IntelligencePanel({
         {/* Reference: amber card closes with the report export action. */}
         <div style={{ padding: 10 }}>
           <Link
-            href={`/missions/${scenario.missionId}/report`}
+            href={reportRoute(scenario.missionId)}
             className="btn btn-primary"
             style={{
               width: "100%",

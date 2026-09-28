@@ -33,6 +33,14 @@ export default function EvidencePanel({
         </button>
       </div>
       <div className="evidence-list">
+        {evidence.length === 0 ? (
+          <div className="evidence-item">
+            <div className="evidence-detail">
+              NOT AVAILABLE — the agent published no evidence graph for this run,
+              so there is nothing to trace.
+            </div>
+          </div>
+        ) : null}
         {evidence.map((e) => (
           <div className="evidence-item" key={e.id}>
             <div className="evidence-top">

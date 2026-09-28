@@ -17,6 +17,7 @@ import { useEffect, useRef } from "react";
 
 import type { IntroPhase } from "../BrandIntro";
 
+import { ROUTES } from "../../../lib/nav";
 import { HEADLINE, ratio } from "../facts";
 import { HeroHeadline } from "../HeroHeadline";
 import { QueryConsole } from "../QueryConsole";
@@ -109,7 +110,7 @@ export function Hero({ phase }: { phase: IntroPhase }) {
 
           <Reveal delay={0.08}>
             <div className="sq-cta-row">
-              <Link href="/console" className="sq-btn sq-btn--primary">
+              <Link href={ROUTES.console} className="sq-btn sq-btn--primary">
                 Enter mission console
                 <IconArrow />
               </Link>

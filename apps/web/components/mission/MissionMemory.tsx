@@ -28,6 +28,7 @@ import type { MissionEvent } from "../../lib/model/console";
 import { EmptyState, ErrorState, LoadingState } from "../system/ErrorBoundary";
 import { Label, Readout, StatusChip } from "../system/primitives";
 import { RouteChrome } from "../shell/RouteChrome";
+import { reportRoute } from "../../lib/nav";
 
 const KIND_TONE = {
   run: "active",
@@ -147,7 +148,7 @@ function DemoMemory() {
         </div>
         <div className="band-spacer" />
         <Link
-          href={`/missions/${s.missionId}/report`}
+          href={reportRoute(s.missionId)}
           className="btn btn-primary"
         >
           View report

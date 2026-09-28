@@ -84,11 +84,11 @@ test.describe("landing", () => {
   });
 });
 
-test.describe("console — demo run", () => {
+test.describe("mission console (/dashboard) — demo run", () => {
   test("runs the full flow and reports the measured figures", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
 
     // Before the run there is nothing to show, and the panel says so rather than
     // rendering an empty skeleton that looks like data.
@@ -107,7 +107,7 @@ test.describe("console — demo run", () => {
   test("the OBSERVE stage settles degraded, because half the AOI was unseen", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
     await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
 
@@ -121,7 +121,7 @@ test.describe("console — demo run", () => {
   test("says NOT AVAILABLE for the acquisition time it does not have", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
     await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
 
@@ -135,7 +135,7 @@ test.describe("console — demo run", () => {
   test("the WHY GRAPH drawer renders the evidence chain and closes on Escape", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
     await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
 
@@ -183,7 +183,7 @@ test.describe("console — demo run", () => {
   test("the time machine scrubs the temporal states and never invents dates", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
     await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
 
@@ -220,7 +220,7 @@ test.describe("console — demo run", () => {
   test("the agent speaks while it works, then retires the warning", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
 
     // The PRD §2C example toast, mid-run: sensors disagree and the agent is
@@ -241,21 +241,21 @@ test.describe("console — demo run", () => {
   });
 
   test("marks every fixture-fed surface as a fixture", async ({ page }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     // text-transform is CSS; the DOM says "Env".
     await expect(page.getByText(/env/i).first()).toBeVisible();
     await expect(page.getByText("DEMO").first()).toBeVisible();
-    await expect(page.getByText(/demo fixtures/i).first()).toBeVisible();
+    await expect(page.getByText(/demo fixture/i).first()).toBeVisible();
   });
 
   test("reports the gateway as unreachable rather than faking health", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     // No backend is running in E2E. The console must say so.
-    await expect(page.getByText(/Gateway: unreachable/i)).toBeVisible({
-      timeout: 20_000,
-    });
+    await expect(
+      page.getByRole("contentinfo", { name: /system telemetry/i }),
+    ).toContainText(/gateway\s*unreachable/i, { timeout: 20_000 });
   });
 });
 
@@ -263,7 +263,7 @@ test.describe("AOI validation", () => {
   test("draw mode shows live validation and refuses an unfinished polygon", async ({
     page,
   }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /^draw aoi$/i }).click();
 
     await expect(page.getByText(/click to add corners/i)).toBeVisible();
@@ -279,7 +279,7 @@ test.describe("AOI validation", () => {
 
 test.describe("routes", () => {
   test("mission memory lists the run history", async ({ page }) => {
-    await page.goto("/missions");
+    await page.goto("/dashboard/history");
     await expect(page.getByText(/temporal history/i)).toBeVisible();
     await expect(page.getByText(/New water detected/i)).toBeVisible();
   });
@@ -287,14 +287,14 @@ test.describe("routes", () => {
   test("monitoring shows a countdown derived from timestamps", async ({
     page,
   }) => {
-    await page.goto("/monitoring");
+    await page.goto("/dashboard/monitoring");
     await expect(page.getByText(/next observation/i).first()).toBeVisible();
     await expect(page.getByText("8h 40m")).toBeVisible();
     await expect(page.getByText("INCREASING")).toBeVisible();
   });
 
   test("admin states where each control is enforced", async ({ page }) => {
-    await page.goto("/admin");
+    await page.goto("/dashboard/admin");
     await expect(page.getByText(/gateway-only egress/i)).toBeVisible();
     await expect(page.getByText(/Token storage/i)).toBeVisible();
     // The session must never claim a persisted token.
@@ -308,7 +308,7 @@ test.describe("routes", () => {
   test("report generates asynchronously and carries its caveats", async ({
     page,
   }) => {
-    await page.goto(`/missions/${MISSION}/report`);
+    await page.goto(`/dashboard/reports/${MISSION}`);
     await page.getByRole("button", { name: /generate report/i }).click();
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText(
@@ -329,7 +329,7 @@ test.describe("routes", () => {
 
 test.describe("accessibility", () => {
   test("the comparison wipe is keyboard operable", async ({ page }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
     await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
 
@@ -343,7 +343,12 @@ test.describe("accessibility", () => {
   test("every page exposes a main landmark and a reachable skip link", async ({
     page,
   }) => {
-    for (const path of ["/console", "/missions", "/monitoring", "/admin"]) {
+    for (const path of [
+      "/dashboard",
+      "/dashboard/history",
+      "/dashboard/monitoring",
+      "/dashboard/admin",
+    ]) {
       await page.goto(path);
       await expect(page.locator("#mission-main")).toBeAttached();
     }

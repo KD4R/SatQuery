@@ -19,6 +19,12 @@ const WORD: Record<Stage["status"], string> = {
 };
 
 export default function StageList({ stages }: { stages: Stage[] }) {
+  // Counts steps that have reached an outcome (a degraded step has settled, it
+  // just did not fully succeed). It is a tally of what was reported, not a
+  // progress estimate.
+  const settled = stages.filter(
+    (s) => s.status === "done" || s.status === "warning",
+  ).length;
   return (
     <section className="card stage-list-card">
       <div className="card-head">
@@ -26,7 +32,17 @@ export default function StageList({ stages }: { stages: Stage[] }) {
           <div className="card-title">MISSION RUN · STEPS</div>
           <div className="card-sub">Auditable execution trace, step by step</div>
         </div>
-        <span className="mono-chip">LIVE TRACE</span>
+        <span className="row" style={{ gap: 6 }}>
+          {stages.length > 0 ? (
+            <span
+              className="mono-chip"
+              aria-label={`${settled} of ${stages.length} steps settled`}
+            >
+              {settled}/{stages.length}
+            </span>
+          ) : null}
+          <span className="mono-chip">LIVE TRACE</span>
+        </span>
       </div>
 
       {stages.length === 0 ? (

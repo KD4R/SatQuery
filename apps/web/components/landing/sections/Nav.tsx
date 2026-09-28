@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { ROUTES } from "../../../lib/nav";
 import { IconArrow } from "../ui";
 
 const LINKS = [
@@ -30,7 +31,7 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
           ))}
         </nav>
         <Link
-          href="/console"
+          href={ROUTES.console}
           className="sq-btn sq-btn--secondary sq-btn--sm sq-intro-wait"
         >
           Open console

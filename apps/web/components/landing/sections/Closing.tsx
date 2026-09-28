@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { ROUTES } from "../../../lib/nav";
 import { CursorWave } from "../effects/CursorWave";
 import { IconArrow, IconCode, Reveal } from "../ui";
 import { SectionIndex } from "./SectionIndex";
@@ -28,11 +29,11 @@ export function Closing() {
               land, with the source of every value marked.
             </p>
             <div className="sq-cta-row">
-              <Link href="/console" className="sq-btn sq-btn--primary">
+              <Link href={ROUTES.console} className="sq-btn sq-btn--primary">
                 Open the console
                 <IconArrow />
               </Link>
-              <Link href="/missions" className="sq-btn sq-btn--secondary">
+              <Link href={ROUTES.history} className="sq-btn sq-btn--secondary">
                 <span className="sq-btn-rule">Browse missions</span>
               </Link>
             </div>
@@ -50,10 +51,10 @@ export function Closing() {
             <div className="sq-footer-meta">Smart India Hackathon 2026</div>
           </div>
           <nav className="sq-footer-links" aria-label="App">
-            <Link href="/console">Console</Link>
-            <Link href="/missions">Missions</Link>
-            <Link href="/monitoring">Monitoring</Link>
-            <Link href="/admin">Admin</Link>
+            <Link href={ROUTES.console}>Console</Link>
+            <Link href={ROUTES.history}>Missions</Link>
+            <Link href={ROUTES.monitoring}>Monitoring</Link>
+            <Link href={ROUTES.admin}>Admin</Link>
           </nav>
           <a
             className="sq-footer-repo"

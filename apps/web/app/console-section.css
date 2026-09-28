@@ -1,0 +1,119 @@
+/* Mission console: intelligence section, two-up action row, agent toasts.
+   Loaded after globals.css and mission.css so it can rely on both token sets. */
+
+.intel-section {
+  margin-top: 14px;
+}
+
+/* IntelligencePanel is authored as a narrow rail. On the dashboard its sections
+   flow into columns so the imagery viewer and the tables keep the proportions
+   they were designed at instead of stretching across a 1400px page. */
+.intel-section > div:not(.row) {
+  column-width: 460px;
+  column-gap: 14px;
+}
+.intel-section .panel {
+  break-inside: avoid;
+  margin-bottom: 12px;
+}
+
+.intel-live {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.bottom-grid.bottom-grid--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+  .bottom-grid.bottom-grid--two {
+    grid-template-columns: 1fr;
+  }
+}
+
+.dash-navbar .dash-brand {
+  text-decoration: none;
+  color: var(--text);
+}
+
+/* The console primitives (Readout, NOT AVAILABLE, chips) take their ink from the
+   dark console tokens. Inside a light dashboard card those would be near-white on
+   white, so the card re-declares the tokens it reads. */
+html[data-theme="light"] .plan-card {
+  --ink: #14181d;
+  --ink-dim: #4a5058;
+  --ink-faint: #6b7280;
+  --hairline: rgba(0, 0, 0, 0.12);
+}
+
+/* ═══ Agent activity toasts (P5 Phase C → PRD §2C) ══════════════════════
+   Non-intrusive by contract: bottom-right, one stack, auto-expiring.
+   aria-live polite — the agent speaks without interrupting a screen reader.
+   These rules were lost when the console was restyled; without them the toasts
+   render as unstyled text at the foot of the page. */
+
+.atoasts {
+  position: fixed;
+  right: 16px;
+  bottom: 56px;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(360px, 90vw);
+  pointer-events: none;
+}
+
+.atoast {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  border: 1px solid var(--hairline);
+  border-left: 2px solid var(--hairline-bright);
+  border-radius: 6px;
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+}
+.atoast-sensor_disagreement {
+  border-left-color: var(--amber);
+}
+.atoast-acquiring_evidence {
+  border-left-color: var(--signal);
+}
+.atoast-agent_thought {
+  border-left-color: var(--verified);
+}
+.atoast-glyph {
+  color: var(--ink-dim);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.atoast-text {
+  margin: 0;
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.atoast-dismiss {
+  flex: 0 0 auto;
+  padding: 0 3px;
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+.atoast-dismiss:hover,
+.atoast-dismiss:focus-visible {
+  color: var(--ink);
+}
+@media (prefers-reduced-motion: reduce) {
+  .atoast {
+    backdrop-filter: none;
+  }
+}

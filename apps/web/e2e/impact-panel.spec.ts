@@ -13,7 +13,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("console — infrastructure impact", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/console");
+    await page.goto("/dashboard");
     await page.getByRole("button", { name: /run analysis/i }).click();
     // The demo script totals ~7.7s; allow headroom on CI.
     await expect(page.getByText("9/9")).toBeVisible({ timeout: 25_000 });
