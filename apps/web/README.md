@@ -13,7 +13,8 @@ echo "NEXT_PUBLIC_DEMO_MODE=1" >> .env.local   # deterministic demo, no backend 
 npm run dev          # http://localhost:3000
 ```
 
-`/` is the landing page, `/console` is the mission console.
+`/` is the landing page, `/dashboard` is the mission console (`/console` and the
+other old paths redirect there; see `lib/nav.ts`).
 
 With `NEXT_PUBLIC_DEMO_MODE=1` the whole flow runs with no backend: the console is
 fed from `lib/fixtures/` and every panel carries a **DEMO FIXTURE** badge, with
@@ -33,9 +34,9 @@ npm run test:e2e     # playwright
 
 | Path | Holds |
 |---|---|
-| `app/` | Routes. `/` landing, `/console` mission console. |
-| `components/shell/` | `MissionShell`, `TopTelemetryBar` |
-| `components/console/` | Query panel, run timeline |
+| `app/` | Routes. `/` landing, `/dashboard` mission console, `/dashboard/*` sections. |
+| `components/Dashboard.tsx` | The mission console: query, plan, steps, map, intelligence |
+| `components/console/` | Agent-activity toasts |
 | `components/map/` | `MapWorkspace` — MapLibre, AOI draw/edit, layers |
 | `components/observe/` | `BeforeAfterViewer` |
 | `components/evidence/` | `IntelligencePanel` — change, confidence, WHY, sensors |

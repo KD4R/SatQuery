@@ -369,10 +369,10 @@ flowchart TB
 
   subgraph R["app/ routes"]
     L["/ landing"]:::route
-    C["/console"]:::route
-    D["/dashboard"]:::route
-    M["/missions · /missions/[id]/report"]:::route
-    MO["/monitoring · /admin"]:::route
+    C["/console · /missions · /monitoring · /admin → redirects"]:::route
+    D["/dashboard (canonical console)"]:::route
+    M["/dashboard/history · /dashboard/reports/[id]"]:::route
+    MO["/dashboard/monitoring · /dashboard/admin"]:::route
   end
 
   subgraph UI["components/"]
@@ -404,7 +404,7 @@ flowchart TB
 ```
 
 - **Typed gateway client** (`lib/api/`). Hand-written, and contract-tested against `docs/openapi/gateway.json`. It only calls the same-origin base `NEXT_PUBLIC_GATEWAY_URL` (default `/api/v1`) and refuses absolute URLs. It sends `X-Trace-Id` and an optional `Idempotency-Key`. The bearer token is kept **in memory only**. Timeout 15 s; 3 attempts with 250/750 ms backoff on network errors and 5xx.
-- **Mission console** (`/console`). Query panel, 9-stage timeline, live agent toasts, MapLibre workspace with observation/baseline/change/confidence/AOI toggles, the Time Machine, the intelligence panel (confidence band, gate, uncertainty) and the xyflow **WHY graph**.
+- **Mission console** (`/dashboard`; `/console` redirects here). Query panel, 9-stage timeline, live agent toasts, MapLibre workspace with observation/baseline/change/confidence/AOI toggles, the Time Machine, the intelligence panel (confidence band, gate, uncertainty) and the xyflow **WHY graph**.
 - **Provenance in the UI.** Every value is wrapped as `Sourced` with a `gateway` or `fixture` badge, and the telemetry bar reads `ENV: DEMO` or `ENV: LIVE`. Fixtures are **never** used as a fallback for a failed live call.
 - **Demo mode.** With `NEXT_PUBLIC_DEMO_MODE=1` (baked in at build time), every panel is fed the pinned Assam/Nagaon scenario from `lib/fixtures/` and `public/fixtures/`, on pinned timings, with a visible **DEMO FIXTURE** badge.
 
@@ -492,7 +492,7 @@ cd SatQuery/apps/web
 npm ci
 cp .env.example .env.local
 echo "NEXT_PUBLIC_DEMO_MODE=1" >> .env.local
-npm run dev            # http://localhost:3000  →  /console
+npm run dev            # http://localhost:3000  →  /dashboard
 ```
 
 ### 2. Full stack with Docker Compose
@@ -723,7 +723,7 @@ The engineering foundation is real: service boundaries, contracts, auth, tests a
 
 | Path | State | What the code does today |
 |---|---|---|
-| Console → gateway | **Integrated (live mode)** | `/console` live mode calls `POST /agent/execute` and polls `GET /agent/runs/{id}`; `/missions` and `/admin` list missions and models. CRITICAL_PATH's "setTimeout only" finding is out of date for `/console`. Demo mode stays isolated behind `NEXT_PUBLIC_DEMO_MODE`. |
+| Console → gateway | **Integrated (live mode)** | `/dashboard` live mode calls `POST /agent/execute` and polls `GET /agent/runs/{id}`; `/dashboard/history` and `/dashboard/admin` list missions and models. CRITICAL_PATH's "setTimeout only" finding is out of date for `/dashboard`. Demo mode stays isolated behind `NEXT_PUBLIC_DEMO_MODE`. |
 | Console panels | **Partly fixture** | In live mode the map overlays and intelligence panel have no live source yet. `/monitoring` shows an empty notice. Report generation reports `not_contracted`. The `/dashboard` sensor, monitoring and report cards and the `/dashboard/*` sub-pages are static. |
 | Mission WebSocket | **Implemented, not reachable from the browser** | The gateway relays Redis events. The frontend hook exists, but `next.config.ts` has no `/ws/v1` rewrite and no other proxy is configured. |
 | Gateway / mission / auth | **Implemented** | Routes, RBAC, idempotency and tenancy are tested. Mission runs jobs with FastAPI `BackgroundTasks`, not Celery. Tables are created with `create_all` (no migrations). Geometry is stored as JSON rather than PostGIS types. |

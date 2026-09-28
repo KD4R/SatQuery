@@ -57,11 +57,16 @@ reports/             generated evaluation report (accuracy gate)
 tests/               contract, integration, e2e, security, performance, chaos
 ```
 
-The three-zone console lives in `apps/web/components/`:
-`shell/MissionShell.tsx` (query rail | map | intel rail, drawers below 1100px),
-`shell/TopTelemetryBar.tsx` (tab chrome + breadcrumb + ENV chip),
-`console/` (query panel, timeline), `evidence/IntelligencePanel.tsx`,
-`map/MapWorkspace.tsx` + `map/TimeMachine.tsx`, `impact/InfrastructureImpact.tsx`.
+The one canonical mission console is **`/dashboard`** (`ROUTES.console` in
+`apps/web/lib/nav.ts`; the landing page's Console CTAs use it). It is
+`components/Dashboard.tsx`: `QueryConsole` + `PlanParameters` + `StageList`
+(left rail), `MapCanvas` -> `map/MapWorkspace.tsx` + `map/TimeMachine.tsx`,
+`evidence/IntelligencePanel.tsx` (+ `impact/InfrastructureImpact.tsx`), agent
+toasts via `lib/useAgentActivity.ts`. Sections live under `/dashboard/*`
+(monitoring, history, reports[/id], evidence, alerts, admin, settings). Old
+paths (`/console`, `/monitoring`, `/missions`, `/admin`, ...) are redirects
+declared in `LEGACY_REDIRECTS`; never add a page at a redirected path, and
+never hard-code an internal href — `lib/nav.test.ts` enforces both.
 
 ---
 
@@ -169,8 +174,9 @@ tests that need the full stack inside containers.
   browser cached old HTML. Cache-bust (`?v=2`) or open a fresh tab; the
   Freebuff preview browser also needs a *new tab* (not reload) to clear some
   renderer states.
-- **Console UI looks like drawers at desktop size** → viewport < 1100 px;
-  `MissionShell` collapses rails into MISSION/INTELLIGENCE drawers. Widen.
+- **A stale `next start` / standalone server serving a rebuilt `.next`** →
+  pages render unstyled (chunk hashes changed). Kill the old node process
+  (`lsof -iTCP:<port>`) before restarting; `pkill -f` on the command line may miss it.
 - **Compose recreated the old image** → compose derives its own image name for
   services with a `build:` block; `docker tag` alone does nothing. Use
   `docker compose build <svc>` then `up -d --force-recreate <svc>`.
