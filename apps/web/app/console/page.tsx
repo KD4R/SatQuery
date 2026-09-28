@@ -1,7 +1,9 @@
-import MissionConsole from "../../components/MissionConsole";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Mission Console — SatQuery AI" };
-
+/**
+ * The Mission Console lives at /dashboard now; this URL is a plain redirect
+ * so old links and bookmarks keep working.
+ */
 export default function ConsolePage() {
-  return <MissionConsole />;
+  redirect("/dashboard");
 }

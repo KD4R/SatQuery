@@ -42,6 +42,11 @@ function mapStageState(state: string): Stage["status"] {
     case "running": return "active";
     case "failed": return "error";
     case "warning": return "warning";
+    // The fixture's honesty signal for a stage that finished having analysed
+    // less than half the AOI — neither complete nor failed. Without this case
+    // it silently fell through to "pending" and the degraded step looked
+    // permanently queued instead of flagging what it actually found.
+    case "degraded": return "warning";
     default: return "pending";
   }
 }
@@ -135,7 +140,7 @@ export default function Dashboard() {
     <>
       <DashboardTopBar activeHref="/dashboard" />
       <div className="app-shell app-shell--flat">
-      <main className="main">
+      <main className="main" id="mission-main" tabIndex={-1}>
 
         <div className="content">
           {/* Workspace label — bigger, left-aligned */}

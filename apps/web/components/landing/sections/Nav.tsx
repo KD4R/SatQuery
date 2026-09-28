@@ -30,7 +30,7 @@ export function Nav({ scrolled }: { scrolled: boolean }) {
           ))}
         </nav>
         <Link
-          href="/console"
+          href="/dashboard"
           className="sq-btn sq-btn--secondary sq-btn--sm sq-intro-wait"
         >
           Open console

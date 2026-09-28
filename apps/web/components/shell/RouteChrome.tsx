@@ -17,7 +17,7 @@ import { Label, StatusChip } from "../system/primitives";
 import { demoModeEnabled } from "../../lib/api/source";
 
 const NAV: { href: string; label: string }[] = [
-  { href: "/console", label: "Console" },
+  { href: "/dashboard", label: "Console" },
   { href: "/missions", label: "Missions" },
   { href: "/monitoring", label: "Monitoring" },
   { href: "/admin", label: "Admin" },

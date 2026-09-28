@@ -22,7 +22,7 @@ export default function PageShell({children}:{children:React.ReactNode}){
  return <>
   <DashboardTopBar activeHref={pathname}/>
   <div className="app-shell app-shell--flat">
-  <main className="main">
+  <main className="main" id="mission-main" tabIndex={-1}>
    <div className="content">{children}</div>
    <PageTelemetry/>
    <footer className="app-footer"><div><b>SatQuery AI</b><span>Evidence-first satellite intelligence</span></div><div><span>Gateway-only browser access</span><span>•</span><span>Traceable outputs</span><span>•</span><span>Accessible UI</span></div></footer>

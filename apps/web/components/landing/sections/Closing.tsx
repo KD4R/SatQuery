@@ -28,7 +28,7 @@ export function Closing() {
               land, with the source of every value marked.
             </p>
             <div className="sq-cta-row">
-              <Link href="/console" className="sq-btn sq-btn--primary">
+              <Link href="/dashboard" className="sq-btn sq-btn--primary">
                 Open the console
                 <IconArrow />
               </Link>
@@ -50,7 +50,7 @@ export function Closing() {
             <div className="sq-footer-meta">Smart India Hackathon 2026</div>
           </div>
           <nav className="sq-footer-links" aria-label="App">
-            <Link href="/console">Console</Link>
+            <Link href="/dashboard">Console</Link>
             <Link href="/missions">Missions</Link>
             <Link href="/monitoring">Monitoring</Link>
             <Link href="/admin">Admin</Link>

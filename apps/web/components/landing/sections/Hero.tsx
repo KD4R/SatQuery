@@ -109,7 +109,7 @@ export function Hero({ phase }: { phase: IntroPhase }) {
 
           <Reveal delay={0.08}>
             <div className="sq-cta-row">
-              <Link href="/console" className="sq-btn sq-btn--primary">
+              <Link href="/dashboard" className="sq-btn sq-btn--primary">
                 Enter mission console
                 <IconArrow />
               </Link>

@@ -76,13 +76,13 @@ export default function QueryConsole({
             <Command size={10} /> CTRL K · ENTER TO RUN · SHIFT ENTER
           </span>
           <div className="query-actions">
-            <button className="small-icon" title="Attach context">
+            <button className="small-icon" title="Attach context" aria-label="Attach context">
               <Paperclip size={14} />
             </button>
-            <button className="small-icon" title="Reset" onClick={onReset}>
+            <button className="small-icon" title="Reset" aria-label="Reset" onClick={onReset}>
               <RotateCcw size={14} />
             </button>
-            <button className="send" onClick={onRun} disabled={running}>
+            <button className="send" aria-label="Run analysis" onClick={onRun} disabled={running}>
               {running ? (
                 <LoaderCircle className="spin" size={16} />
               ) : (
