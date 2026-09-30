@@ -58,6 +58,21 @@ class STACSearchTool(BaseTool):
                 ],
             }
 
+            # Only query the collections for the sensors asked for: searching
+            # (and signing) Sentinel-2 for a SAR-only mission costs a round trip
+            # and returns scenes that are then discarded.
+            collections = [
+                c
+                for sensor, c in (("S1_SAR", "sentinel-1-rtc"), ("S2_OPTICAL", "sentinel-2-l2a"))
+                if sensor in args.sensors
+            ]
+            if not collections:
+                return ToolResult(
+                    success=False,
+                    output=[],
+                    metadata={"error": f"no searchable collection for sensors {args.sensors}"},
+                )
+
             auth_ctx = kwargs.get("auth_context")
             trace_id = getattr(auth_ctx, "trace_id", "system") if auth_ctx else "system"
             context = {"trace_id": trace_id}
@@ -71,7 +86,7 @@ class STACSearchTool(BaseTool):
                 end_date=end,
                 cloud_cover=args.max_cloud_cover,
                 context=context,
-                collections=["sentinel-2-l2a", "sentinel-1-rtc"],
+                collections=collections,
             )
 
             for obs in observations:

@@ -34,6 +34,7 @@ from __future__ import annotations
 import logging
 import uuid
 
+from fastapi.concurrency import run_in_threadpool
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 
@@ -85,11 +86,16 @@ async def create_analysis(
     considered refusal as a transport failure and retry it.
     """
     trace_id = str(uuid.uuid4())
-    outcome = service.analyse(
+    # analyse() is synchronous and reads remote rasters (seconds to minutes).
+    # Run it in the threadpool so one analysis does not block the event loop
+    # and every other request this worker is serving.
+    outcome = await run_in_threadpool(
+        service.analyse,
         scene=request.scene,
         scene_href=request.scene_href,
         scene_assets=request.scene_assets,
         scene_bbox=request.aoi_bbox,
+        aoi_geometry=request.aoi_geometry,
         permanent_water_href=request.permanent_water_href,
         model_name=request.model,
         min_mapping_unit_ha=request.min_mapping_unit_ha,

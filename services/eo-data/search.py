@@ -44,6 +44,24 @@ class SearchService:
         payload_bytes = json.dumps(payload, sort_keys=True).encode("utf-8")
         return f"stac:mirror:{hashlib.md5(payload_bytes, usedforsecurity=False).hexdigest()}"
 
+    @staticmethod
+    def _signed(provider_name: str, observations: List[Observation]) -> List[Observation]:
+        """Sign Planetary Computer asset hrefs at read time.
+
+        The cache holds unsigned hrefs; a SAS token cached for an hour can expire
+        before the inference service reads the raster. Signing is per-read and
+        the token is never stored as an application credential.
+        """
+        if provider_name != "planetary_computer" or not observations:
+            return observations
+        import planetary_computer
+
+        signed: List[Observation] = []
+        for obs in observations:
+            assets = {k: planetary_computer.sign(v) if v else v for k, v in obs.assets.items()}
+            signed.append(obs.model_copy(update={"assets": assets}))
+        return signed
+
     def search_observations(
         self,
         polygon: Dict[str, Any],
@@ -68,7 +86,10 @@ class SearchService:
                     if cached_data:
                         logger.info("Serving metadata search from STAC mirror cache")
                         raw_items = json.loads(cached_data)
-                        return [Observation.model_validate(obs) for obs in raw_items]
+                        return self._signed(
+                            provider_name,
+                            [Observation.model_validate(obs) for obs in raw_items],
+                        )
                 except redis.RedisError as e:
                     logger.warning(
                         f"Redis cache unavailable, falling back to direct fetch. Error: {e}"
@@ -96,7 +117,7 @@ class SearchService:
                     except redis.RedisError as e:
                         logger.warning(f"Failed to write to Redis cache: {e}")
 
-                return observations  # type: ignore
+                return self._signed(provider_name, observations)  # type: ignore
 
     def get_latest_cloud_free_observation(
         self,

@@ -30,7 +30,6 @@ from packages.contracts import (
     Abstention,
     AbstentionReason,
     Analysis,
-    BackscatterScale,
     Confidence,
     MissionOutcome,
     Polarization,
@@ -48,6 +47,7 @@ from services.inference.confidence import confidence_for
 from services.inference.outputs import mask_geojson, mask_geotiff
 from services.inference.registry import BASELINE_METHOD, ModelRegistry, ModelUnavailable
 from services.inference.sources import RasterSource
+from services.inference.scale import aoi_region, declared_scale_for, to_decibel
 
 logger = logging.getLogger(__name__)
 
@@ -79,17 +79,32 @@ class AnalysisService:
         scene_href: str,
         scene_assets: dict[str, str] | None = None,
         scene_bbox: list[float] | None = None,
+        aoi_geometry: dict | None = None,
         trace_id: str,
         permanent_water_href: str | None = None,
         model_name: str | None = None,
         min_mapping_unit_ha: float = 0.5,
     ) -> MissionOutcome:
         try:
-            raster = self._load(scene_href, scene_assets=scene_assets, scene_bbox=scene_bbox)
+            raster = self._load(
+                scene_href, scene=scene, scene_assets=scene_assets, scene_bbox=scene_bbox
+            )
         except (PreflightError, RasterReadError) as error:
             return self._abstain(
                 AbstentionReason.INPUT_FAILED_PREFLIGHT, str(error), scene, trace_id
             )
+
+        region = None
+        if aoi_geometry is not None:
+            try:
+                region = aoi_region(aoi_geometry, raster)
+            except ValueError as error:
+                return self._abstain(
+                    AbstentionReason.INPUT_FAILED_PREFLIGHT,
+                    f"AOI polygon: {error}",
+                    scene,
+                    trace_id,
+                )
 
         permanent_water = None
         if permanent_water_href is not None:
@@ -107,13 +122,13 @@ class AnalysisService:
         # a legitimate thing to ask for -- it is the comparison every claim is made
         # against -- so it is not treated as degradation.
         if model_name == "baseline":
-            return detect_water_single_date(
+            return self._baseline(
                 raster,
-                scenes=[scene],
-                code_version=self.code_version,
+                scene=scene,
+                trace_id=trace_id,
                 permanent_water=permanent_water,
                 min_mapping_unit_ha=min_mapping_unit_ha,
-                trace_id=trace_id,
+                region=region,
             )
 
         requested = model_name or self.registry.default()
@@ -124,6 +139,7 @@ class AnalysisService:
                 trace_id=trace_id,
                 permanent_water=permanent_water,
                 min_mapping_unit_ha=min_mapping_unit_ha,
+                region=region,
                 reason=(
                     "no registered model beats the deterministic baseline on "
                     "held-out regions, so the baseline was used"
@@ -141,6 +157,7 @@ class AnalysisService:
                 trace_id=trace_id,
                 permanent_water=permanent_water,
                 min_mapping_unit_ha=min_mapping_unit_ha,
+                region=region,
                 reason=str(error),
                 degraded_from=requested,
             )
@@ -161,6 +178,7 @@ class AnalysisService:
                 trace_id=trace_id,
                 permanent_water=permanent_water,
                 min_mapping_unit_ha=min_mapping_unit_ha,
+                region=region,
                 reason=f"model {requested!r} raised at inference: {error}",
                 degraded_from=requested,
             )
@@ -173,6 +191,7 @@ class AnalysisService:
             trace_id=trace_id,
             permanent_water=permanent_water,
             min_mapping_unit_ha=min_mapping_unit_ha,
+            region=region,
             produced_by=f"{card.name}@{card.version}",
             caveats=self._model_caveats(card),
             degraded_from=None,
@@ -181,8 +200,14 @@ class AnalysisService:
 
     # -- loading ------------------------------------------------------------- #
 
-    def _load(self, href: str, *, scene_assets: dict[str, str] | None = None,
-              scene_bbox: list[float] | None = None) -> Raster:
+    def _load(
+        self,
+        href: str,
+        *,
+        scene: SceneRef | None = None,
+        scene_assets: dict[str, str] | None = None,
+        scene_bbox: list[float] | None = None,
+    ) -> Raster:
         """Resolve, read and reproject. Reprojection first, always.
 
         Area measured in a geographic CRS is wrong by a latitude-dependent factor,
@@ -193,12 +218,16 @@ class AnalysisService:
         """
         resolver = getattr(self.source, "resolve_scene", None)
         path = resolver(scene_assets, scene_bbox) if scene_assets and resolver else self.source.resolve(href)
+        declared = declared_scale_for(scene)
         raster = read_raster(
             path,
             declared_band_order=MODEL_BANDS,
-            declared_scale=BackscatterScale.DECIBEL,
+            declared_scale=declared,
         )
-        return reproject_to_area_safe_crs(raster)
+        # Resample in the product's own scale (bilinear on linear power is the
+        # physically meaningful average), then express it in decibels: both the
+        # Otsu baseline and the learned models were built on dB inputs.
+        return to_decibel(reproject_to_area_safe_crs(raster))
 
     def _load_permanent_water(self, href: str, target: Raster) -> npt.NDArray[np.bool_]:
         """Read the JRC layer onto the analysis grid, nearest-neighbour.
@@ -246,6 +275,52 @@ class AnalysisService:
 
     # -- outcomes ------------------------------------------------------------ #
 
+    def _baseline(
+        self,
+        raster: Raster,
+        *,
+        scene: SceneRef,
+        trace_id: str,
+        permanent_water,
+        min_mapping_unit_ha: float,
+        region=None,
+    ) -> MissionOutcome:
+        """Run the deterministic baseline and persist what it measured.
+
+        The baseline used to return ``geometry_ref=None`` always, so the map had
+        nothing to draw on exactly the path every deployment without weights
+        takes. It now goes through the same artefact sink as the model path.
+        """
+        captured: list[npt.NDArray[np.bool_]] = []
+        outcome = detect_water_single_date(
+            raster,
+            scenes=[scene],
+            code_version=self.code_version,
+            permanent_water=permanent_water,
+            min_mapping_unit_ha=min_mapping_unit_ha,
+            trace_id=trace_id,
+            region=region,
+            mask_sink=captured.append,
+        )
+        if outcome.outcome != "analysed" or not captured:
+            return outcome
+        measurement = outcome.measurements[0]
+        geometry_ref, raster_refs, storage_caveats = self._persist(
+            captured[0],
+            raster=raster,
+            pixel_area_m2=pixel_area_m2(raster.spec.pixel_size_m, raster.spec.crs),
+            trace_id=trace_id,
+            produced_by=BASELINE_METHOD,
+            area_ha=float(measurement.value),
+        )
+        return outcome.model_copy(
+            update={
+                "geometry_ref": geometry_ref,
+                "raster_refs": raster_refs,
+                "caveats": (f"produced by {BASELINE_METHOD}",) + outcome.caveats + storage_caveats,
+            }
+        )
+
     def _degraded(
         self,
         raster: Raster,
@@ -256,15 +331,16 @@ class AnalysisService:
         min_mapping_unit_ha: float,
         reason: str,
         degraded_from: str | None,
+        region=None,
     ) -> MissionOutcome:
         """Run the baseline and label the answer as degraded."""
-        outcome = detect_water_single_date(
+        outcome = self._baseline(
             raster,
-            scenes=[scene],
-            code_version=self.code_version,
+            scene=scene,
+            trace_id=trace_id,
             permanent_water=permanent_water,
             min_mapping_unit_ha=min_mapping_unit_ha,
-            trace_id=trace_id,
+            region=region,
         )
         if outcome.outcome != "analysed":
             return outcome
@@ -287,6 +363,7 @@ class AnalysisService:
         min_mapping_unit_ha: float,
         produced_by: str,
         caveats: tuple[str, ...],
+        region=None,
         degraded_from: str | None,
         confidence: Confidence,
     ) -> MissionOutcome:
@@ -309,8 +386,17 @@ class AnalysisService:
                 AbstentionReason.INPUT_FAILED_PREFLIGHT, str(error), scene, trace_id
             )
 
+        measured = cleaned.mask
+        region_caveats: tuple[str, ...] = ()
+        if region is not None:
+            measured = measured & region
+            region_caveats = (
+                f"measured inside the AOI polygon only ({float(region.mean()):.0%} of the "
+                "read window)",
+            )
+
         measurement = area_hectares(
-            cleaned.mask,
+            measured,
             pixel_size_m=raster.spec.pixel_size_m,
             crs=raster.spec.crs,
             derived_from=(scene,),
@@ -320,7 +406,7 @@ class AnalysisService:
         # cleaned.mask, not `mask`: the artefacts must show exactly what was
         # measured. See services/inference/outputs.py.
         geometry_ref, raster_refs, storage_caveats = self._persist(
-            cleaned.mask,
+            measured,
             raster=raster,
             pixel_area_m2=per_pixel,
             trace_id=trace_id,
@@ -341,7 +427,11 @@ class AnalysisService:
             confidence=confidence,
             scenes=(scene,),
             degraded_from=degraded_from,
-            caveats=(f"produced by {produced_by}",) + caveats + cleaned.caveats + storage_caveats,
+            caveats=(f"produced by {produced_by}",)
+            + caveats
+            + cleaned.caveats
+            + region_caveats
+            + storage_caveats,
             trace_id=trace_id,
         )
 

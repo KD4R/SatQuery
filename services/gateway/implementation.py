@@ -23,6 +23,7 @@ from packages.shared.middleware import IdempotencyMiddleware
 from services.gateway.config import get_gateway_settings
 from services.gateway.middleware.rate_limit import RateLimitMiddleware
 from services.gateway.middleware.security_headers import SecurityHeadersMiddleware
+from services.gateway.routers.dev_auth import router as dev_auth_router
 from services.gateway.routers.missions_ws import router as ws_router
 from services.gateway.routers.proxy import router as proxy_router
 
@@ -95,6 +96,8 @@ app.add_middleware(MetricsMiddleware)
 
 app.include_router(ws_router)
 app.include_router(proxy_router)
+# Returns 404 unless ENVIRONMENT=development and SATQUERY_DEV_LOGIN=1 (see module).
+app.include_router(dev_auth_router)
 
 _api_router = APIRouter(prefix="/api/v1")
 

@@ -75,18 +75,37 @@ class InternalClient:
     Automatically handles S2S authentication and trace propagation.
     """
 
-    def __init__(self, base_url: str, caller_service: str, scopes: List[str]):
+    def __init__(
+        self,
+        base_url: str,
+        caller_service: str,
+        scopes: List[str],
+        *,
+        timeout: float = 5.0,
+        max_attempts: int = 3,
+    ):
         """
         Args:
             base_url: The internal URL of the target service.
             caller_service: The name of the calling service (e.g. "gateway").
             scopes: The scopes to request in the S2S token.
+            timeout: Per-request timeout in seconds. 5 s suits quick control-plane
+                calls; a call that does real work (a satellite inference reads
+                remote rasters) must pass a longer one, or it is cut off and
+                retried mid-computation.
+            max_attempts: Total attempts on a timeout/network error. Use 1 for
+                non-idempotent or expensive calls, where a retry re-runs the work.
         """
+        if timeout <= 0:
+            raise ValueError("timeout must be positive")
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be at least 1")
         self.base_url = base_url.rstrip("/")
         self.caller_service = caller_service
         self.scopes = scopes
-        # Timeout configured to 5 seconds to prevent cascading delays
-        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=5.0)
+        self.timeout = timeout
+        self.max_attempts = max_attempts
+        self.client = httpx.AsyncClient(base_url=self.base_url, timeout=timeout)
         self.circuit_breaker = CircuitBreaker()
 
     def _get_headers(self, auth_context: AuthContext) -> Dict[str, str]:
@@ -99,16 +118,20 @@ class InternalClient:
         )
         return {"Authorization": f"Bearer {token}"}
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=4),
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
-        reraise=True,
-    )
     async def _execute_with_retry(
         self, method: str, path: str, headers: dict, **kwargs
     ) -> httpx.Response:
-        return await self.client.request(method, path, headers=headers, **kwargs)
+        # Built per call so max_attempts is an instance setting, not a class one.
+        @retry(
+            stop=stop_after_attempt(self.max_attempts),
+            wait=wait_exponential(multiplier=1, min=1, max=4),
+            retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+            reraise=True,
+        )
+        async def _send() -> httpx.Response:
+            return await self.client.request(method, path, headers=headers, **kwargs)
+
+        return await _send()
 
     async def _request(
         self, method: str, path: str, auth_context: AuthContext, **kwargs: Any

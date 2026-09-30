@@ -40,55 +40,77 @@ def _stream_run(job_id: str) -> dict:
         return {"status": "failed", "reason": "run_not_found", "job_id": job_id}
 
     import json
+    from datetime import datetime, timezone
+
+    from services.agent.graph.run_inputs import redact_signed_urls
 
     channel = f"mission:{state.mission_id}:status"
 
+    final_state = state
+    status_val = state.status
     try:
-        final_state = state
         for event in orchestrator._app.stream(state):
             node_name = list(event.keys())[0]
             node_state = event[node_name]
             status_val = node_state.get("status", node_name)
 
-            # Publish to Redis
+            # Merge partial state first, so what is published and what is stored
+            # describe the same moment.
+            for k, v in node_state.items():
+                setattr(final_state, k, v)
+            final_state.status = status_val
+            final_state.updated_at = datetime.now(timezone.utc)
+
+            # Persist after every node: the polling route (and any other process)
+            # sees the run advance instead of INITIALIZED until the very end.
+            orchestrator.save_run(final_state)
+
+            # Publish to the mission channel the gateway WS bridges. Signed asset
+            # URLs (SAS tokens) are stripped: the browser never needs them.
             try:
                 redis_client.publish(
                     channel,
                     json.dumps(
-                        {"status": status_val, "node": node_name, "agent_state": node_state}
+                        {
+                            "status": status_val,
+                            "node": node_name,
+                            "agent_state": redact_signed_urls(node_state),
+                        },
+                        default=str,
                     ),
                 )
             except Exception as e:  # noqa: BLE001 — streaming must not die on a publish hiccup
                 logger.warning("Failed to publish status update: %s", e)
 
-            # Merge partial state into final_state
-            final_state.status = status_val
-            for k, v in node_state.items():
-                setattr(final_state, k, v)
+        if final_state.status not in ("FAILED", "COMPLETED"):
+            # The graph always ends in synthesize, which sets one of the two; any
+            # other value here means a node returned an unexpected status.
+            final_state.status = "FAILED"
+            final_state.errors.append(f"Run ended in unexpected state {status_val!r}")
 
-        if final_state.status != "FAILED":
-            final_state.status = "COMPLETED"
-
-        # Persist through the shared store: process-local cache + Redis, so the
-        # polling route and any other process see the terminal state.
         orchestrator.save_run(final_state)
         return {"status": "success", "job_id": job_id, "final_status": final_state.status}
     except Exception as e:
-        logger.error("Agent run %s failed: %s", job_id, e)
-        state.status = "FAILED"
-        state.errors.append(str(e))
+        logger.exception("Agent run %s failed", job_id)
+        final_state.status = "FAILED"
+        final_state.errors.append(str(e))
+        # Persist the failure: an unsaved FAILED leaves pollers seeing the last
+        # intermediate status until they time out.
+        try:
+            orchestrator.save_run(final_state)
+        except Exception:  # noqa: BLE001
+            logger.exception("Could not persist failed state for %s", job_id)
         raise
 
 
-@celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
+@celery_app.task(bind=True, max_retries=0)
 def process_agent_run(self, job_id: str):
     """
     Executes the LangGraph mission orchestration synchronously within the worker process.
+
+    Not retried: a failure is recorded on the run (status FAILED + error) and a
+    blind retry would re-run satellite search and inference for a run the user
+    has already been told failed. The user can start a new run.
     """
     logger.info("Starting Agent Run %s", job_id)
-    try:
-        return _stream_run(job_id)
-    except Exception as exc:
-        # _stream_run has already marked the run FAILED and recorded the error;
-        # the retry gives a transient broker/backend fault another chance.
-        raise self.retry(exc=exc)
+    return _stream_run(job_id)

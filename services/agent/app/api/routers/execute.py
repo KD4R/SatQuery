@@ -5,6 +5,7 @@ services/agent/app/api/routers/execute.py — Async agent execute router (P2-04)
 import logging
 import os
 import threading
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -12,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 
 from services.agent.graph.orchestrator import get_orchestrator
+from services.agent.graph.run_inputs import AOIError, aoi_bbox, redact_signed_urls, requested_window
 from packages.auth.dependencies import get_current_user, require_role
 from packages.auth.models import AuthContext, Role
 from services.agent.schemas import ExecuteRequest, ExecuteResponse, MissionState
@@ -105,6 +107,21 @@ async def execute_agent(
     clean_query = sanitize_prompt(payload.query)
     if payload.aoi:
         validate_aoi_geometry(payload.aoi)
+        try:
+            aoi_bbox(payload.aoi)
+        except AOIError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "INVALID_AOI", "message": str(exc), "retryable": False},
+            )
+    if payload.temporal_window:
+        try:
+            requested_window(payload.temporal_window)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"code": "INVALID_TEMPORAL_WINDOW", "message": str(exc), "retryable": False},
+            )
 
     # Normalise the client-supplied budget at the API edge: only the two
     # limit fields are accepted, and server-side ceilings apply (a caller may
@@ -133,7 +150,9 @@ async def execute_agent(
             "max_duration_seconds": budget.max_duration_seconds,
         }
 
-    mission_id = payload.mission_id or f"msn_{ctx.organisation_id}_001"
+    # One id per ad-hoc run: a fixed default made every unnamed run share a
+    # mission channel, so concurrent runs streamed into each other's UI.
+    mission_id = payload.mission_id or f"msn_adhoc_{uuid.uuid4().hex[:12]}"
     orchestrator = get_orchestrator()
 
     state = orchestrator.create_run(
@@ -143,6 +162,7 @@ async def execute_agent(
         trace_id=trace_id,
         aoi=payload.aoi,
         metadata={"budget": budget_dict} if budget_dict else None,
+        temporal_window=payload.temporal_window,
     )
 
     _dispatch_run(state.job_id)
@@ -178,4 +198,6 @@ async def get_run_status(
                 "retryable": False,
             },
         )
-    return run
+    # Internal state keeps the signed asset URLs inference needs; the public view
+    # does not carry the SAS tokens.
+    return MissionState.model_validate(redact_signed_urls(run.model_dump()))

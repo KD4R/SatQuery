@@ -39,6 +39,11 @@ from services.inference.validation import validate_href
 #: quietly returning a different file than the one requested.
 DATA_ROOT = Path(os.environ.get("SATQUERY_DATA_ROOT", "data")).resolve()
 
+#: Largest AOI window read from a remote scene, in pixels. 25M pixels is a
+#: 50 km x 50 km square at Sentinel-1 RTC's 10 m spacing (~200 MB for the two
+#: float32 bands). Override with SATQUERY_MAX_WINDOW_PIXELS.
+MAX_WINDOW_PIXELS = int(os.environ.get("SATQUERY_MAX_WINDOW_PIXELS", str(25_000_000)))
+
 
 class RasterSource(Protocol):
     """Resolve an href to a readable local path."""
@@ -167,6 +172,15 @@ class RemoteRasterSource(LocalRasterSource):
             window = window.round_offsets().round_lengths()
             if window.width < 1 or window.height < 1:
                 raise PreflightError("AOI does not overlap the Sentinel-1 raster")
+            pixels = int(window.width) * int(window.height)
+            if pixels > MAX_WINDOW_PIXELS:
+                # Two float32 bands of this window, plus reprojection copies, is
+                # what the service would hold in memory. Refuse rather than OOM.
+                raise PreflightError(
+                    f"AOI window is {int(window.width)}x{int(window.height)} pixels "
+                    f"({pixels:,}), above the {MAX_WINDOW_PIXELS:,}-pixel limit; "
+                    "draw a smaller AOI"
+                )
             vv_data = vv_src.read(1, window=window, boundless=True, fill_value=vv_src.nodata)
             vh_data = vh_src.read(1, window=window, boundless=True, fill_value=vh_src.nodata)
             profile = vv_src.profile.copy()

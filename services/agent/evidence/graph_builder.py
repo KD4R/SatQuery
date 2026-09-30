@@ -74,7 +74,7 @@ class EvidenceGraphBuilder:
         model_name: str,
         model_version: str,
         results: Dict[str, Any],
-        confidence: float = 0.90,
+        confidence: Optional[float] = 0.90,
     ) -> EvidenceNode:
         if not input_node_ids:
             raise ValueError("Inference requires at least one input node")
@@ -82,7 +82,7 @@ class EvidenceGraphBuilder:
             if nid not in self._nodes:
                 raise KeyError(f"Input node '{nid}' does not exist in graph")
 
-        if not (0.0 <= confidence <= 1.0):
+        if confidence is not None and not (0.0 <= confidence <= 1.0):
             raise ValueError("Confidence score must be in range [0.0, 1.0]")
 
         node_id = f"inf_{uuid.uuid4().hex[:6]}"

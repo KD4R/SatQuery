@@ -3,9 +3,10 @@ graph/orchestrator.py — LangGraph state machine & run orchestrator for SatQuer
 """
 
 import logging
+import os
 from typing import Dict, List, Optional
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from langgraph.graph import StateGraph, START, END
 from services.agent.evidence.graph_builder import EvidenceGraphBuilder
 from services.agent.nodes.intent_extractor import extract_intent_and_plan
@@ -26,6 +27,19 @@ from services.agent.nodes.confidence_gate import evaluate_confidence_gate
 from services.agent.evidence.models import EvidenceGraph
 from services.agent.nodes.synthesizer import synthesize_evidence_output
 from services.agent.nodes.resilience import execute_with_recovery
+from services.agent.graph.run_inputs import (
+    AOIError,
+    _parse_instant,
+    aoi_bbox,
+    aoi_geometry,
+    bbox_area_km2,
+    coverage_fraction,
+    geometry_bbox,
+    iso_z,
+    rank_sar_scenes,
+    requested_window,
+    sensor_of,
+)
 import redis
 from packages.providers.config import config
 from packages.contracts.events import EventEnvelope
@@ -34,20 +48,8 @@ logger = logging.getLogger(__name__)
 
 
 def _geometry_bbox(geometry: dict | None) -> list[float] | None:
-    """Return the WGS84 bbox of a STAC geometry for safe raster windowing."""
-    points: list[tuple[float, float]] = []
-
-    def walk(value):
-        if isinstance(value, list) and len(value) >= 2 and all(isinstance(v, (int, float)) for v in value[:2]):
-            points.append((float(value[0]), float(value[1])))
-        elif isinstance(value, list):
-            for child in value:
-                walk(child)
-
-    walk((geometry or {}).get("coordinates"))
-    if not points:
-        return None
-    return [min(x for x, _ in points), min(y for _, y in points), max(x for x, _ in points), max(y for _, y in points)]
+    """Return the WGS84 bbox of a GeoJSON geometry (kept for existing callers)."""
+    return geometry_bbox(geometry)
 
 
 def _build_inference_scene(scene_info: dict, scene_id: str, scene_href: str, acquired_at: str) -> dict:
@@ -89,6 +91,41 @@ def _build_inference_scene(scene_info: dict, scene_id: str, scene_href: str, acq
     }
 
 
+def _intent(state: MissionState) -> dict:
+    """The extracted intent. ``plan_mission`` writes it to ``state.intent``; older
+    runs stored it under ``metadata["intent"]``, which is still honoured."""
+    return state.intent or state.metadata.get("intent") or {}
+
+
+def _selected_observation(state: MissionState) -> dict:
+    """The observation this run analyses (chosen in ``acquire_data``)."""
+    observations = state.metadata.get("observations", [])
+    wanted = state.metadata.get("selected_observation_id") or (
+        state.observation_ids[0] if state.observation_ids else None
+    )
+    return next((o for o in observations if o.get("observation_id") == wanted), {})
+
+
+def _as_float(value) -> Optional[float]:
+    """Decimal / numeric string / number -> float; None stays None.
+
+    The inference API serialises Decimal fields (measurement values, confidence)
+    as JSON strings, so arithmetic on the raw value raises TypeError.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+#: Ground resolution of the Planetary Computer ``sentinel-1-rtc`` product (10 m
+#: pixel spacing, per the collection's documentation). Used only when the item
+#: itself does not state a resolution.
+_S1_RTC_RESOLUTION_M = 10.0
+
+
 def plan_mission(state: MissionState) -> dict:
     intent, plan_steps, selected_sensors = extract_intent_and_plan(
         state.sanitized_query or state.query, aoi=state.aoi
@@ -97,47 +134,65 @@ def plan_mission(state: MissionState) -> dict:
 
 
 def sensor_arbitration(state: MissionState) -> dict:
-    intent = state.metadata.get("intent", {})
-    hazard_type = intent.get("disaster_type", "flood")
+    intent = _intent(state)
+    hazard_type = str(intent.get("disaster_type", "flood")).lower()
 
-    # Simple heuristic to get cloud_cover from metadata (if available from previous steps/api)
-    cloud_cover = state.metadata.get("cloud_cover_forecast", 30.0)
-    is_night = state.metadata.get("is_night_forecast", False)
+    # A cloud forecast is only used when a caller actually supplied one. There is
+    # no forecast provider wired in, and inventing a figure here used to produce
+    # rationales such as "cloud cover at 30.0% exceeds ..." that nobody measured.
+    forecast = _as_float(state.metadata.get("cloud_cover_forecast"))
+    is_night = bool(state.metadata.get("is_night_forecast", False))
 
-    decision = arbitrate_sensors(
-        hazard_type=hazard_type,
-        cloud_cover=cloud_cover,
-        is_night=is_night,
-        trace_id=state.trace_id,
-    )
-
-    # Map generic sensor strings to specific sensor IDs
-    sensor_map = {
-        "SAR": "S1_SAR",
-        "OPTICAL": "S2_OPTICAL",
-    }
-
-    # Determine the ordered sensor preference
-    selected = [sensor_map.get(decision.primary_sensor, decision.primary_sensor)]
-    if decision.secondary_sensor:
-        selected.append(sensor_map.get(decision.secondary_sensor, decision.secondary_sensor))
-
-    # Live agent events (P5 §2C). Two usable sensors under degraded conditions
-    # is exactly the case where they may conflict, so the stream flags the
-    # possible disagreement now — before any masks exist, hence no figures.
-    # Emission is fire-and-forget; it must never fail the run.
-    if decision.secondary_sensor:
-        emit_sensor_disagreement(
-            state.mission_id,
-            state.trace_id,
-            None,
-            selected[0],
-            selected[1],
+    decision_meta: dict = {"cloud_cover_forecast": forecast}
+    if hazard_type in ("flood", "inundation"):
+        # The only validated live model is Sentinel-1 (VV+VH) water segmentation,
+        # so the search is for SAR regardless of weather. Optical would be found
+        # and then could not be analysed.
+        selected = ["S1_SAR"]
+        rationale = (
+            "Live flood inference is validated for Sentinel-1 SAR (VV+VH) only; "
+            "C-band SAR also images through cloud, which matters during floods."
         )
+        if forecast is not None:
+            rationale += f" Supplied cloud forecast: {forecast:.0f}%."
+        decision_meta.update(primary="S1_SAR", secondary=None, rationale=rationale)
+    elif forecast is not None or is_night:
+        decision = arbitrate_sensors(
+            hazard_type=hazard_type,
+            cloud_cover=forecast if forecast is not None else 0.0,
+            is_night=is_night,
+            trace_id=state.trace_id,
+        )
+        sensor_map = {"SAR": "S1_SAR", "OPTICAL": "S2_OPTICAL"}
+        selected = [sensor_map.get(decision.primary_sensor, decision.primary_sensor)]
+        if decision.secondary_sensor:
+            selected.append(sensor_map.get(decision.secondary_sensor, decision.secondary_sensor))
+        decision_meta.update(
+            primary=selected[0],
+            secondary=selected[1] if len(selected) > 1 else None,
+            rationale=decision.rationale,
+        )
+    else:
+        selected = list(state.selected_sensors or ["S1_SAR"])
+        decision_meta.update(
+            primary=selected[0],
+            secondary=selected[1] if len(selected) > 1 else None,
+            rationale=(
+                f"No cloud forecast was supplied; using the default sensor preference "
+                f"for {hazard_type}."
+            ),
+        )
+
+    # Live agent events (P5 §2C). Emission is fire-and-forget; it must never
+    # fail the run.
+    if len(selected) > 1:
+        emit_sensor_disagreement(state.mission_id, state.trace_id, None, selected[0], selected[1])
     else:
         emit_sensor_agreement(state.mission_id, state.trace_id, selected[0])
 
-    return {"status": "ARBITRATING", "selected_sensors": selected}
+    new_meta = dict(state.metadata)
+    new_meta["sensor_decision"] = decision_meta
+    return {"status": "ARBITRATING", "selected_sensors": selected, "metadata": new_meta}
 
 
 def acquire_data(state: MissionState) -> dict:
@@ -151,27 +206,121 @@ def acquire_data(state: MissionState) -> dict:
         trace_id=state.trace_id,
     )
 
-    # Use the aoi as bbox (heuristic fallback)
-    bbox = [92.0, 25.5, 94.0, 27.5]
-    if state.aoi:
-        if "bbox" in state.aoi:
-            bbox = state.aoi["bbox"]
-        elif "coordinates" in state.aoi:
-            coords = state.aoi["coordinates"][0]
-            lons = [c[0] for c in coords]
-            lats = [c[1] for c in coords]
-            bbox = [min(lons), min(lats), max(lons), max(lats)]
+    new_meta = dict(state.metadata)
+    fixture = state.metadata.get("demo_fixture")
+
+    # ── Reinvestigation: analyse the next-best scene, never the same one twice ──
+    analysed = list(state.metadata.get("analysed_observation_ids", []))
+    if (
+        state.metadata.get("reinvestigations")
+        and state.metadata.get("observations")
+        and not fixture
+    ):
+        try:
+            box = aoi_bbox(state.aoi)
+        except AOIError:
+            box = None
+        ranked = (
+            rank_sar_scenes(state.metadata["observations"], box, exclude=analysed) if box else []
+        )
+        if ranked:
+            chosen = ranked[0]
+            new_meta["selected_observation_id"] = chosen["observation_id"]
+            new_meta["reinvestigation_exhausted"] = False
+            ids = [chosen["observation_id"]] + [o["observation_id"] for o in ranked[1:]]
+            emit_agent_thought(
+                state.mission_id,
+                state.trace_id,
+                "acquiring",
+                "Confidence was low; analysing the next-best Sentinel-1 scene.",
+            )
+            return {"status": "ACQUIRING", "observation_ids": ids, "metadata": new_meta}
+        new_meta["reinvestigation_exhausted"] = True
+        return {"status": "ACQUIRING", "metadata": new_meta}
+
+    # ── AOI: the user's, or nothing. No default location. ──
+    if not fixture:
+        try:
+            bbox = aoi_bbox(state.aoi)
+        except AOIError as exc:
+            new_meta["acquisition_error"] = {"reason": "AOI_REQUIRED", "explanation": str(exc)}
+            new_meta["observations"] = []
+            emit_agent_thought(
+                state.mission_id,
+                state.trace_id,
+                "acquiring",
+                "No usable area of interest was supplied; the run cannot search imagery.",
+            )
+            return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
+        area_km2 = bbox_area_km2(bbox)
+        max_km2 = float(os.getenv("AGENT_MAX_AOI_KM2", "2500"))
+        if area_km2 > max_km2:
+            new_meta["acquisition_error"] = {
+                "reason": "AOI_TOO_LARGE",
+                "explanation": (
+                    f"The AOI covers about {area_km2:,.0f} km²; live analysis is limited "
+                    f"to {max_km2:,.0f} km² per run. Draw a smaller area."
+                ),
+            }
+            new_meta["observations"] = []
+            return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
+    else:
+        bbox = None
+
+    # ── Time window: the caller's, else the last 90 days, widened once to 365 ──
+    try:
+        window = requested_window(state.temporal_window)
+    except ValueError as exc:
+        new_meta["acquisition_error"] = {
+            "reason": "INVALID_TEMPORAL_WINDOW",
+            "explanation": str(exc),
+        }
+        new_meta["observations"] = []
+        return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
 
     budget = None
-    if state.metadata and "budget" in state.metadata:
+    if state.metadata and state.metadata.get("budget"):
         budget = ToolBudget(**state.metadata["budget"])
     else:
-        # Default budget if not provided
         budget = ToolBudget(max_calls=10, max_duration_seconds=60.0)
+
+    sensors = state.selected_sensors or ["S1_SAR"]
+    search_log: List[dict] = []
+
+    def _search(start: datetime, end: datetime) -> list:
+        res = executor.execute_tool(
+            "stac_search",
+            args={
+                "bbox": bbox,
+                "start_date": iso_z(start),
+                "end_date": iso_z(end),
+                "sensors": sensors,
+                "max_cloud_cover": 30.0,
+            },
+            auth_context=ctx,
+            budget=budget,
+        )
+        found = res.output if (res.success and res.output) else []
+        search_log.append(
+            {
+                "start": iso_z(start),
+                "end": iso_z(end),
+                "results": len(found),
+                "error": (
+                    None
+                    if res.success
+                    else (
+                        getattr(res, "error", None)
+                        or (getattr(res, "metadata", None) or {}).get("error")
+                        or "search failed"
+                    )
+                ),
+            }
+        )
+        return found
 
     try:
         def _primary_fn():
-            fixture = state.metadata.get("demo_fixture")
             if fixture:
                 return [
                     {
@@ -192,46 +341,15 @@ def acquire_data(state: MissionState) -> dict:
                     }
                     for item in fixture.get("observations", [])
                 ]
-            from datetime import datetime, timedelta, timezone
+            if window is not None:
+                # The caller asked for this period; widening it would answer a
+                # different question, so an empty result is reported as such.
+                return _search(*window)
             now = datetime.now(timezone.utc)
-
-            # Smart date strategy: try the last 90 days first.
-            # Planetary Computer Sentinel-1 RTC data becomes sparse after late 2023,
-            # so if we get 0 results we automatically fall back to Aug 2023 (demo
-            # data that is always available) so the app never shows an empty map.
-            def _search(start_date: str, end_date: str):
-                res = executor.execute_tool(
-                    "stac_search",
-                    args={
-                        "bbox": bbox,
-                        "start_date": start_date,
-                        "end_date": end_date,
-                        "sensors": state.selected_sensors or ["S1_SAR", "S2_OPTICAL"],
-                        "max_cloud_cover": 30.0,
-                    },
-                    auth_context=ctx,
-                    budget=budget,
-                )
-                if res.success and res.output:
-                    return res.output
-                return []
-
-            # Try recent 90 days
-            end_dt = now
-            start_dt = now - timedelta(days=90)
-            results = _search(
-                start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                end_dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            )
-
-            # Fallback to Aug 2023 (guaranteed Sentinel-1 RTC data on Planetary Computer)
+            results = _search(now - timedelta(days=90), now)
             if not results:
-                logger.info("No recent STAC results; widening live search to one year")
-                results = _search(
-                    (now - timedelta(days=365)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                    now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                )
-
+                logger.info("No STAC results in the last 90 days; widening to 365 days")
+                results = _search(now - timedelta(days=365), now)
             return results
 
         recovery_result = execute_with_recovery(
@@ -241,27 +359,65 @@ def acquire_data(state: MissionState) -> dict:
             max_retries=2,
         )
         observations = recovery_result.data if recovery_result.data else []
-        obs_ids = [obs.get("observation_id") for obs in observations if "observation_id" in obs]
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
+    except Exception:
+        logger.exception("STAC acquisition failed")
         observations = []
-        obs_ids = []
 
-    # The PRD's "Acquiring additional evidence..." moment: the agent is about
-    # to query for data. Reason is a fixed template, never query-derived text.
     emit_acquiring_evidence(
         state.mission_id,
         state.trace_id,
         "Selecting the observations that cover the area of interest.",
-        sensors=state.selected_sensors or [],
+        sensors=sensors,
     )
 
-    new_meta = dict(state.metadata)
+    # What was actually searched, so the UI can show it rather than assume it.
+    new_meta["search"] = {
+        "bbox": bbox,
+        "sensors": sensors,
+        "requested_window": (
+            {"start": iso_z(window[0]), "end": iso_z(window[1])} if window else None
+        ),
+        "attempts": search_log,
+        "widened": window is None and len(search_log) > 1,
+    }
     new_meta["budget"] = budget.model_dump()
     new_meta["observations"] = observations
 
+    if fixture:
+        obs_ids = [o["observation_id"] for o in observations]
+        if obs_ids:
+            new_meta["selected_observation_id"] = obs_ids[0]
+    else:
+        ranked = rank_sar_scenes(observations, bbox)
+        obs_ids = [o["observation_id"] for o in ranked]
+        if ranked:
+            new_meta["selected_observation_id"] = ranked[0]["observation_id"]
+            new_meta["selected_scene_coverage"] = round(
+                coverage_fraction(bbox, geometry_bbox(ranked[0].get("geometry"))), 3
+            )
+
     if not obs_ids:
+        if observations:
+            reason, text = (
+                "NO_ANALYSABLE_SCENE",
+                f"{len(observations)} scene(s) were found but none is a Sentinel-1 "
+                "scene with both VV and VH bands, which live flood inference requires.",
+            )
+        elif any(a.get("error") for a in search_log):
+            reason, text = "CATALOGUE_UNAVAILABLE", "The satellite catalogue search failed."
+        else:
+            span = new_meta["search"]["requested_window"] or (
+                {"start": search_log[-1]["start"], "end": search_log[-1]["end"]}
+                if search_log
+                else None
+            )
+            reason = "NO_SCENES_IN_WINDOW"
+            text = (
+                f"No scenes intersect the AOI between {span['start']} and {span['end']}."
+                if span
+                else "No scenes intersect the AOI."
+            )
+        new_meta["acquisition_error"] = {"reason": reason, "explanation": text}
         emit_agent_thought(
             state.mission_id,
             state.trace_id,
@@ -270,32 +426,44 @@ def acquire_data(state: MissionState) -> dict:
         )
         return {"status": "FAILED", "observation_ids": [], "metadata": new_meta}
 
-    # Numeric-only interpolation: counts are safe in a template the DOM renders.
     emit_agent_thought(
         state.mission_id,
         state.trace_id,
         "acquiring",
-        f"{len(obs_ids)} observation(s) returned for the AOI.",
+        f"{len(obs_ids)} analysable observation(s) returned for the AOI.",
     )
-
     return {"status": "ACQUIRING", "observation_ids": obs_ids, "metadata": new_meta}
+
+
+def _inference_timeout_s() -> float:
+    return float(os.getenv("AGENT_INFERENCE_TIMEOUT_S", "180"))
 
 
 def analyze_data(state: MissionState) -> dict:
     from packages.shared.client import InternalClient
-    from packages.auth.models import AuthContext, Role
     from services.agent.config import get_agent_settings
     import asyncio
-    import logging
+    import concurrent.futures
 
-    logger = logging.getLogger(__name__)
     settings = get_agent_settings()
-    hazard_type = str(state.metadata.get("intent", {}).get("disaster_type", "flood")).lower()
+    new_meta = dict(state.metadata)
+
+    if state.metadata.get("acquisition_error"):
+        # Nothing to analyse; the acquisition failure is the run's answer.
+        return {"status": "FAILED", "metadata": new_meta}
+
+    if state.metadata.get("reinvestigation_exhausted"):
+        # Reinvestigation found no other scene: keep the first analysis as-is.
+        return {"status": "ANALYZING", "metadata": new_meta}
+
+    hazard_type = str(_intent(state).get("disaster_type", "flood")).lower()
     if hazard_type not in {"flood", "inundation"}:
-        return {"status": "FAILED", "metadata": {**state.metadata, "inference_outcome": {
-            "outcome": "abstained", "reason": "UNSUPPORTED_HAZARD_MODEL",
+        new_meta["inference_outcome"] = {
+            "outcome": "abstained",
+            "reason": "UNSUPPORTED_HAZARD_MODEL",
             "explanation": f"No validated live inference model is registered for hazard '{hazard_type}'.",
-        }}}
+        }
+        return {"status": "FAILED", "metadata": new_meta}
 
     ctx = AuthContext(
         subject="system_agent",
@@ -305,20 +473,17 @@ def analyze_data(state: MissionState) -> dict:
         trace_id=state.trace_id,
     )
 
-    # We need to take the first selected observation
     if not state.observation_ids:
         logger.warning("No observations found to analyze.")
-        return {"status": "FAILED", "metadata": state.metadata}
+        return {"status": "FAILED", "metadata": new_meta}
 
-    scene_id = state.observation_ids[0]
-    observations = state.metadata.get("observations", [])
-    obs = next((o for o in observations if o.get("observation_id") == scene_id), {})
+    obs = _selected_observation(state)
+    scene_id = obs.get("observation_id") or state.observation_ids[0]
 
     fixture = state.metadata.get("demo_fixture")
     if fixture:
         result = fixture["inferences"]
         area_ha = float(result["inundation_area_sqkm"]) * 100.0
-        new_meta = dict(state.metadata)
         new_meta["inference_outcome"] = {
             "outcome": "analysed",
             "measurements": [{"name": "inundation_area", "value": area_ha, "unit": "ha"}],
@@ -328,44 +493,50 @@ def analyze_data(state: MissionState) -> dict:
         new_meta["demo_affected_structures_count"] = result.get("affected_structures_count")
         return {"status": "ANALYZING", "metadata": new_meta}
 
-    # Build scene_href: prefer SAR VV/VH band, then visual, then scene href
     assets = obs.get("assets", {})
     vv_href = assets.get("vv") or assets.get("VV")
     vh_href = assets.get("vh") or assets.get("VH")
-    scene_href = vv_href or obs.get("scene", {}).get("href", "")
-
-    if not scene_href or not vv_href or not vh_href:
-        logger.warning("No usable asset href found for observation %s — skipping inference", scene_id)
-        return {"status": "FAILED", "metadata": {**state.metadata, "inference_outcome": {
-            "outcome": "abstained", "reason": "MISSING_REQUIRED_ASSET",
+    if not vv_href or not vh_href:
+        new_meta["inference_outcome"] = {
+            "outcome": "abstained",
+            "reason": "MISSING_REQUIRED_ASSET",
             "explanation": "Live flood inference requires both Sentinel-1 VV and VH assets.",
-        }}}
+        }
+        return {"status": "FAILED", "metadata": new_meta}
 
     scene_info = obs.get("scene", {})
     acquired_at = scene_info.get("acquired_at")
-    if not acquired_at:
-        acquired_at = datetime.now(timezone.utc).isoformat()
-    # Pydantic datetime field needs an ISO string with timezone
     if hasattr(acquired_at, "isoformat"):
         acquired_at = acquired_at.isoformat()
+    if not acquired_at:
+        new_meta["inference_outcome"] = {
+            "outcome": "abstained",
+            "reason": "MISSING_ACQUISITION_TIME",
+            "explanation": "The selected scene has no acquisition time in its catalogue record.",
+        }
+        return {"status": "FAILED", "metadata": new_meta}
 
-    import concurrent.futures
-
+    # The user's AOI, not the scene footprint: a Sentinel-1 footprint is ~250 km
+    # across, and windowing to it reads (and measures) far more than was asked.
+    geometry = aoi_geometry(state.aoi)
     payload = {
-        "scene": _build_inference_scene(scene_info, scene_id, scene_href, acquired_at),
-        "scene_href": scene_href,
+        "scene": _build_inference_scene(scene_info, scene_id, vv_href, acquired_at),
+        "scene_href": vv_href,
         "scene_assets": {"vv": vv_href, "vh": vh_href},
-        "aoi_bbox": _geometry_bbox(obs.get("geometry")) or (state.aoi.get("bbox") if state.aoi and state.aoi.get("bbox") else (
-            [min(c[0] for c in state.aoi["coordinates"][0]), min(c[1] for c in state.aoi["coordinates"][0]),
-             max(c[0] for c in state.aoi["coordinates"][0]), max(c[1] for c in state.aoi["coordinates"][0])]
-            if state.aoi and state.aoi.get("coordinates") else None
-        )),
+        "aoi_bbox": aoi_bbox(state.aoi),
+        "aoi_geometry": geometry,
         "min_mapping_unit_ha": 0.5,
     }
 
     async def _call_inference():
         client = InternalClient(
-            base_url=settings.inference_service_url, caller_service="agent", scopes=["inference:run"]
+            base_url=settings.inference_service_url,
+            caller_service="agent",
+            scopes=["inference:run"],
+            timeout=_inference_timeout_s(),
+            # A timed-out analysis may still be running; retrying would start a
+            # second copy of the same expensive read.
+            max_attempts=1,
         )
         try:
             resp = await client.post("/api/v1/inference/analyses", auth_context=ctx, json=payload)
@@ -373,46 +544,77 @@ def analyze_data(state: MissionState) -> dict:
         finally:
             await client.aclose()
 
+    new_meta["analysed_observation_ids"] = list(
+        dict.fromkeys(list(state.metadata.get("analysed_observation_ids", [])) + [scene_id])
+    )
     try:
-        # Run async client in a separate thread to avoid "event loop already running" in test/eager environments
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(asyncio.run, _call_inference())
-            outcome_data = future.result()
-
-        new_meta = dict(state.metadata)
-        new_meta["inference_outcome"] = outcome_data
-
-        emit_agent_thought(
-            state.mission_id,
-            state.trace_id,
-            "analyzing",
-            "Water segmentation complete; the confidence gate runs next.",
-        )
-
-        return {"status": "ANALYZING", "metadata": new_meta}
+        # A fresh event loop in a worker thread: the graph may itself be running
+        # inside a loop (eager Celery, tests), where asyncio.run would fail.
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            outcome_data = pool.submit(asyncio.run, _call_inference()).result()
     except Exception as e:
-        logger.error(f"Inference call failed: {e} — using baseline fallback outcome")
-        # Don't abort the pipeline: produce a synthetic degraded outcome so
-        # gate_check and synthesize can still run and give the user an answer.
-        new_meta = dict(state.metadata)
+        logger.error("Inference call failed: %s", e)
         new_meta["inference_outcome"] = {
             "outcome": "abstained",
             "reason": "INFERENCE_UNAVAILABLE",
-            "explanation": str(e),
+            "explanation": f"The inference service could not be reached or failed: {e}",
         }
         return {"status": "FAILED", "metadata": new_meta}
+
+    new_meta["inference_outcome"] = outcome_data
+    emit_agent_thought(
+        state.mission_id,
+        state.trace_id,
+        "analyzing",
+        "Water segmentation complete; the confidence gate runs next.",
+    )
+    return {"status": "ANALYZING", "metadata": new_meta}
+
+
+def _temporal_lag_days(state: MissionState, acquired_at: Optional[str]) -> Optional[float]:
+    """Days between the scene and the period the question is about.
+
+    With a caller window: 0 inside it, else the distance to its nearest edge.
+    Without one: the scene's age (now - acquisition). None when the scene has
+    no parseable acquisition time.
+    """
+    acquired = _parse_instant(acquired_at)
+    if acquired is None:
+        return None
+    try:
+        window = requested_window(state.temporal_window)
+    except ValueError:
+        window = None
+    if window:
+        start, end = window
+        if start <= acquired <= end:
+            return 0.0
+        gap = (start - acquired) if acquired < start else (acquired - end)
+        return gap.total_seconds() / 86400.0
+    return max(0.0, (datetime.now(timezone.utc) - acquired).total_seconds() / 86400.0)
 
 
 def gate_check(state: MissionState) -> dict:
     ev_builder = EvidenceGraphBuilder(mission_id=state.mission_id)
+    new_meta = dict(state.metadata)
 
-    # Retrieve the outcome from previous node
-    outcome_data = state.metadata.get("inference_outcome", {})
+    outcome_data = state.metadata.get("inference_outcome") or {}
+    acquisition_error = state.metadata.get("acquisition_error")
+    if acquisition_error or not outcome_data:
+        new_meta["inference_abstention"] = acquisition_error or {
+            "reason": "NO_INFERENCE",
+            "explanation": "No analysis was run.",
+        }
+        return {
+            "status": "FAILED",
+            "confidence_score": 0.0,
+            "evidence_graph": {},
+            "metadata": new_meta,
+        }
+
     if outcome_data.get("outcome") == "abstained":
         # An abstention is a valid inference response, but it is not a measured
-        # zero. Never turn it into a high-confidence result by defaulting the
-        # missing measurements list to 0.0.
-        new_meta = dict(state.metadata)
+        # zero. Never turn it into a result by defaulting the measurements to 0.
         new_meta["inference_abstention"] = {
             "reason": outcome_data.get("reason"),
             "explanation": outcome_data.get("explanation"),
@@ -423,50 +625,90 @@ def gate_check(state: MissionState) -> dict:
             "evidence_graph": {},
             "metadata": new_meta,
         }
-    measurements = outcome_data.get("measurements", [])
-
-    inundated_sqkm = 0.0
-    if measurements and len(measurements) > 0:
-        # Assuming the first measurement is the flood extent in hectares, convert to sqkm
-        inundated_sqkm = measurements[0].get("value", 0.0) / 100.0
 
     if not state.observation_ids:
-        return {"status": "FAILED", "confidence_score": 0.0, "evidence_graph": {}}
+        return {
+            "status": "FAILED",
+            "confidence_score": 0.0,
+            "evidence_graph": {},
+            "metadata": new_meta,
+        }
 
-    obs_id = state.observation_ids[0]
+    # The measurement: Decimal-as-string from the API, in hectares.
+    measurements = outcome_data.get("measurements") or []
+    area = next(
+        (
+            m
+            for m in measurements
+            if str(m.get("unit", "ha")).lower() in ("ha", "hectare", "hectares")
+        ),
+        measurements[0] if measurements else None,
+    )
+    area_value = _as_float(area.get("value")) if area else None
+    if area_value is None:
+        new_meta["inference_abstention"] = {
+            "reason": "NO_MEASUREMENT",
+            "explanation": "The analysis returned no readable area measurement.",
+        }
+        return {
+            "status": "FAILED",
+            "confidence_score": 0.0,
+            "evidence_graph": {},
+            "metadata": new_meta,
+        }
+    unit = str(area.get("unit", "ha")).lower()
+    inundated_sqkm = area_value / 100.0 if unit.startswith("ha") else area_value
 
-    observations = state.metadata.get("observations", [])
-    obs_dict = next((o for o in observations if o.get("observation_id") == obs_id), {})
-    obs_time = obs_dict.get("scene", {}).get("acquired_at")
-    if not obs_time:
-        obs_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    # Heuristically detect sensor from observation_ids or state
-    sensor = "S1_SAR"
-    if "S2" in obs_id or "OPTICAL" in str(state.selected_sensors):
-        sensor = "OPTICAL"
+    obs = _selected_observation(state)
+    obs_id = obs.get("observation_id") or state.observation_ids[0]
+    scene = obs.get("scene", {})
+    obs_time = scene.get("acquired_at")
+    sensor = sensor_of(obs) if obs else "S1_SAR"
 
     obs_node = ev_builder.add_observation(
         {
             "asset_id": obs_id,
             "sensor": sensor,
             "datetime": obs_time,
+            "collection": scene.get("collection"),
+            "platform": scene.get("platform"),
         }
     )
 
-    # Use P3/P4 confidence, metadata, disagreement, and quality outputs in the gate.
+    # Model confidence exactly as the inference service reported it. The
+    # baseline is NOT_CALIBRATED and reports None; that is carried through as
+    # None rather than replaced with a plausible-looking number.
     conf_data = outcome_data.get("confidence") or {}
-    model_conf = float(conf_data.get("value", 0.88) or 0.88)
-
-    # Create the inference node with real data
-    inf_node = ev_builder.add_inference(
-        input_node_ids=[obs_node.node_id],
-        model_name=outcome_data.get("degraded_from", "baseline") or "baseline",
-        model_version="1.0",
-        results={"inundated_sqkm": inundated_sqkm},
-        confidence=model_conf,
+    model_conf = _as_float(conf_data.get("value"))
+    confidence_basis = conf_data.get("basis") or (
+        "REPORTED" if model_conf is not None else "NOT_CALIBRATED"
     )
 
+    produced_by = next(
+        (
+            c.split("produced by ", 1)[1]
+            for c in outcome_data.get("caveats", [])
+            if isinstance(c, str) and c.startswith("produced by ")
+        ),
+        None,
+    )
+    # "produced by <method>" names the method (model card or baseline); the
+    # measurement's own produced_by names the area function, so it is last.
+    model_name = (
+        produced_by or outcome_data.get("degraded_from") or area.get("produced_by") or "unknown"
+    )
+    inf_node = ev_builder.add_inference(
+        input_node_ids=[obs_node.node_id],
+        model_name=str(model_name),
+        model_version=str(area.get("code_version") or "unversioned"),
+        results={
+            "inundated_sqkm": inundated_sqkm,
+            "degraded_from": outcome_data.get("degraded_from"),
+            "confidence_basis": confidence_basis,
+            "inference_trace_id": outcome_data.get("trace_id"),
+        },
+        confidence=model_conf,
+    )
     ev_builder.add_metric(
         inference_node_id=inf_node.node_id,
         metric_name="inundation_area_sqkm",
@@ -483,72 +725,178 @@ def gate_check(state: MissionState) -> dict:
 
     evidence_graph = ev_builder.build().model_dump()
 
-    # Evaluate confidence using actual nodes
-    nodes_dict = evidence_graph.get("nodes", {})
+    # Gate inputs from the scene itself.
+    props = obs.get("normalized_properties") or {}
+    resolution = _as_float(props.get("resolution_m") or props.get("gsd")) or (
+        _S1_RTC_RESOLUTION_M if sensor == "S1_SAR" else 10.0
+    )
+    cloud = 0.0 if sensor == "S1_SAR" else (_as_float(scene.get("cloud_cover")) or 0.0)
+    lag = _temporal_lag_days(state, obs_time)
+
     conf = evaluate_confidence_gate(
-        evidence_nodes=list(nodes_dict.values()),
+        evidence_nodes=list(evidence_graph.get("nodes", {}).values()),
         sensor_type=sensor,
-        cloud_cover=state.metadata.get("cloud_cover_forecast", 0.0),
-        resolution_meters=10.0,
-        temporal_lag_days=2.0,
+        cloud_cover=min(100.0, max(0.0, cloud)),
+        resolution_meters=resolution,
+        temporal_lag_days=lag if lag is not None else 0.0,
         trace_id=state.trace_id,
     )
+    uncertainty = list(conf.uncertainty_factors)
+    if lag is None:
+        uncertainty.append("Scene acquisition time unknown; temporal lag not assessed")
+    for caveat in outcome_data.get("caveats", []) or []:
+        if isinstance(caveat, str) and caveat.startswith("degraded:"):
+            uncertainty.append(f"Inference {caveat}")
 
-    new_meta = dict(state.metadata)
+    new_meta["confidence"] = {
+        "score": conf.confidence_score,
+        "passed_gate": conf.passed_gate,
+        "model_confidence": model_conf,
+        "model_confidence_basis": confidence_basis,
+        "score_basis": (
+            "acquisition_quality_and_model"
+            if model_conf is not None
+            else "acquisition_quality_only"
+        ),
+        "inputs": {
+            "sensor": sensor,
+            "resolution_m": resolution,
+            "cloud_cover": cloud if sensor != "S1_SAR" else None,
+            "temporal_lag_days": round(lag, 1) if lag is not None else None,
+        },
+    }
+    new_meta["inference_summary"] = {
+        "trace_id": outcome_data.get("trace_id"),
+        "geometry_ref": outcome_data.get("geometry_ref"),
+        "degraded_from": outcome_data.get("degraded_from"),
+        "produced_by": produced_by,
+        "caveats": list(outcome_data.get("caveats", []) or []),
+    }
+
     status = "GATE_CHECK"
-    # Implement explicit sensor-disagreement and low-confidence re-investigation behavior
     if not conf.passed_gate:
         retries = new_meta.get("reinvestigations", 0)
-        if retries < 1:
+        box = None
+        try:
+            box = aoi_bbox(state.aoi)
+        except AOIError:
+            pass
+        alternatives = (
+            rank_sar_scenes(
+                state.metadata.get("observations", []),
+                box,
+                exclude=state.metadata.get("analysed_observation_ids", []),
+            )
+            if box
+            else []
+        )
+        if retries < 1 and alternatives:
             new_meta["reinvestigations"] = retries + 1
             status = "REINVESTIGATE"
+        elif not alternatives:
+            uncertainty.append("No other analysable scene was available to cross-check")
 
     return {
         "status": status,
         "confidence_score": conf.confidence_score,
+        "uncertainty_reasons": uncertainty,
         "evidence_graph": evidence_graph,
         "metadata": new_meta,
     }
 
 
+#: Below this the run is reported as failed rather than as a finding.
+REPORTING_THRESHOLD = 0.6
+
+
 def synthesize(state: MissionState) -> dict:
-    if state.confidence_score is not None and state.confidence_score < 0.6:
-        abstention = state.metadata.get("inference_abstention", {})
+    abstention = state.metadata.get("inference_abstention")
+    if abstention:
         reason = abstention.get("explanation") or abstention.get("reason")
-        detail = f" Reason: {reason}." if reason else ""
+        code = abstention.get("reason")
+        acquisition = bool(state.metadata.get("acquisition_error"))
+        lead = (
+            "The run stopped before analysis."
+            if acquisition
+            else "No reliable measurement was produced; the inference service abstained."
+        )
         output_dict = {
-            "summary": f"No reliable measurement was produced; the inference service abstained.{detail}",
-            "inundation_area_sqkm": 0,
-            "affected_structures_count": 0,
-            "primary_sensor": "UNKNOWN",
+            "summary": f"{lead} Reason: {reason}." if reason else lead,
+            "failure_reason": code,
+            "inundation_area_sqkm": None,
+            "affected_structures_count": None,
+            "primary_sensor": None,
+            "search": state.metadata.get("search"),
         }
         return {"status": "FAILED", "synthesized_output": output_dict}
 
-    if state.evidence_graph and state.observation_ids:
-        try:
-            graph = EvidenceGraph(**state.evidence_graph)
-            out = synthesize_evidence_output(graph, state.sanitized_query or state.query)
-            output_dict = out.model_dump()
-            # Flatten metrics into top-level for backward compatibility
-            for k, v in out.metrics.items():
-                output_dict[k] = v
-        except ValueError as e:
-            output_dict = {
-                "summary": f"Evidence synthesis failed: {e}",
-                "inundation_area_sqkm": 0,
-                "affected_structures_count": 0,
-                "primary_sensor": "UNKNOWN",
-            }
-    else:
+    if not (state.evidence_graph and state.observation_ids):
         reason = "No observations acquired." if not state.observation_ids else "No evidence graph available for synthesis."
-        output_dict = {
-            "summary": f"Mission failed to complete successfully. Reason: {reason}",
-            "inundation_area_sqkm": 0,
-            "affected_structures_count": 0,
-            "primary_sensor": "UNKNOWN",
+        return {
+            "status": "FAILED",
+            "synthesized_output": {
+                "summary": f"Mission failed to complete. Reason: {reason}",
+                "failure_reason": "NO_EVIDENCE",
+                "inundation_area_sqkm": None,
+                "affected_structures_count": None,
+                "primary_sensor": None,
+            },
         }
-        return {"status": "FAILED", "synthesized_output": output_dict}
-        
+
+    if state.confidence_score is not None and state.confidence_score < REPORTING_THRESHOLD:
+        return {
+            "status": "FAILED",
+            "synthesized_output": {
+                "summary": (
+                    f"An extent was measured, but the confidence gate scored it "
+                    f"{state.confidence_score:.2f}, below the {REPORTING_THRESHOLD:.2f} reporting "
+                    "threshold, so it is not reported as a finding."
+                ),
+                "failure_reason": "LOW_CONFIDENCE",
+                "inundation_area_sqkm": None,
+                "affected_structures_count": None,
+                "primary_sensor": None,
+                "uncertainty_reasons": list(state.uncertainty_reasons),
+            },
+        }
+
+    try:
+        graph = EvidenceGraph(**state.evidence_graph)
+        out = synthesize_evidence_output(
+            graph,
+            state.sanitized_query or state.query,
+            context={
+                "sensor_decision": state.metadata.get("sensor_decision"),
+                "confidence": state.metadata.get("confidence"),
+                "inference": state.metadata.get("inference_summary"),
+                "uncertainty_reasons": list(state.uncertainty_reasons),
+                "search": state.metadata.get("search"),
+                "scene_coverage": state.metadata.get("selected_scene_coverage"),
+            },
+        )
+    except ValueError as e:
+        return {
+            "status": "FAILED",
+            "synthesized_output": {
+                "summary": f"Evidence synthesis failed: {e}",
+                "failure_reason": "SYNTHESIS_FAILED",
+                "inundation_area_sqkm": None,
+                "affected_structures_count": None,
+                "primary_sensor": None,
+            },
+        }
+
+    output_dict = out.model_dump()
+    # Flatten metrics into top-level for backward compatibility
+    for k, v in out.metrics.items():
+        output_dict[k] = v
+    obs = _selected_observation(state)
+    output_dict["primary_sensor"] = sensor_of(obs) if obs else None
+    output_dict["observation_id"] = obs.get("observation_id")
+    output_dict["acquired_at"] = (obs.get("scene") or {}).get("acquired_at")
+    output_dict["inference"] = state.metadata.get("inference_summary")
+    output_dict["confidence"] = state.metadata.get("confidence")
+    output_dict["search"] = state.metadata.get("search")
     return {"status": "COMPLETED", "synthesized_output": output_dict}
 
 
@@ -613,6 +961,7 @@ class AgentOrchestrator:
         trace_id: Optional[str] = None,
         aoi: Optional[Dict] = None,
         metadata: Optional[Dict] = None,
+        temporal_window: Optional[Dict] = None,
     ) -> MissionState:
         clean_query = sanitize_prompt(query)
         if aoi:
@@ -630,6 +979,7 @@ class AgentOrchestrator:
             query=query,
             sanitized_query=clean_query,
             aoi=aoi,
+            temporal_window=temporal_window,
             status="INITIALIZED",
             metadata=metadata or {},
         )
@@ -651,21 +1001,29 @@ class AgentOrchestrator:
                 "Run state not persisted to Redis (job_id=%s): %s", state.job_id, exc
             )
 
+    TERMINAL_STATUSES = frozenset({"COMPLETED", "FAILED"})
+
     def get_run(self, job_id: str) -> Optional[MissionState]:
-        state = self._runs.get(job_id)
-        if state is not None:
-            return state
+        """Latest known state of a run.
+
+        A terminal run cannot change, so the local cache answers. A run still in
+        progress may be advancing in another process (a Celery worker), so Redis
+        is read first and the cache is only the fallback when Redis is down.
+        """
+        cached = self._runs.get(job_id)
+        if cached is not None and cached.status in self.TERMINAL_STATUSES:
+            return cached
         try:
             raw = self._get_redis().get(self.RUN_KEY_PREFIX + job_id)
-        except Exception:  # noqa: BLE001 — an unreadable store is just "no such run"
-            return None
+        except Exception:  # noqa: BLE001 — an unreadable store falls back to the cache
+            return cached
         if not raw:
-            return None
+            return cached
         try:
             state = MissionState.model_validate_json(raw)
         except Exception:  # noqa: BLE001 — a corrupt entry must not 500 the route
             logger.exception("Stored run %s is not a valid MissionState.", job_id)
-            return None
+            return cached
         self._runs[job_id] = state
         return state
 
@@ -698,20 +1056,24 @@ class AgentOrchestrator:
         Executes the LangGraph workflow and streams events.
         """
         self._publish_event(state, "RUN_STARTED", {"status": state.status})
-        
+
         current_state_dict = state.model_dump()
         for update in self._app.stream(state):
             node_name = list(update.keys())[0]
             node_update = update[node_name]
             current_state_dict.update(node_update)
-            
+            current_state_dict["updated_at"] = datetime.now(timezone.utc)
+
             temp_state = MissionState(**current_state_dict)
+            # Persist after every node so a poller sees progress, not just the end.
+            if temp_state.job_id:
+                self.save_run(temp_state)
             self._publish_event(temp_state, f"NODE_COMPLETED_{node_name.upper()}", {"status": temp_state.status})
-            
+
         final_state = MissionState(**current_state_dict)
         if final_state.job_id:
             self.save_run(final_state)
-            
+
         self._publish_event(final_state, "RUN_COMPLETED", {"status": final_state.status})
         return final_state
 

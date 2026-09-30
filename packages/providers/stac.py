@@ -67,13 +67,10 @@ class STACProvider(AbstractProvider):
 
                     search = self.client.search(**search_args_copy)  # type: ignore
                     batch = list(search.items())
-                    if self.name == "planetary_computer":
-                        # Planetary Computer STAC metadata contains unsigned Azure
-                        # Blob asset links. Sign the item before passing assets to
-                        # the inference service; the signature is time-limited and
-                        # never stored as an application credential.
-                        import planetary_computer
-                        batch = [planetary_computer.sign(item) for item in batch]
+                    # Planetary Computer asset links are returned unsigned here on
+                    # purpose. SAS signatures expire, and search results are
+                    # cached for up to an hour, so signing happens after the cache
+                    # (services/eo-data/search.py), on every read.
                     items.extend(batch)
 
                 logger.info(f"STACProvider '{self.name}' found {len(items)} items.")

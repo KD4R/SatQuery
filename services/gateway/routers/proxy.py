@@ -98,8 +98,11 @@ def _get_inference_client() -> InternalClient:
             base_url=_INFERENCE_URL,
             caller_service="gateway",
             scopes=["inference:read", "inference:write"],
+            timeout=_INFERENCE_TIMEOUT_S,
+            # A timeout here means the analysis was still running; retrying
+            # would start it again, so it is surfaced instead.
+            max_attempts=1,
         )
-        _inference_client.client.timeout = httpx.Timeout(_INFERENCE_TIMEOUT_S)
     return _inference_client
 
 

@@ -46,6 +46,27 @@ DEFAULT_ALLOWED_HOSTS: frozenset[str] = frozenset(
     }
 )
 
+#: Azure Blob storage accounts that serve Planetary Computer assets this service
+#: reads: Sentinel-1 RTC and Sentinel-2 L2A. The previous rule accepted *any*
+#: ``*.blob.core.windows.net`` host, i.e. any Azure customer's storage account --
+#: an open SSRF/exfiltration target. If Planetary Computer moves a collection to
+#: another account, add it here or via SATQUERY_EXTRA_ASSET_HOSTS (comma-separated
+#: exact hostnames; reviewed deployment config, not request input).
+PLANETARY_COMPUTER_BLOB_HOSTS: frozenset[str] = frozenset(
+    {
+        "sentinel1euwestrtc.blob.core.windows.net",
+        "sentinel2l2a01.blob.core.windows.net",
+    }
+)
+
+
+def _extra_hosts() -> frozenset[str]:
+    import os
+
+    raw = os.environ.get("SATQUERY_EXTRA_ASSET_HOSTS", "")
+    return frozenset(h.strip().lower() for h in raw.split(",") if h.strip())
+
+
 #: Only these URL schemes may be dereferenced. ``file://`` is excluded on purpose:
 #: an attacker-supplied ``file:///etc/passwd`` is the textbook SSRF escalation.
 #:
@@ -75,7 +96,11 @@ def validate_href(href: str, *, allowed_hosts: frozenset[str] | None = None) -> 
         If the scheme is not permitted, the host is missing, or the host is not on
         the allowlist.
     """
-    hosts = DEFAULT_ALLOWED_HOSTS if allowed_hosts is None else allowed_hosts
+    hosts = (
+        DEFAULT_ALLOWED_HOSTS | PLANETARY_COMPUTER_BLOB_HOSTS | _extra_hosts()
+        if allowed_hosts is None
+        else allowed_hosts
+    )
 
     parsed = urlparse(href)
     if parsed.scheme not in ALLOWED_SCHEMES:
@@ -85,7 +110,7 @@ def validate_href(href: str, *, allowed_hosts: frozenset[str] | None = None) -> 
     if not parsed.hostname:
         raise PreflightError(f"asset href has no host: {href!r}")
     hostname = parsed.hostname.lower()
-    if hostname not in hosts and not hostname.endswith(".blob.core.windows.net"):
+    if hostname not in hosts:
         raise PreflightError(
             f"host {parsed.hostname!r} is not on the provider allowlist. "
             "Adding a provider is a reviewed change to DEFAULT_ALLOWED_HOSTS."

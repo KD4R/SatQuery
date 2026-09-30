@@ -36,7 +36,7 @@ provider that supplies pre-event imagery -- Sen1Floods11 has none -- which is is
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
 import numpy as np
@@ -132,6 +132,8 @@ def detect_water_single_date(
     min_valid_fraction: float = DEFAULT_MIN_VALID_FRACTION,
     min_mapping_unit_ha: float = DEFAULT_MIN_MAPPING_UNIT_HA,
     trace_id: str,
+    region: npt.NDArray[np.bool_] | None = None,
+    mask_sink: Callable[[npt.NDArray[np.bool_]], None] | None = None,
 ) -> MissionOutcome:
     """Threshold one SAR scene into open water, and measure it.
 
@@ -153,6 +155,14 @@ def detect_water_single_date(
         subtracted, because a permanent lake reported as flooding is the single
         most embarrassing failure this pipeline can have, and it is guaranteed to
         happen on every scene containing one.
+    region
+        Optional mask of the pixels inside the area of interest (a polygon
+        rasterised onto this grid). Water outside it is not measured. The Otsu
+        threshold is still fitted on the whole window, which gives it more
+        samples of both classes.
+    mask_sink
+        Optional callback given the exact mask that was measured, so a caller
+        can persist it. Called only when the outcome is an Analysis.
     """
     if not is_area_safe(raster.spec.crs):
         return Abstention(
@@ -229,6 +239,25 @@ def detect_water_single_date(
 
     mask = cleaned.mask
     caveats.extend(cleaned.caveats)
+
+    if region is not None:
+        if region.shape != mask.shape:
+            return Abstention(
+                outcome="abstained",
+                reason=AbstentionReason.INPUT_FAILED_PREFLIGHT,
+                explanation=(f"AOI region is {region.shape} but the scene grid is {mask.shape}"),
+                nearest_usable=None,
+                scenes_seen=tuple(scenes),
+                trace_id=trace_id,
+            )
+        mask = mask & region
+        caveats.append(
+            f"measured inside the AOI polygon only ({float(region.mean()):.0%} of the "
+            "read window)"
+        )
+
+    if mask_sink is not None:
+        mask_sink(mask)
 
     # An empty mask after cleaning is a real answer -- "no flood detected here" --
     # not a failure, so it measures 0 ha rather than abstaining. Abstention means

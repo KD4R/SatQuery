@@ -68,8 +68,12 @@ async def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer_scheme),
 ) -> AuthContext:
     """
-    FastAPI dependency — returns a hardcoded AuthContext (auth bypassed).
+    FastAPI dependency — verifies the Bearer JWT and returns its AuthContext.
+
+    Raises 401 when no token is sent or it fails verification. (The earlier
+    development bypass that returned a hardcoded context has been removed.)
     """
+
     trace_id: Optional[str] = request.headers.get("X-Trace-Id")
     if credentials is None:
         raise HTTPException(status_code=401, detail={"code": "AUTH_REQUIRED", "message": "Bearer token required", "retryable": False})

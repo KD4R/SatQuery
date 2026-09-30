@@ -107,6 +107,12 @@ services:
       AUTH_ALGORITHM: HS256
       AUTH_SECRET_KEY: e2e-test-secret
       SATQUERY_USE_ALEMBIC: 'true'
+      # Local sign-in for the dashboard (POST /api/v1/auth/dev-token). Only
+      # honoured with ENVIRONMENT=development + HS256; remove for any shared host.
+      SATQUERY_DEV_LOGIN: ${SATQUERY_DEV_LOGIN:-1}
+      SATQUERY_DEV_ORG_ID: ${SATQUERY_DEV_ORG_ID:-org-dev}
+      # A live analysis reads remote rasters; 30 s cut it off mid-read.
+      INFERENCE_TIMEOUT_S: ${INFERENCE_TIMEOUT_S:-180}
     ports:
     - ${API_PORT:-8000}:8000
     depends_on:
@@ -296,6 +302,13 @@ services:
       ENVIRONMENT: development
       AUTH_ALGORITHM: HS256
       AUTH_SECRET_KEY: e2e-test-secret
+      # Runs the agent graph when AGENT_EXECUTION_MODE=celery, so it needs the
+      # same LLM and service settings as the agent container.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-oss-120b}
+      INFERENCE_SERVICE_URL: http://inference:8000
+      AGENT_INFERENCE_TIMEOUT_S: ${AGENT_INFERENCE_TIMEOUT_S:-180}
     command: celery -A services.celery_orchestrator worker -Q analysis,celery --autoscale=8,2
       -l info
     depends_on:
@@ -385,6 +398,12 @@ services:
       S3_BUCKET: satquery
       AUTH_ALGORITHM: HS256
       AUTH_SECRET_KEY: e2e-test-secret
+      # Learned weights are served only when their checksum matches a committed
+      # manifest (infrastructure/models). Without weights the Otsu baseline runs
+      # and every answer is labelled degraded.
+      SATQUERY_REQUIRE_MANIFEST: '1'
+      SATQUERY_MODEL_ROOT: /app/artifacts
+      SATQUERY_MAX_WINDOW_PIXELS: ${SATQUERY_MAX_WINDOW_PIXELS:-25000000}
     ports:
     - ${INFERENCE_PORT:-8003}:8000
     healthcheck:

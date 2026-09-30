@@ -2,6 +2,7 @@
 nodes/intent_extractor.py — NLP/heuristic intent extraction and mission planning node.
 """
 
+import os
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field, SecretStr
 from langchain_core.prompts import PromptTemplate
@@ -71,6 +72,10 @@ def extract_intent_and_plan(
                 "model": llm_model,
                 "openai_api_key": SecretStr(llm_api_key),
                 "temperature": 0.0,
+                # Intent extraction has a heuristic fallback; never let a slow
+                # provider hold the run for the SDK's default 10-minute timeout.
+                "timeout": float(os.getenv("AGENT_LLM_TIMEOUT_S", "20")),
+                "max_retries": 1,
             }
             if llm_base_url:
                 llm_kwargs["base_url"] = llm_base_url

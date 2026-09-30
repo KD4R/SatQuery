@@ -46,11 +46,15 @@ def test_async_agent_execute_endpoint_and_run_orchestration_valid(mock_orchestra
     assert state.job_id is not None
     assert state.trace_id == "tr-orch-001"
 
-    # Step through execution
+    # Step through execution. No AOI was supplied, so the run must stop before
+    # searching imagery -- it used to fall back to a hardcoded Assam bbox.
     completed_state = orchestrator.step_execution(state)
     assert completed_state.status == "FAILED"
     assert completed_state.synthesized_output is not None
-    assert "aborted" in completed_state.synthesized_output["summary"].lower()
+    assert completed_state.synthesized_output["failure_reason"] == "AOI_REQUIRED"
+    assert "stopped before analysis" in completed_state.synthesized_output["summary"].lower()
+    # A failure is not a measured zero.
+    assert completed_state.synthesized_output["inundation_area_sqkm"] is None
 
 
 @pytest.mark.unit

@@ -4,7 +4,7 @@ evidence/models.py — Evidence Graph models, nodes, edges, and provenance struc
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -34,7 +34,9 @@ class EvidenceNode(BaseModel):
     node_type: EvidenceNodeType
     source: str = Field(..., description="Producer module, sensor, or model name")
     data: Dict[str, Any] = Field(default_factory=dict, description="Payload data")
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    #: None means "no justified number": e.g. the baseline is NOT_CALIBRATED.
+    #: Consumers must treat None as unknown, never as 1.0 or any other default.
+    confidence: Optional[float] = Field(default=1.0, ge=0.0, le=1.0)
     provenance: Dict[str, Any] = Field(
         default_factory=dict,
         description="Lineage metadata: observation_ids, model_version, dataset_id",

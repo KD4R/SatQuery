@@ -34,7 +34,16 @@ class AnalysisRequest(BaseModel):
         "before anything dereferences it.",
     )
     scene_assets: dict[str, str] | None = None
-    aoi_bbox: list[float] | None = None
+    aoi_bbox: list[float] | None = Field(
+        default=None,
+        description="WGS84 [min_lon, min_lat, max_lon, max_lat]. Only this window "
+        "of a remote scene is read.",
+    )
+    aoi_geometry: dict | None = Field(
+        default=None,
+        description="WGS84 GeoJSON Polygon/MultiPolygon. When given, water is "
+        "measured inside the polygon only, not across its whole bounding box.",
+    )
     permanent_water_href: str | None = Field(
         default=None,
         description="Optional mask of water present before the event. Strongly "

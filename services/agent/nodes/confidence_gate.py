@@ -56,12 +56,21 @@ def evaluate_confidence_gate(
             f"Temporal baseline lag ({temporal_lag_days:.1f} days) exceeds 14 days (-{penalty:.2f})"
         )
 
-    # 4. Check if inference nodes exist and incorporate their model confidence
+    # 4. Incorporate the model confidence the inference nodes actually reported.
+    # A node with confidence None (e.g. the NOT_CALIBRATED baseline) contributes
+    # nothing: substituting a default here would put an invented number into the
+    # score. The missing evidence is stated as an uncertainty factor instead.
     if evidence_nodes:
         inf_nodes = [n for n in evidence_nodes if n.get("node_type") == "INFERENCE"]
-        if inf_nodes:
-            avg_inf_conf = sum(n.get("confidence", 0.85) for n in inf_nodes) / len(inf_nodes)
+        reported = [float(n["confidence"]) for n in inf_nodes if n.get("confidence") is not None]
+        if reported:
+            avg_inf_conf = sum(reported) / len(reported)
             score = (score + avg_inf_conf) / 2.0
+        if inf_nodes and len(reported) < len(inf_nodes):
+            uncertainty_factors.append(
+                "Model confidence is not calibrated for this method; the score reflects "
+                "acquisition quality (sensor, resolution, recency) only"
+            )
 
     final_score = max(0.0, min(1.0, round(score, 2)))
     passed = final_score >= 0.70
