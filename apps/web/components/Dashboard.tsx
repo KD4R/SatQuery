@@ -3,40 +3,34 @@
 /**
  * The mission console — the one canonical console (ROUTES.console = /dashboard).
  *
- * This is where the landing page's Console button lands. It composes:
- *   - the copilot query box and the plan it resolved to (P5-03),
- *   - the run's step list, driven only by what the backend reports (P5-04),
- *   - the MapLibre workspace with AOI draw/edit/validation and the Earth Time
- *     Machine (P5-05..08),
- *   - the intelligence section: change, confidence, WHY, sensors, impact (P5-08..11),
- *   - the agent-activity toasts (P5 §2C) and entry points to monitoring and reports.
+ * Map-first (audit F1): the map fills the screen to the right of one rail that
+ * holds the question, the answer and the run's steps. Detail — WHY, confidence,
+ * evidence chain, what was searched — sits under the map, one scroll away.
  *
  * Demo and live are chosen once, from lib/api/source. In demo the scenario comes
  * from lib/fixtures and every fixture-fed surface carries the fixture badge; in
- * live the intelligence section shows only what the agent published and never
- * falls back to a fixture, because doing that silently would be fabricating success.
+ * live every number comes from the agent's published run state (lib/live/result)
+ * and never falls back to a fixture, because doing that silently would be
+ * fabricating success.
  */
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo, useState } from "react";
-import { Globe2, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Globe2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import PageTelemetry from "./PageTelemetry";
 import BeginnerGuide from "./BeginnerGuide";
 import MapCanvas from "./MapCanvas";
-import QueryConsole from "./QueryConsole";
+import QueryConsole, { dateRangeProblem } from "./QueryConsole";
 import PlanParameters from "./PlanParameters";
-import ConfidenceCard from "./ConfidenceCard";
-import EvidencePanel from "./EvidencePanel";
-import LiveSummary from "./LiveSummary";
 import StageList from "./StageList";
-import MonitoringCard from "./MonitoringCard";
 import ReportCard from "./ReportCard";
 import TraceDrawer from "./TraceDrawer";
 import DashboardTopBar from "./DashboardTopBar";
 import { AgentActivityToasts } from "./console/AgentActivityToasts";
 import { ErrorBoundary } from "./system/ErrorBoundary";
 import { ProvenanceBadge } from "./system/primitives";
+import { FailureCard, IdleCard, LiveIntelligence, ResultCard, RunningCard } from "./dash/LivePanels";
 import type { LayerId } from "./map/MapWorkspace";
 
 import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
@@ -44,9 +38,12 @@ import { useMissionRun } from "../lib/useMissionRun";
 import { useAgentActivity } from "../lib/useAgentActivity";
 import { demoModeEnabled, type DataSource } from "../lib/api/source";
 import { validateAOI } from "../lib/geo/validate";
+import { failureHint, toLiveResult } from "../lib/live/result";
+import { useAnalysisExtent } from "../lib/live/useAnalysisExtent";
 import { ROUTES } from "../lib/nav";
-import type { GeoJSONPolygon } from "../lib/api/types";
-import type { Stage, Evidence } from "../lib/types";
+import type { GeoJSONPolygon, TemporalWindow } from "../lib/api/types";
+import type { Stage } from "../lib/types";
+import type { StepView } from "../lib/live/steps";
 
 /**
  * The intelligence section (imagery viewer, impact model, evidence graph loader)
@@ -57,43 +54,44 @@ const IntelligencePanel = dynamic(
   () => import("./evidence/IntelligencePanel").then((m) => m.IntelligencePanel),
   {
     ssr: false,
-    loading: () => (
-      <span className="label label-faint">Loading intelligence…</span>
-    ),
+    loading: () => <span className="label label-faint">Loading intelligence…</span>,
   },
 );
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const LIVE_INITIAL_QUERY =
-  "Analyse flood extent change in Assam, India over the past 30 days using SAR data";
+const LIVE_INITIAL_QUERY = "Map the flood extent in the selected area and explain why you chose SAR.";
 
 const INITIAL_LAYERS = (demo: boolean): Record<LayerId, boolean> => ({
   observation: true,
   // The demo's Time Machine epochs fall under this category; the rail needs it
-  // on to show "Before". Live mode keeps it off until the operator asks.
+  // on to show "Before".
   baseline: demo,
   change: true,
   confidence: false,
   aoi: true,
 });
 
-/** Map a live RunStageView state → the step list's StageStatus type */
+/** Map a run step state → the step list's StageStatus type */
 function mapStageState(state: string): Stage["status"] {
   switch (state) {
-    case "completed": return "done";
-    case "running": return "active";
-    case "failed": return "error";
+    case "completed":
+      return "done";
+    case "running":
+      return "active";
+    case "failed":
+      return "error";
     // A stage that finished having seen less than half the AOI is neither done
     // nor failed; it stays visibly amber.
     case "degraded":
-    case "warning": return "warning";
-    default: return "pending";
+    case "warning":
+      return "warning";
+    default:
+      return "pending";
   }
 }
 
-/** Derive the step list's Stage[] from the live useMissionRun stages */
-function liveToStages(runStages: ReturnType<typeof useMissionRun>["stages"]): Stage[] {
+function toStages(runStages: ReturnType<typeof useMissionRun>["stages"]): Stage[] {
   return runStages.map((s) => ({
     key: s.key,
     label: s.label,
@@ -102,22 +100,14 @@ function liveToStages(runStages: ReturnType<typeof useMissionRun>["stages"]): St
   }));
 }
 
-/** Extract evidence items from the agent's final state (published after COMPLETED). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function extractEvidence(agentState: any): Evidence[] {
-  if (!agentState) return [];
-  const raw = agentState.evidence ?? agentState.evidence_graph?.nodes ?? {};
-  if (Array.isArray(raw)) return raw as Evidence[];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return Object.entries(raw).map(([id, node]: [string, any]) => ({
-    id,
-    kind: node.node_type ?? "observation",
-    title: node.label ?? id,
-    source: node.source ?? "backend",
-    detail: node.detail ?? "",
-    status: node.confidence_score >= 0.7 ? "verified" : "pending",
-    provenance: `trace: ${agentState.trace_id ?? "—"}`,
-  }));
+/** Date inputs give whole days; the agent wants instants. */
+function toWindow(dates: TemporalWindow | null): TemporalWindow | null {
+  if (!dates || dateRangeProblem(dates)) return null;
+  return { start: `${dates.start}T00:00:00Z`, end: `${dates.end}T23:59:59Z` };
+}
+
+function sensorLabel(code: string): string {
+  return code === "S1_SAR" ? "Sentinel-1 SAR" : code === "S2_OPTICAL" ? "Sentinel-2 optical" : code;
 }
 
 // ── Component ──────────────────────────────────────────────────────────────────
@@ -126,161 +116,177 @@ export default function Dashboard() {
   const demo = demoModeEnabled();
   const source: DataSource = demo ? "fixture" : "gateway";
 
-  // Right rail
-  const [rightRail, setRightRail] = useState(true);
-  // Trace drawer
+  const [rail, setRail] = useState(true);
   const [trace, setTrace] = useState(false);
-  // Query + AOI. The demo opens on the pinned scenario's own query and AOI so the
-  // question and the polygon agree; live starts with no AOI drawn.
+  // The demo opens on the pinned scenario's own query and AOI so the question
+  // and the polygon agree; live starts with no AOI drawn.
   const [query, setQuery] = useState(demo ? ASSAM_SCENARIO.query : LIVE_INITIAL_QUERY);
-  const [aoi, setAoi] = useState<GeoJSONPolygon | null>(
-    demo ? ASSAM_SCENARIO.aoi : null,
-  );
-  const [layers, setLayers] = useState<Record<LayerId, boolean>>(() =>
-    INITIAL_LAYERS(demo),
-  );
+  const [aoi, setAoi] = useState<GeoJSONPolygon | null>(demo ? ASSAM_SCENARIO.aoi : null);
+  const [dates, setDates] = useState<TemporalWindow | null>(null);
+  const [layers, setLayers] = useState<Record<LayerId, boolean>>(() => INITIAL_LAYERS(demo));
 
   // ── Run wiring ───────────────────────────────────────────────────────────────
-  // One run drives the whole page. The demo flag is read through lib/api/source
-  // like everywhere else — one audited switch, per the fixture-isolation rule.
   const run = useMissionRun(demo);
   const activity = useAgentActivity(demo, run);
 
   const complete = run.phase === "complete";
+  const running = run.phase === "running";
   const validation = useMemo(() => validateAOI(aoi), [aoi]);
   const toggleLayer = useCallback((id: LayerId) => {
     setLayers((l) => ({ ...l, [id]: !l[id] }));
   }, []);
 
-  // A drawn AOI that is invalid blocks the run. No AOI at all does not: the
-  // request may name its area in words, and refusing it here would stop the
-  // natural-language flow before the backend has had a say.
+  const result = useMemo(
+    () => (!demo && run.agentState ? toLiveResult(run.agentState) : null),
+    [demo, run.agentState],
+  );
+  const extent = useAnalysisExtent(!demo && complete ? (result?.inference.traceId ?? null) : null);
+
+  // When the water outline arrives, make sure it is visible.
+  useEffect(() => {
+    if (extent.status === "ready") setLayers((l) => ({ ...l, observation: true }));
+  }, [extent.status]);
+
+  // Run is locked until the inputs are valid, with the reason in words (audit
+  // W2). Live mode requires an AOI: the agent no longer guesses a location.
+  const dateProblem = demo ? null : dateRangeProblem(dates);
   const blockedReason =
     query.trim().length === 0
-      ? "Enter a mission query."
-      : aoi !== null && !validation.valid
-        ? (validation.findings.find((f) => f.severity === "error")?.message ??
-          "The AOI is invalid.")
-        : null;
+      ? "Enter a question."
+      : !demo && aoi === null
+        ? "Draw an area of interest on the map (Draw AOI or Rectangle) to run."
+        : aoi !== null && !validation.valid
+          ? (validation.findings.find((f) => f.severity === "error")?.message ?? "The AOI is invalid.")
+          : dateProblem;
 
-  const agentState = run.agentState;
-  const confidence = agentState?.confidence_score ?? null;
-  const evidence = extractEvidence(agentState);
-  const stages = liveToStages(run.stages);
+  const stages = toStages(run.stages);
+  const currentStep: StepView | null =
+    (run.stages.find((s) => s.state === "running") as StepView | undefined) ?? null;
 
-  const missionId = demo
-    ? run.phase === "idle"
-      ? "—"
-      : ASSAM_SCENARIO.missionId
-    : (agentState?.mission_id ?? run.missionId ?? run.jobId ?? "—");
-  const runId = run.traceId ?? run.jobId ?? "—";
-  const reportMissionId = complete
-    ? demo
-      ? ASSAM_SCENARIO.missionId
-      : (agentState?.mission_id ?? run.missionId)
-    : null;
-  // MissionState publishes no location/summary fields — show what exists, "—"
-  // where nothing does, rather than reading fields the backend never sends.
-  const location = demo
-    ? ASSAM_SCENARIO.aoiName
-    : agentState?.aoi
-      ? "AOI validated"
-      : "—";
-  const summary = complete ? "Analysis complete" : "—";
-  const missionStatus =
-    run.phase === "running" ? "running" :
-    run.phase === "complete" ? "completed" :
-    run.phase === "failed" ? "failed" : "idle";
-
-  const parameters = useMemo(
-    () => ({
-      aoiName: demo ? ASSAM_SCENARIO.aoiName : aoi ? "Operator-drawn AOI" : null,
+  // ── Plan card (audit W10: show what was actually searched) ─────────────────
+  const parameters = useMemo(() => {
+    if (demo) {
+      return {
+        aoiName: ASSAM_SCENARIO.aoiName,
+        aoiAreaSqM: validation.areaSqM,
+        dateRange: complete ? "Latest pass vs permanent baseline" : null,
+        sensors: complete ? ["SENTINEL-1"] : [],
+        resolutionM: complete ? 10 : null,
+        analysisType: complete ? "Surface-water change" : null,
+        inferred: new Set(complete ? ["dateRange", "sensors", "analysisType"] : []),
+      };
+    }
+    const searched = result?.search;
+    const lastAttempt = searched?.attempts[searched.attempts.length - 1];
+    const effective = lastAttempt
+      ? `${lastAttempt.start.slice(0, 10)} → ${lastAttempt.end.slice(0, 10)}${searched?.widened ? " (widened)" : ""}`
+      : null;
+    const requested = dates?.start && dates?.end ? `${dates.start} → ${dates.end}` : null;
+    const sensors = run.agentState?.selected_sensors ?? [];
+    const hazard = (run.agentState?.intent as Record<string, unknown> | null | undefined)?.disaster_type;
+    return {
+      aoiName: aoi ? "Drawn on the map" : null,
       aoiAreaSqM: validation.areaSqM,
-      dateRange:
-        complete && demo
-          ? "Latest pass vs permanent baseline"
-          : complete && agentState?.temporal_window
-            ? `${agentState.temporal_window.start} → ${agentState.temporal_window.end}`
-            : null,
-      sensors:
-        complete && demo
-          ? ["SENTINEL-1"]
-          : complete
-            ? (agentState?.selected_sensors ?? [])
-            : [],
-      resolutionM: complete && demo ? 10 : null,
-      analysisType: complete && demo ? "Surface-water change" : null,
-      inferred: new Set(
-        complete && demo ? ["dateRange", "sensors", "analysisType"] : [],
-      ),
-    }),
-    [demo, aoi, validation.areaSqM, complete, agentState],
-  );
+      dateRange: effective ?? requested,
+      sensors: sensors.map(sensorLabel),
+      resolutionM: result?.confidence.resolutionM ?? null,
+      analysisType: typeof hazard === "string" ? `Surface water · ${hazard}` : null,
+      inferred: new Set(effective && !requested ? ["dateRange"] : []),
+    };
+  }, [demo, complete, aoi, validation.areaSqM, dates, run.agentState, result]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleRun = () => {
-    if (run.phase === "running" || blockedReason) return;
-    run.start(query, aoi);
+    if (running || blockedReason) return;
+    run.start(query, aoi, toWindow(dates));
   };
 
   const handleReset = () => {
     run.reset();
     setQuery(demo ? ASSAM_SCENARIO.query : LIVE_INITIAL_QUERY);
     setAoi(demo ? ASSAM_SCENARIO.aoi : null);
+    setDates(null);
   };
 
-  // Single nav bar (brand + section chips + icon actions); telemetry sits at
-  // the bottom of the page. The opening view is the mission page.
+  const runId = run.traceId ?? run.jobId ?? "—";
+  const closeTrace = useCallback(() => setTrace(false), []);
+
+  // ── Rail status card: idle / running / result / failure (audit F2, F3) ─────
+  let statusCard: React.ReactNode = null;
+  if (demo) {
+    statusCard = complete ? (
+      <section className="sqd-card sqd-result" aria-label="Result">
+        <header className="sqd-card-head">
+          <span className="sqd-eyebrow">Result</span>
+          <ProvenanceBadge source="fixture" at={FIXTURE_EPOCH} />
+        </header>
+        <div className="sqd-figure">
+          <b>{ASSAM_SCENARIO.change.areaSqKm.toFixed(2)}</b>
+          <span>km² of new water</span>
+        </div>
+        <p className="sqd-figure-sub">
+          Pinned demo scene. The change, confidence and evidence are in the intelligence panel
+          under the map.
+        </p>
+      </section>
+    ) : running ? (
+      <RunningCard current={currentStep} />
+    ) : null;
+  } else if (running) {
+    statusCard = <RunningCard current={currentStep} />;
+  } else if (complete && result) {
+    statusCard = <ResultCard result={result} extent={extent} onTrace={() => setTrace(true)} />;
+  } else if (run.phase === "failed" && run.failureKind) {
+    statusCard = (
+      <FailureCard
+        kind={run.failureKind}
+        message={result?.failure?.text ?? run.error?.message ?? "The run failed."}
+        reason={result?.failure?.reason ?? (run.failureKind === "agent" ? (run.error?.code ?? null) : null)}
+        hint={result?.failure?.hint ?? failureHint(null)}
+        traceId={run.error?.trace_id ?? run.traceId}
+        onRetry={handleRun}
+        onTrace={() => setTrace(true)}
+      />
+    );
+  } else {
+    statusCard = <IdleCard aoiReady={aoi !== null && validation.valid} />;
+  }
+
   return (
     <>
-      <DashboardTopBar activeHref={ROUTES.console} />
+      <DashboardTopBar activeHref={ROUTES.console} signedIn={run.session?.kind === "ready"} />
       <div className="app-shell app-shell--flat">
-      <main className="main" id="mission-main" tabIndex={-1}>
-
-        <div className="content">
-          {/* Workspace label — bigger, left-aligned */}
-          <div className="workspace-mode mission-head">
-            <div>
-              <h1 className="mission-title">Mission overview</h1>
-              <span>Flagship flood mission and evidence-first workflow</span>
-            </div>
-            <span className="mono-chip">P5 / MISSION</span>
-          </div>
-
-          {/* Main workspace — query rail left, map right */}
-          <div className="workspace">
-            {rightRail && (
-              <div className="right-rail">
+        <main className="main sqd" id="mission-main" tabIndex={-1}>
+          <div className={`sqd-stage ${rail ? "" : "is-rail-hidden"}`}>
+            {rail ? (
+              <aside className="sqd-rail" aria-label="Mission">
+                <div className="sqd-rail-head">
+                  <h1 className="sqd-title">Mission overview</h1>
+                  {demo ? <ProvenanceBadge source="fixture" at={FIXTURE_EPOCH} /> : null}
+                </div>
                 <ErrorBoundary area="Mission panel">
                   <QueryConsole
                     value={query}
                     onChange={setQuery}
                     onRun={handleRun}
-                    running={run.phase === "running"}
+                    running={running}
                     onReset={handleReset}
                     blockedReason={blockedReason}
+                    window={dates}
+                    onWindowChange={setDates}
+                    showDates={!demo}
                   />
-                  <PlanParameters parameters={parameters} aoiValidation={validation} />
-                  {/* Vertical step list directly under the query input */}
+                  {statusCard}
                   <StageList stages={stages} />
-                  {/* Error state */}
-                  {run.phase === "failed" && run.error && (
-                    <div className="error-banner" role="alert">
-                      ⚠ {run.error.message}
-                      {run.error.trace_id && (
-                        <span className="mono-chip" style={{ marginLeft: 8 }}>
-                          {run.error.trace_id}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <PlanParameters parameters={parameters} aoiValidation={validation} />
+                  {demo && complete ? (
+                    <ReportCard missionId={ASSAM_SCENARIO.missionId} />
+                  ) : null}
                 </ErrorBoundary>
-              </div>
-            )}
+              </aside>
+            ) : null}
 
-            <div className="map-card">
-              {/* The run this Dashboard drives (demo or live) is the same one
-                  the map card observes — one run, one source of truth. */}
+            <section className="sqd-map" aria-label="Map">
               <ErrorBoundary area="Map">
                 <MapCanvas
                   complete={complete}
@@ -288,61 +294,25 @@ export default function Dashboard() {
                   onAoiChange={setAoi}
                   visible={layers}
                   onToggleLayer={toggleLayer}
+                  extent={extent.status === "ready" ? extent.data : null}
+                  aoiLocked={running}
                 />
               </ErrorBoundary>
-            </div>
-
-            <button
-              className="rail-toggle"
-              onClick={() => setRightRail(!rightRail)}
-              aria-label={rightRail ? "Hide analysis rail" : "Show analysis rail"}
-              title={rightRail ? "Hide analysis rail" : "Show analysis rail"}
-            >
-              {rightRail ? <PanelRightClose size={15} /> : <PanelRightOpen size={15} />}
-            </button>
+              <button
+                className="sqd-rail-toggle"
+                onClick={() => setRail(!rail)}
+                aria-label={rail ? "Hide mission rail" : "Show mission rail"}
+                title={rail ? "Hide mission rail" : "Show mission rail"}
+                type="button"
+              >
+                {rail ? <PanelLeftClose size={15} /> : <PanelLeftOpen size={15} />}
+              </button>
+            </section>
           </div>
 
-          {/* Mission stats strip */}
-          <div className="section-strip">
-            <div>
-              <span>MISSION ID</span>
-              <b>{missionId}</b>
-            </div>
-            <div>
-              <span>AOI</span>
-              <b>{location}</b>
-            </div>
-            <div>
-              <span>RESULT</span>
-              <b>{summary}</b>
-            </div>
-            <div>
-              <span>CONFIDENCE</span>
-              <b>
-                {demo && complete
-                  ? `${Math.round(ASSAM_SCENARIO.confidence.score * 100)}%`
-                  : confidence !== null
-                    ? `${Math.round(confidence * 100)}%`
-                    : "—"}
-              </b>
-            </div>
-            <div>
-              <span>STATUS</span>
-              <b className={missionStatus === "failed" ? "error-text" : "success-text"}>
-                {missionStatus === "running"
-                  ? "RUNNING"
-                  : missionStatus === "completed"
-                  ? "EVIDENCE READY"
-                  : missionStatus === "failed"
-                  ? "FAILED"
-                  : "IDLE"}
-              </b>
-            </div>
-          </div>
-
-          {/* Intelligence — change, confidence, WHY, sensors, impact. Demo reads
-              the pinned scenario; live reads only what the agent published. */}
-          <section className="intel-section" aria-label="Intelligence">
+          {/* Detail under the map. Demo reads the pinned scenario; live reads
+              only what the agent published. */}
+          <section className="sqd-below intel-section" aria-label="Intelligence">
             <ErrorBoundary area="Intelligence panel">
               {demo ? (
                 <IntelligencePanel
@@ -352,40 +322,11 @@ export default function Dashboard() {
                   revealed={complete}
                   aoiAreaSqM={validation.areaSqM}
                 />
-              ) : complete && agentState ? (
-                <div className="intel-live">
-                  <ConfidenceCard
-                    confidence={confidence}
-                    reasons={agentState.uncertainty_reasons ?? []}
-                  />
-                  <LiveSummary state={agentState} />
-                  <EvidencePanel evidence={evidence} onTrace={() => setTrace(true)} />
-                </div>
-              ) : (
-                <section className="card">
-                  <div className="card-head">
-                    <div>
-                      <div className="card-title">INTELLIGENCE</div>
-                      <div className="card-sub">
-                        No analysis yet. Run a mission to populate this section;
-                        nothing is shown before the backend has produced it.
-                      </div>
-                    </div>
-                    {demo ? <ProvenanceBadge source="fixture" at={FIXTURE_EPOCH} /> : null}
-                  </div>
-                </section>
-              )}
+              ) : complete && result ? (
+                <LiveIntelligence result={result} />
+              ) : null}
             </ErrorBoundary>
           </section>
-
-          {/* Next actions */}
-          <div className="bottom-grid bottom-grid--two">
-            <MonitoringCard />
-            <ReportCard missionId={reportMissionId} />
-          </div>
-
-          {/* Beginner guide */}
-          <BeginnerGuide />
 
           <PageTelemetry run={run} />
 
@@ -396,28 +337,32 @@ export default function Dashboard() {
               <span>Evidence-first satellite intelligence</span>
             </div>
             <div>
-              <span>Gateway-only browser access</span>
+              <span>Sentinel-1 via Microsoft Planetary Computer</span>
               <span>•</span>
-              <span>Traceable outputs</span>
-              <span>•</span>
-              <span>Accessible UI</span>
+              <span>Basemap © Esri</span>
             </div>
           </footer>
-        </div>
-      </main>
+        </main>
 
-      {/* Agent activity toasts float bottom-right over everything (P5 §2C). */}
-      <AgentActivityToasts events={activity.events} onDismiss={activity.dismiss} />
+        <BeginnerGuide demo={demo} />
 
-      {/* Trace drawer (uses live stages from backend) */}
-      {trace && (
-        <TraceDrawer
-          stages={stages}
-          runId={runId}
-          onClose={() => setTrace(false)}
-        />
-      )}
+        {/* Agent activity toasts float bottom-right over everything (P5 §2C). */}
+        <AgentActivityToasts events={activity.events} onDismiss={activity.dismiss} />
 
+        {trace && (
+          <TraceDrawer
+            stages={stages}
+            runId={runId}
+            ids={{
+              "trace id": run.traceId,
+              "job id": run.jobId,
+              "mission id": run.missionId,
+              "inference trace": result?.inference.traceId ?? null,
+            }}
+            exportPayload={demo ? null : (run.agentState ?? null)}
+            onClose={closeTrace}
+          />
+        )}
       </div>
     </>
   );

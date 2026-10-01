@@ -1,0 +1,552 @@
+{
+ "_note": "Recorded from services/agent/graph/orchestrator.py with the STAC search and inference HTTP call stubbed (tests/unit/test_live_backend_wiring.py). Test data only.",
+ "run": {
+  "mission_id": "msn-ui-1",
+  "run_id": "run_83e220a1",
+  "organization_id": "org-dev",
+  "job_id": "job_9e5feba239ad",
+  "trace_id": null,
+  "query": "Map the flood extent in the selected area and explain why you chose SAR.",
+  "sanitized_query": "Map the flood extent in the selected area and explain why you chose SAR.",
+  "status": "COMPLETED",
+  "intent": {
+   "disaster_type": "flood",
+   "objectives": [
+    "delineate_hazard_extent"
+   ],
+   "raw_query": "Map the flood extent in the selected area and explain why you chose SAR.",
+   "sanitized_query": "Map the flood extent in the selected area and explain why you chose SAR.",
+   "confidence_threshold": 0.7,
+   "requires_multi_sensor": true
+  },
+  "aoi": {
+   "type": "Polygon",
+   "coordinates": [
+    [
+     [
+      92.6,
+      26.3
+     ],
+     [
+      92.8,
+      26.3
+     ],
+     [
+      92.8,
+      26.45
+     ],
+     [
+      92.6,
+      26.45
+     ],
+     [
+      92.6,
+      26.3
+     ]
+    ]
+   ]
+  },
+  "temporal_window": {
+   "start": "2024-06-29T00:00:00Z",
+   "end": "2024-07-06T23:59:59Z"
+  },
+  "selected_sensors": [
+   "S1_SAR"
+  ],
+  "observation_ids": [
+   "S1_NEW_FULL",
+   "S1_OLD_FULL",
+   "S1_NEWEST_PARTIAL"
+  ],
+  "tool_calls": [],
+  "evidence_graph": {
+   "graph_id": "evg_e48d563e",
+   "mission_id": "msn-ui-1",
+   "nodes": {
+    "obs_S1_NEW_FULL": {
+     "node_id": "obs_S1_NEW_FULL",
+     "node_type": "OBSERVATION",
+     "source": "S1_SAR",
+     "data": {
+      "asset_id": "S1_NEW_FULL",
+      "sensor": "S1_SAR",
+      "datetime": "2024-07-04T00:00:00+00:00",
+      "collection": "sentinel-1-rtc",
+      "platform": "SENTINEL-1A"
+     },
+     "confidence": 1.0,
+     "provenance": {
+      "observation_id": "S1_NEW_FULL",
+      "dataset_id": "bhoonidhi-stac",
+      "datetime": "2024-07-04T00:00:00+00:00"
+     },
+     "timestamp": "2026-10-01T03:37:22Z"
+    },
+    "inf_a41978": {
+     "node_id": "inf_a41978",
+     "node_type": "INFERENCE",
+     "source": "deterministic-otsu-baseline:c50604b",
+     "data": {
+      "inundated_sqkm": 12.345,
+      "degraded_from": "deterministic-otsu-baseline",
+      "confidence_basis": "not_calibrated",
+      "inference_trace_id": "7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11"
+     },
+     "confidence": null,
+     "provenance": {
+      "model_name": "deterministic-otsu-baseline",
+      "model_version": "c50604b",
+      "input_node_ids": [
+       "obs_S1_NEW_FULL"
+      ]
+     },
+     "timestamp": "2026-10-01T03:37:22Z"
+    },
+    "metric_inundation_area_sqkm": {
+     "node_id": "metric_inundation_area_sqkm",
+     "node_type": "METRIC",
+     "source": "metric_calculator",
+     "data": {
+      "metric_name": "inundation_area_sqkm",
+      "value": 12.345,
+      "unit": "km2"
+     },
+     "confidence": null,
+     "provenance": {
+      "parent_inference": "inf_a41978"
+     },
+     "timestamp": "2026-10-01T03:37:22Z"
+    }
+   },
+   "edges": [
+    {
+     "source_id": "obs_S1_NEW_FULL",
+     "target_id": "inf_a41978",
+     "relation": "DERIVED_FROM"
+    },
+    {
+     "source_id": "inf_a41978",
+     "target_id": "metric_inundation_area_sqkm",
+     "relation": "DERIVED_FROM"
+    }
+   ],
+   "created_at": "2026-10-01T03:37:22Z"
+  },
+  "confidence_score": 0.95,
+  "uncertainty_reasons": [
+   "Model confidence is not calibrated for this method; the score reflects acquisition quality (sensor, resolution, recency) only",
+   "Inference degraded: no registered model beats the deterministic baseline on held-out regions, so the baseline was used"
+  ],
+  "synthesized_output": {
+   "summary": "12.35 km\u00b2 of surface water was mapped inside the AOI from 1 observation(s) (S1_SAR (S1_NEW_FULL) acquired 2024-07-04T00:00:00+00:00) using deterministic-otsu-baseline:c50604b. This is open water on the acquisition date; it includes permanent water bodies unless a permanent-water layer was applied.",
+   "citations": [
+    "obs_S1_NEW_FULL",
+    "inf_a41978",
+    "metric_inundation_area_sqkm"
+   ],
+   "metrics": {
+    "inundation_area_sqkm": 12.345
+   },
+   "why_explanation": {
+    "sensor_choice": "Live flood inference is validated for Sentinel-1 SAR (VV+VH) only; C-band SAR also images through cloud, which matters during floods.",
+    "confidence_rationale": "Gate score 0.95; model confidence not calibrated, so the score reflects acquisition quality only; 10 m pixels; scene is inside the requested window. Caveats: Inference degraded: no registered model beats the deterministic baseline on held-out regions, so the baseline was used.",
+    "methodology": "Method: deterministic-otsu-baseline. single-date Otsu on VV; threshold -17.20 dB."
+   },
+   "grounding_score": 1.0,
+   "inundation_area_sqkm": 12.345,
+   "primary_sensor": "S1_SAR",
+   "observation_id": "S1_NEW_FULL",
+   "acquired_at": "2024-07-04T00:00:00+00:00",
+   "inference": {
+    "trace_id": "7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11",
+    "geometry_ref": "analyses/7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11/water_extent.geojson",
+    "degraded_from": "deterministic-otsu-baseline",
+    "produced_by": "deterministic-otsu-baseline",
+    "caveats": [
+     "produced by deterministic-otsu-baseline",
+     "single-date Otsu on VV; threshold -17.20 dB",
+     "degraded: no registered model beats the deterministic baseline on held-out regions, so the baseline was used"
+    ]
+   },
+   "confidence": {
+    "score": 0.95,
+    "passed_gate": true,
+    "model_confidence": null,
+    "model_confidence_basis": "not_calibrated",
+    "score_basis": "acquisition_quality_only",
+    "inputs": {
+     "sensor": "S1_SAR",
+     "resolution_m": 10.0,
+     "cloud_cover": null,
+     "temporal_lag_days": 0.0
+    }
+   },
+   "search": {
+    "bbox": [
+     92.6,
+     26.3,
+     92.8,
+     26.45
+    ],
+    "sensors": [
+     "S1_SAR"
+    ],
+    "requested_window": {
+     "start": "2024-06-29T00:00:00Z",
+     "end": "2024-07-06T23:59:59Z"
+    },
+    "attempts": [
+     {
+      "start": "2024-06-29T00:00:00Z",
+      "end": "2024-07-06T23:59:59Z",
+      "results": 5,
+      "error": null
+     }
+    ],
+    "widened": false
+   }
+  },
+  "errors": [],
+  "metadata": {
+   "sensor_decision": {
+    "cloud_cover_forecast": null,
+    "primary": "S1_SAR",
+    "secondary": null,
+    "rationale": "Live flood inference is validated for Sentinel-1 SAR (VV+VH) only; C-band SAR also images through cloud, which matters during floods."
+   },
+   "search": {
+    "bbox": [
+     92.6,
+     26.3,
+     92.8,
+     26.45
+    ],
+    "sensors": [
+     "S1_SAR"
+    ],
+    "requested_window": {
+     "start": "2024-06-29T00:00:00Z",
+     "end": "2024-07-06T23:59:59Z"
+    },
+    "attempts": [
+     {
+      "start": "2024-06-29T00:00:00Z",
+      "end": "2024-07-06T23:59:59Z",
+      "results": 5,
+      "error": null
+     }
+    ],
+    "widened": false
+   },
+   "budget": {
+    "max_calls": 10,
+    "max_duration_seconds": 60.0,
+    "calls_made": 0,
+    "total_duration_ms": 0.0
+   },
+   "observations": [
+    {
+     "observation_id": "S1_OLD_FULL",
+     "scene": {
+      "provider": "planetary_computer",
+      "collection": "sentinel-1-rtc",
+      "item_id": "S1_OLD_FULL",
+      "acquired_at": "2024-07-01T00:00:00+00:00",
+      "platform": "SENTINEL-1A",
+      "instrument": "C-SAR",
+      "relative_orbit": 12,
+      "pass_direction": "ASCENDING",
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/items/S1_OLD_FULL",
+      "cloud_cover": null
+     },
+     "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+       [
+        [
+         91.5,
+         25.5
+        ],
+        [
+         94.0,
+         25.5
+        ],
+        [
+         94.0,
+         27.5
+        ],
+        [
+         91.5,
+         27.5
+        ],
+        [
+         91.5,
+         25.5
+        ]
+       ]
+      ]
+     },
+     "assets": {
+      "vv": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_OLD_FULL/vv.tif",
+      "vh": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_OLD_FULL/vh.tif"
+     },
+     "normalized_properties": {}
+    },
+    {
+     "observation_id": "S1_NEWEST_PARTIAL",
+     "scene": {
+      "provider": "planetary_computer",
+      "collection": "sentinel-1-rtc",
+      "item_id": "S1_NEWEST_PARTIAL",
+      "acquired_at": "2024-07-06T00:00:00+00:00",
+      "platform": "SENTINEL-1A",
+      "instrument": "C-SAR",
+      "relative_orbit": 12,
+      "pass_direction": "ASCENDING",
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/items/S1_NEWEST_PARTIAL",
+      "cloud_cover": null
+     },
+     "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+       [
+        [
+         92.7,
+         25.5
+        ],
+        [
+         94.0,
+         25.5
+        ],
+        [
+         94.0,
+         27.5
+        ],
+        [
+         92.7,
+         27.5
+        ],
+        [
+         92.7,
+         25.5
+        ]
+       ]
+      ]
+     },
+     "assets": {
+      "vv": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_NEWEST_PARTIAL/vv.tif",
+      "vh": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_NEWEST_PARTIAL/vh.tif"
+     },
+     "normalized_properties": {}
+    },
+    {
+     "observation_id": "S1_NEW_FULL",
+     "scene": {
+      "provider": "planetary_computer",
+      "collection": "sentinel-1-rtc",
+      "item_id": "S1_NEW_FULL",
+      "acquired_at": "2024-07-04T00:00:00+00:00",
+      "platform": "SENTINEL-1A",
+      "instrument": "C-SAR",
+      "relative_orbit": 12,
+      "pass_direction": "ASCENDING",
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/items/S1_NEW_FULL",
+      "cloud_cover": null
+     },
+     "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+       [
+        [
+         91.5,
+         25.5
+        ],
+        [
+         94.0,
+         25.5
+        ],
+        [
+         94.0,
+         27.5
+        ],
+        [
+         91.5,
+         27.5
+        ],
+        [
+         91.5,
+         25.5
+        ]
+       ]
+      ]
+     },
+     "assets": {
+      "vv": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_NEW_FULL/vv.tif",
+      "vh": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_NEW_FULL/vh.tif"
+     },
+     "normalized_properties": {}
+    },
+    {
+     "observation_id": "S1_NEW_FULL_SINGLEPOL",
+     "scene": {
+      "provider": "planetary_computer",
+      "collection": "sentinel-1-rtc",
+      "item_id": "S1_NEW_FULL_SINGLEPOL",
+      "acquired_at": "2024-07-05T00:00:00+00:00",
+      "platform": "SENTINEL-1A",
+      "instrument": "C-SAR",
+      "relative_orbit": 12,
+      "pass_direction": "ASCENDING",
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/items/S1_NEW_FULL_SINGLEPOL",
+      "cloud_cover": null
+     },
+     "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+       [
+        [
+         91.5,
+         25.5
+        ],
+        [
+         94.0,
+         25.5
+        ],
+        [
+         94.0,
+         27.5
+        ],
+        [
+         91.5,
+         27.5
+        ],
+        [
+         91.5,
+         25.5
+        ]
+       ]
+      ]
+     },
+     "assets": {
+      "vv": "https://sentinel1euwestrtc.blob.core.windows.net/x/S1_NEW_FULL_SINGLEPOL/vv.tif"
+     },
+     "normalized_properties": {}
+    },
+    {
+     "observation_id": "S2_OPTICAL",
+     "scene": {
+      "provider": "planetary_computer",
+      "collection": "sentinel-2-l2a",
+      "item_id": "S2_OPTICAL",
+      "acquired_at": "2024-07-05T00:00:00+00:00",
+      "platform": "Sentinel-2A",
+      "instrument": "MSI",
+      "relative_orbit": 12,
+      "pass_direction": "ASCENDING",
+      "href": "https://planetarycomputer.microsoft.com/api/stac/v1/items/S2_OPTICAL",
+      "cloud_cover": null
+     },
+     "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+       [
+        [
+         91.5,
+         25.5
+        ],
+        [
+         94.0,
+         25.5
+        ],
+        [
+         94.0,
+         27.5
+        ],
+        [
+         91.5,
+         27.5
+        ],
+        [
+         91.5,
+         25.5
+        ]
+       ]
+      ]
+     },
+     "assets": {
+      "vv": "https://sentinel1euwestrtc.blob.core.windows.net/x/S2_OPTICAL/vv.tif",
+      "vh": "https://sentinel1euwestrtc.blob.core.windows.net/x/S2_OPTICAL/vh.tif"
+     },
+     "normalized_properties": {}
+    }
+   ],
+   "selected_observation_id": "S1_NEW_FULL",
+   "selected_scene_coverage": 1.0,
+   "analysed_observation_ids": [
+    "S1_NEW_FULL"
+   ],
+   "inference_outcome": {
+    "outcome": "analysed",
+    "measurements": [
+     {
+      "name": "water_extent",
+      "value": "1234.5",
+      "unit": "ha",
+      "produced_by": "ml.geo.area.area_hectares",
+      "code_version": "c50604b",
+      "crs": "EPSG:32646",
+      "derived_from": []
+     }
+    ],
+    "geometry_ref": "analyses/7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11/water_extent.geojson",
+    "raster_refs": [
+     "analyses/7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11/water_mask.tif"
+    ],
+    "confidence": {
+     "basis": "not_calibrated",
+     "value": null,
+     "interval": null,
+     "calibration_ref": null,
+     "agreement_iou": null,
+     "caveats": [
+      "deterministic baseline; no calibration report exists for it"
+     ]
+    },
+    "scenes": [],
+    "degraded_from": "deterministic-otsu-baseline",
+    "caveats": [
+     "produced by deterministic-otsu-baseline",
+     "single-date Otsu on VV; threshold -17.20 dB",
+     "degraded: no registered model beats the deterministic baseline on held-out regions, so the baseline was used"
+    ],
+    "trace_id": "7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11"
+   },
+   "confidence": {
+    "score": 0.95,
+    "passed_gate": true,
+    "model_confidence": null,
+    "model_confidence_basis": "not_calibrated",
+    "score_basis": "acquisition_quality_only",
+    "inputs": {
+     "sensor": "S1_SAR",
+     "resolution_m": 10.0,
+     "cloud_cover": null,
+     "temporal_lag_days": 0.0
+    }
+   },
+   "inference_summary": {
+    "trace_id": "7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11",
+    "geometry_ref": "analyses/7d3c1f7e-2c49-4a3e-9d7b-0a1f5e6c9b11/water_extent.geojson",
+    "degraded_from": "deterministic-otsu-baseline",
+    "produced_by": "deterministic-otsu-baseline",
+    "caveats": [
+     "produced by deterministic-otsu-baseline",
+     "single-date Otsu on VV; threshold -17.20 dB",
+     "degraded: no registered model beats the deterministic baseline on held-out regions, so the baseline was used"
+    ]
+   }
+  },
+  "created_at": "2026-10-01T03:37:22.336475Z",
+  "updated_at": "2026-10-01T03:37:22.619985Z"
+ }
+}

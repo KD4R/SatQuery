@@ -8,37 +8,44 @@
  * Depth in this system comes from 1px rules, never from shadow or gradient.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap");
+/*
+ * One design system (audit F7). These console tokens used to define their own
+ * palette (red #ff3b30) and fonts (Inter / IBM Plex via Google Fonts), so the
+ * dashboard showed three palettes at once and the light theme broke the map
+ * overlays. They now alias the landing page's tokens in globals.css — orange
+ * signal, Chakra Petch and Share Tech Mono, both bundled via @fontsource — so
+ * every console surface follows the same theme, including light mode.
+ */
 
 :root {
   /* Ground */
-  --void: #000000;
-  --surface-1: #07090b;
-  --surface-2: #0d1014;
-  --surface-3: #14181d;
+  --void: var(--bg);
+  --surface-1: var(--panel);
+  --surface-2: var(--panel2);
+  --surface-3: var(--panel3);
 
   /* Structure - the primary device */
-  --hairline: rgba(255, 255, 255, 0.09);
-  --hairline-bright: rgba(255, 255, 255, 0.18);
-  --hairline-signal: rgba(255, 59, 48, 0.45);
+  --hairline: var(--line);
+  --hairline-bright: var(--line2);
+  --hairline-signal: color-mix(in srgb, var(--accent) 45%, transparent);
 
   /* Ink */
-  --ink: #e8eaed;
-  --ink-dim: #9aa0a6;
-  --ink-faint: #5f6368;
-  --ink-ghost: #3c4043;
+  --ink: var(--text);
+  --ink-dim: var(--soft);
+  --ink-faint: var(--muted);
+  --ink-ghost: color-mix(in srgb, var(--muted) 55%, transparent);
 
-  /* Signal - used almost nowhere, which is what makes it read */
-  --signal: #ff3b30;
-  --signal-dim: #7a1d18;
-  --amber: #ff9f0a;
-  --verified: #30d158;
+  /* Signal - the one actionable accent */
+  --signal: var(--accent);
+  --signal-dim: color-mix(in srgb, var(--accent) 35%, var(--bg));
+  --amber: var(--warn);
+  --verified: var(--data-a);
   /* Reserved for values derived from real imagery (water, SAR, footprints) */
-  --earth: #4a9eff;
+  --earth: var(--data-b);
 
   /* Type */
-  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  --sans: Inter, system-ui, -apple-system, sans-serif;
+  --mono: "Share Tech Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "Chakra Petch", system-ui, -apple-system, sans-serif;
 
   /* Metrics */
   --band-h: 34px;
@@ -339,12 +346,12 @@ a {
 
 .chip-warn {
   color: var(--amber);
-  border-color: rgba(255, 159, 10, 0.4);
+  border-color: color-mix(in srgb, var(--amber) 40%, transparent);
 }
 
 .chip-ok {
   color: var(--verified);
-  border-color: rgba(48, 209, 88, 0.35);
+  border-color: color-mix(in srgb, var(--verified) 35%, transparent);
 }
 
 .chip-idle {
@@ -354,8 +361,8 @@ a {
 /* Demo-fixture provenance badge. Deliberately loud. P5-17. */
 .chip-fixture {
   color: var(--amber);
-  border-color: rgba(255, 159, 10, 0.5);
-  background: rgba(255, 159, 10, 0.07);
+  border-color: color-mix(in srgb, var(--amber) 50%, transparent);
+  background: color-mix(in srgb, var(--amber) 7%, transparent);
 }
 
 /* ─── Buttons ─────────────────────────────────────────────────────────────── */
@@ -390,7 +397,7 @@ a {
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: rgba(255, 59, 48, 0.08);
+  background: color-mix(in srgb, var(--signal) 8%, transparent);
   border-color: var(--signal);
 }
 
@@ -559,7 +566,7 @@ a {
   margin: 10px 0 0;
   padding: 8px 10px;
   border-left: 2px solid var(--amber);
-  background: rgba(255, 159, 10, 0.05);
+  background: color-mix(in srgb, var(--amber) 5%, transparent);
   font-size: 12px;
   line-height: 1.55;
   color: var(--ink-dim);
@@ -682,10 +689,10 @@ a {
    PARAMETERS, green PROGRESS/metrics, amber WHY. Content rules are unchanged —
    this is presentation only. */
 .panel-accent-red {
-  border-color: rgba(255, 59, 48, 0.45);
+  border-color: color-mix(in srgb, var(--signal) 45%, transparent);
 }
 .panel-accent-red .panel-head {
-  border-bottom-color: rgba(255, 59, 48, 0.45);
+  border-bottom-color: color-mix(in srgb, var(--signal) 45%, transparent);
 }
 .panel-accent-blue {
   border-color: rgba(90, 160, 255, 0.5);
@@ -700,10 +707,10 @@ a {
   border-bottom-color: rgba(80, 200, 120, 0.45);
 }
 .panel-accent-amber {
-  border-color: rgba(255, 159, 10, 0.45);
+  border-color: color-mix(in srgb, var(--amber) 45%, transparent);
 }
 .panel-accent-amber .panel-head {
-  border-bottom-color: rgba(255, 159, 10, 0.45);
+  border-bottom-color: color-mix(in srgb, var(--amber) 45%, transparent);
 }
 
 /* Top chrome: tab nav row above the telemetry bands. */

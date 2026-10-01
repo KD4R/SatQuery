@@ -4,6 +4,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 import "./mission.css";
 import "./console-section.css";
+import "./dashboard.css";
 
 export const metadata: Metadata = {
   title: "SatQuery AI — Mission Console",

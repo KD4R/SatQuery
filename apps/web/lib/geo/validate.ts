@@ -31,11 +31,12 @@ export interface ValidationResult {
 }
 
 /**
- * Upper bound on AOI size. Chosen so a single analysis stays inside the PRD's
- * "<10s small analysis" budget; above it the operator is asked to split the area
- * rather than being allowed to queue work that will time out.
+ * Upper bound on AOI size. Matches the agent's live limit (AGENT_MAX_AOI_KM2,
+ * default 2,500 km², checked on the AOI's bounding box) and the inference read
+ * cap (~50 km × 50 km at 10 m), so the console refuses an area before the
+ * backend would. Above it the operator is asked to split the area.
  */
-export const MAX_AREA_SQ_KM = 50_000;
+export const MAX_AREA_SQ_KM = 2_500;
 
 /** Below this an AOI is smaller than a few Sentinel-1 pixels and cannot be analysed. */
 export const MIN_AREA_SQ_KM = 0.5;

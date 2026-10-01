@@ -1,0 +1,865 @@
+/*
+ * Mission console layout (audit F1–F3, F6–F8).
+ *
+ * Map-first: one rail on the left holds the question, the answer and the run's
+ * steps; the map fills the rest of the viewport. Everything uses the landing
+ * page's tokens from globals.css (orange signal, Chakra Petch, Share Tech Mono),
+ * so dark and light themes both work. Selectors are scoped under .sqd.
+ */
+
+.sqd {
+  --sqd-rail-w: 400px;
+  --sqd-top: 52px; /* .dash-navbar height */
+  --sqd-radius: 12px;
+  display: block;
+  min-height: calc(100vh - var(--sqd-top));
+  padding: 0;
+}
+
+/* ── Stage: rail + map ───────────────────────────────────────────────────── */
+
+.sqd-stage {
+  display: grid;
+  grid-template-columns: var(--sqd-rail-w) minmax(0, 1fr);
+  height: calc(100vh - var(--sqd-top));
+  min-height: 560px;
+  border-bottom: 1px solid var(--line);
+}
+.sqd-stage.is-rail-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sqd-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 14px 24px;
+  overflow-y: auto;
+  border-right: 1px solid var(--line);
+  background: var(--bg);
+  scrollbar-width: thin;
+}
+.sqd-rail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 0;
+}
+.sqd-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.sqd-map {
+  position: relative;
+  min-width: 0;
+  background: #05070a;
+}
+.sqd-rail-toggle {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  z-index: 25;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 44px;
+  margin-top: -22px;
+  color: var(--soft);
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sqd-rail-toggle:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+
+.sqd-card {
+  padding: 12px 13px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--sqd-radius);
+}
+.sqd-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sqd-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sqd-eyebrow.is-danger {
+  color: var(--danger);
+}
+.sqd-muted,
+.sqd-muted-inline {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.sqd-muted {
+  margin: 0;
+}
+.sqd-mono {
+  font-family: "Share Tech Mono", ui-monospace, monospace;
+}
+.sqd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid var(--line2);
+  border-radius: 999px;
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.06em;
+  color: var(--soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Status colours (audit F8): ok = data green, warn = amber, danger = red,
+   busy = signal orange. Idle stays neutral; nothing idle is green. */
+.sqd-chip.is-ok {
+  color: var(--data-a);
+  border-color: color-mix(in srgb, var(--data-a) 40%, transparent);
+}
+.sqd-chip.is-warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+}
+.sqd-chip.is-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
+.sqd-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sqd-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.sqd-status.is-busy {
+  color: var(--accent);
+}
+.sqd-status.is-busy i {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  animation: sqd-pulse 1.2s ease-in-out infinite;
+}
+@keyframes sqd-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.sqd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  font: 500 11px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.sqd-btn:hover {
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+  color: var(--accent);
+}
+.sqd-btn.is-primary {
+  color: #0b0b0b;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.sqd-btn.is-primary:hover {
+  background: var(--accent2);
+  color: #0b0b0b;
+}
+.sqd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sqd-link {
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ── Query ───────────────────────────────────────────────────────────────── */
+
+.sqd-query-box {
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  background: var(--bg2);
+  transition: border-color 120ms;
+}
+.sqd-query-box:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.sqd-query-box textarea {
+  display: block;
+  width: 100%;
+  min-height: 70px;
+  padding: 10px 11px 4px;
+  resize: vertical;
+  font: 500 14px/1.45 "Chakra Petch", system-ui, sans-serif;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  outline: none;
+}
+.sqd-query-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 6px 11px;
+}
+.sqd-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font: 500 9px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.sqd-query-actions {
+  display: flex;
+  gap: 6px;
+}
+.sqd-icon-btn,
+.sqd-send {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.sqd-icon-btn {
+  color: var(--soft);
+  background: transparent;
+  border: 1px solid var(--line2);
+}
+.sqd-send {
+  color: #0b0b0b;
+  background: var(--accent);
+  border: 1px solid var(--accent);
+}
+.sqd-send:disabled {
+  color: var(--muted);
+  background: var(--panel3);
+  border-color: var(--line);
+  cursor: not-allowed;
+}
+.sqd-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+}
+.sqd-dates legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 0;
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sqd-dates legend small {
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+.sqd-dates label {
+  display: grid;
+  gap: 3px;
+  flex: 1 1 120px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.sqd-dates input {
+  height: 32px;
+  padding: 0 8px;
+  font: 500 12px "Share Tech Mono", ui-monospace, monospace;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  color-scheme: inherit;
+}
+.sqd-blocked {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--warn);
+}
+.sqd-templates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.sqd-template {
+  padding: 5px 9px;
+  font: 500 11px "Chakra Petch", system-ui, sans-serif;
+  color: var(--soft);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sqd-template:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ── Result / failure / running / idle ───────────────────────────────────── */
+
+.sqd-result {
+  border-color: color-mix(in srgb, var(--data-b) 35%, var(--line));
+}
+.sqd-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.sqd-figure b {
+  font: 600 38px/1 "Chakra Petch", system-ui, sans-serif;
+  letter-spacing: -0.01em;
+  color: var(--data-b);
+}
+.sqd-figure span {
+  font-size: 13px;
+  color: var(--soft);
+}
+.sqd-figure-sub {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.sqd-facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.sqd-facts > div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+}
+.sqd-facts dt {
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.sqd-facts dd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.sqd-note {
+  display: flex;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--soft);
+}
+.sqd-note.is-warn {
+  color: var(--warn);
+}
+
+.sqd-failure .sqd-card-head {
+  flex-wrap: wrap;
+}
+.sqd-failure {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+  background: color-mix(in srgb, var(--danger) 5%, var(--panel));
+}
+.sqd-failure-msg {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.sqd-failure-hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--soft);
+}
+.sqd-trace {
+  margin: 10px 0 0;
+  font-size: 10px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.sqd-running-step {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.sqd-running-detail {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.sqd-skel {
+  display: grid;
+  gap: 6px;
+}
+.sqd-skel i {
+  display: block;
+  height: 9px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--panel3), var(--panel2), var(--panel3));
+  background-size: 200% 100%;
+  animation: sqd-shimmer 1.6s linear infinite;
+}
+.sqd-skel i:nth-child(2) {
+  width: 78%;
+}
+.sqd-skel i:nth-child(3) {
+  width: 55%;
+}
+@keyframes sqd-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.sqd-idle-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--soft);
+}
+.sqd-idle-steps li.is-done {
+  color: var(--data-a);
+}
+
+/* The step list keeps its row styles from globals.css; only its card shell
+   changes here. */
+.sqd .stage-list-card {
+  box-shadow: none;
+}
+.sqd .stage-list {
+  margin-top: 2px;
+}
+.sqd .plan-card .readout {
+  border-top: 1px solid var(--line);
+}
+
+/* ── Below the map ───────────────────────────────────────────────────────── */
+
+.sqd-below {
+  padding: 18px 18px 8px;
+}
+.sqd-below:empty {
+  display: none;
+}
+.sqd-intel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.sqd-span-2 {
+  grid-column: 1 / -1;
+}
+.sqd-prose {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.sqd-why {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+.sqd-why dt {
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sqd-why dd {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--soft);
+}
+.sqd-list {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--soft);
+}
+.sqd-evidence {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sqd-evidence li {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+}
+.sqd-evidence b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+.sqd-evidence small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.sqd-ev-conf {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* ── Map controls ────────────────────────────────────────────────────────── */
+
+.sqd-map .mw-search {
+  position: absolute;
+  top: 10px;
+  left: 46px;
+  z-index: 20;
+  display: flex;
+  gap: 6px;
+  width: min(380px, calc(100% - 300px));
+  min-width: 220px;
+}
+.sqd-map .mw-search input {
+  flex: 1;
+  height: 32px;
+  padding: 0 10px;
+  font: 500 13px "Chakra Petch", system-ui, sans-serif;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+  outline: none;
+  backdrop-filter: blur(6px);
+}
+.sqd-map .mw-search input:focus {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+.sqd-map .mw-search .btn,
+.sqd-map .mw-tools .btn {
+  height: 32px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border-color: var(--line2);
+  border-radius: 8px;
+  backdrop-filter: blur(6px);
+}
+.sqd-map .mw-tools .btn:hover:not(:disabled),
+.sqd-map .mw-search .btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.sqd-map .mw-tools .btn-primary {
+  color: #0b0b0b;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.mw-search-results {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.mw-search-results button {
+  display: block;
+  width: 100%;
+  padding: 7px 8px;
+  text-align: left;
+  color: var(--text);
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.mw-search-results button:hover,
+.mw-search-results button:focus-visible {
+  background: var(--panel3);
+}
+.mw-search-results b {
+  display: block;
+  font-size: 13px;
+}
+.mw-search-results small {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+}
+.mw-search-credit {
+  padding: 4px 8px 2px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.mw-search-error {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  margin: 0;
+  padding: 6px 9px;
+  font-size: 12px;
+  color: var(--warn);
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+}
+
+.sqd-map .mw-tools {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.mw-tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.sqd-map .mw-validation {
+  position: absolute;
+  top: 88px;
+  right: 10px;
+  z-index: 20;
+  width: 270px;
+  padding: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.sqd-map .mw-layers {
+  position: absolute;
+  left: 10px;
+  bottom: 46px;
+  z-index: 15;
+  min-width: 180px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border: 1px solid var(--line2);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.sqd-map .mw-layers-head {
+  border-bottom-color: var(--line);
+}
+.sqd-map .mw-layers-row .label {
+  font-family: "Chakra Petch", system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--soft);
+}
+.mw-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--sw) 55%, transparent);
+  border: 1px solid var(--sw);
+  flex: none;
+}
+.mw-swatch.is-line {
+  background: transparent;
+  border-style: dashed;
+  border-color: #f87010;
+}
+.mw-opacity {
+  display: grid;
+  gap: 2px;
+  padding: 6px 6px 4px;
+  border-top: 1px solid var(--line);
+  margin-top: 4px;
+}
+.mw-opacity input {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.sqd-map .mw-coords {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 15;
+  display: flex;
+  gap: 14px;
+  padding: 5px 10px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--line2);
+  border-radius: 8px;
+}
+
+/* MapLibre attribution, themed (the Esri credit must stay readable). */
+.sqd-map .maplibregl-ctrl-attrib {
+  font: 500 10px "Chakra Petch", system-ui, sans-serif;
+  color: #1a1c1f;
+}
+.sqd-map .maplibregl-ctrl-attrib a {
+  color: inherit;
+}
+
+/* ── Trace drawer extras, signed-out avatar, telemetry busy ─────────────── */
+
+.trace-ids {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.trace-ids > div {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 8px;
+}
+.trace-ids dt {
+  font: 500 10px "Share Tech Mono", ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.trace-ids dd {
+  margin: 0;
+  font: 500 11px "Share Tech Mono", ui-monospace, monospace;
+  overflow-wrap: anywhere;
+}
+.avatar.is-signed-out {
+  opacity: 0.55;
+  outline: 1px dashed var(--line2);
+}
+.page-telemetry .pt-busy {
+  color: var(--accent);
+}
+
+/* Styles that existed in markup but not in CSS (audit F8). */
+.error-banner {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 7%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  border-radius: 10px;
+}
+.error-text {
+  color: var(--danger);
+}
+
+/* ── Small screens: the map stacks under the rail ───────────────────────── */
+
+@media (max-width: 900px) {
+  .sqd-stage {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 70vh;
+    height: auto;
+  }
+  .sqd-rail {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+  .sqd-intel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sqd-map .mw-search {
+    width: calc(100% - 120px);
+    min-width: 0;
+  }
+  .sqd-rail-toggle {
+    display: none;
+  }
+}

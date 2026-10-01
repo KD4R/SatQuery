@@ -7,10 +7,10 @@
  * column, has no card, no border radius and no padding, and every control floats
  * over it as a hairline box rather than occupying layout space.
  *
- * Base style is a plain dark canvas with no basemap tiles. That is deliberate:
- * the browser may only call the gateway (PRD section 3), so pulling raster tiles
- * from a third-party host would breach the same rule the API client enforces. The
- * imagery that matters here is the observation overlay, which is the subject anyway.
+ * The basemap is Esri World Imagery with Esri's reference labels, credited in the
+ * attribution control as its licence requires. Those tiles and the optional place
+ * search (OpenStreetMap Nominatim) are the only non-gateway requests the browser
+ * makes; both are listed in next.config.ts's CSP and carry no mission data.
  *
  * MapLibre is loaded on demand so the ~800 KB of GL does not sit in the first paint
  * of a route that may never show a map (P5-16).
@@ -27,6 +27,7 @@ import { useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatArea, formatLat, formatLon, formatZoom } from "../../lib/geo/format";
+import { rectanglePolygon, searchPlace, GeocodeError, type PlaceResult } from "../../lib/geo/geocode";
 import { validateAOI, type ValidationResult } from "../../lib/geo/validate";
 import { epochOpacities, type TimeMachineModel } from "../../lib/map/timeLayers";
 import type { GeoJSONPolygon } from "../../lib/api/types";
@@ -54,10 +55,18 @@ export interface MapWorkspaceProps {
   visible: Record<LayerId, boolean>;
   onToggleLayer: (id: LayerId) => void;
   onSelectChange?: (featureId: string | null) => void;
+  /** Layers that exist right now; the panel lists only these (audit F6). */
+  availableLayers?: LayerId[];
+  /** Measured water polygons (EPSG:4326) from the inference service (audit W8). */
+  extent?: GeoJSON.FeatureCollection | null;
+  /** Place search box (audit F4). Off in demo, where the AOI is pinned. */
+  placeSearch?: boolean;
+  /** Freeze AOI editing (while a run is in flight). */
+  aoiLocked?: boolean;
 }
 
 const LAYER_LABELS: Record<LayerId, string> = {
-  observation: "Flood extent",
+  observation: "Water extent",
   baseline: "Baseline water",
   change: "Change",
   confidence: "Confidence",
@@ -66,12 +75,20 @@ const LAYER_LABELS: Record<LayerId, string> = {
 
 /** Reference-design checkbox colours, one per layer family. */
 const LAYER_ACCENT: Record<LayerId, string> = {
-  observation: "rgba(255, 59, 48, 0.85)",
-  baseline: "rgba(90, 160, 255, 0.85)",
-  change: "rgba(255, 159, 10, 0.9)",
-  confidence: "rgba(80, 200, 120, 0.85)",
-  aoi: "rgba(80, 200, 120, 0.85)",
+  observation: "#60a0f8",
+  baseline: "#30d098",
+  change: "#f87010",
+  confidence: "#f8c810",
+  aoi: "#f87010",
 };
+
+/** Colour of the measured-water fill: the "earth/data" blue, not the action orange. */
+const WATER = "#60a0f8";
+const ACCENT = "#f87010";
+
+/** Esri World Imagery's required credit (see Esri's attribution guidelines). */
+const ESRI_CREDIT =
+  "Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community · Labels © Esri";
 
 const EMPTY_STYLE = {
   version: 8 as const,
@@ -82,7 +99,7 @@ const EMPTY_STYLE = {
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
       ],
       tileSize: 256,
-      attribution: "Tiles &copy; Esri"
+      attribution: ESRI_CREDIT
     },
     "esri-world-labels": {
       type: "raster" as const,
@@ -110,6 +127,8 @@ const EMPTY_STYLE = {
   ]
 };
 
+let workerConfigured = false;
+
 export function MapWorkspace({
   center,
   zoom,
@@ -121,6 +140,10 @@ export function MapWorkspace({
   visible,
   onToggleLayer,
   onSelectChange,
+  availableLayers,
+  extent = null,
+  placeSearch = false,
+  aoiLocked = false,
 }: MapWorkspaceProps) {
   const holder = useRef<HTMLDivElement | null>(null);
   const map = useRef<MapLibreMap | null>(null);
@@ -131,8 +154,21 @@ export function MapWorkspace({
     zoom,
   });
 
-  const [drawing, setDrawing] = useState(false);
+  const [drawMode, setDrawMode] = useState<"polygon" | "rectangle" | null>(null);
+  const drawing = drawMode !== null;
   const [draft, setDraft] = useState<number[][]>([]);
+  const [hover, setHover] = useState<[number, number] | null>(null);
+  const [overlayOpacity, setOverlayOpacity] = useState(0.55);
+  const [search, setSearch] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<PlaceResult[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const corner = useRef<[number, number] | null>(null);
+  const setDrawing = useCallback((on: boolean) => {
+    corner.current = null;
+    setDraft([]);
+    setDrawMode(on ? "polygon" : null);
+  }, []);
 
   // Which time machine epoch is on screen; owned here so the map can tween the
   // raster opacities while the rail only reports indices.
@@ -144,12 +180,21 @@ export function MapWorkspace({
   useEffect(() => {
     if (!holder.current || map.current) return;
 
+    // maplibre-gl v6 looks for its worker beside its own (bundled) module file,
+    // where it does not exist; without a worker no GeoJSON layer ever renders.
+    // scripts/copy-maplibre-worker.mjs puts the matching worker in public/.
+    if (!workerConfigured) {
+      maplibregl.setWorkerUrl(`${window.location.origin}/vendor/maplibre/maplibre-gl-worker.mjs`);
+      workerConfigured = true;
+    }
+
     const m = new maplibregl.Map({
       container: holder.current,
       style: EMPTY_STYLE,
       center,
       zoom,
-      attributionControl: false,
+      // Esri's licence requires the credit on screen (audit F6).
+      attributionControl: { compact: true, customAttribution: "SatQuery" },
       // Pitch and rotate are on: the PRD asks for them, and they cost nothing here.
       pitchWithRotate: true,
       dragRotate: true,
@@ -336,6 +381,11 @@ export function MapWorkspace({
         m.setLayoutProperty(layerId, "visibility", on ? "visible" : "none");
       }
     }
+    for (const id of ["extent-fill", "extent-line"]) {
+      if (m.getLayer(id)) {
+        m.setLayoutProperty(id, "visibility", visible.observation ? "visible" : "none");
+      }
+    }
     for (const id of ["aoi-fill", "aoi-line", "aoi-vertices"]) {
       if (m.getLayer(id)) {
         m.setLayoutProperty(id, "visibility", visible.aoi ? "visible" : "none");
@@ -367,13 +417,13 @@ export function MapWorkspace({
       id: "change-fill",
       type: "fill",
       source: "change-src",
-      paint: { "fill-color": "#ff3b30", "fill-opacity": 0.22 },
+      paint: { "fill-color": ACCENT, "fill-opacity": 0.22 },
     }, "world-labels");
     m.addLayer({
       id: "change-outline",
       type: "line",
       source: "change-src",
-      paint: { "line-color": "#ff3b30", "line-width": 1 },
+      paint: { "line-color": ACCENT, "line-width": 1 },
     }, "world-labels");
 
     if (onSelectChange) {
@@ -389,6 +439,48 @@ export function MapWorkspace({
       });
     }
   }, [changeGeoJsonUrl, ready, onSelectChange]);
+
+  /* ── measured water extent (live) ──────────────────────────────────────── */
+
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready) return;
+    const data: GeoJSON.FeatureCollection = extent ?? { type: "FeatureCollection", features: [] };
+    const src = m.getSource("extent-src") as GeoJSONSource | undefined;
+    if (src) {
+      src.setData(data);
+    } else {
+      m.addSource("extent-src", { type: "geojson", data });
+      m.addLayer({
+        id: "extent-fill",
+        type: "fill",
+        source: "extent-src",
+        paint: { "fill-color": WATER, "fill-opacity": overlayOpacity },
+      }, "world-labels");
+      m.addLayer({
+        id: "extent-line",
+        type: "line",
+        source: "extent-src",
+        paint: { "line-color": WATER, "line-width": 1, "line-opacity": 0.9 },
+      }, "world-labels");
+    }
+    // overlayOpacity is applied by its own effect; adding it here would rebuild
+    // the source on every slider move.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [extent, ready]);
+
+  // One opacity for whatever result overlay is on the map: the measured water
+  // fill in live mode, the scene rasters in the demo.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready) return;
+    if (m.getLayer("extent-fill")) m.setPaintProperty("extent-fill", "fill-opacity", overlayOpacity);
+    if (m.getLayer("change-fill")) m.setPaintProperty("change-fill", "fill-opacity", overlayOpacity * 0.5);
+    for (const ov of overlays) {
+      const id = `lyr-${ov.id}`;
+      if (m.getLayer(id)) m.setPaintProperty(id, "raster-opacity", Math.min(1, overlayOpacity + 0.3));
+    }
+  }, [overlayOpacity, ready, overlays, extent]);
 
   /* ── AOI render ─────────────────────────────────────────────────────────── */
 
@@ -417,16 +509,16 @@ export function MapWorkspace({
       id: "aoi-fill",
       type: "fill",
       source: "aoi-src",
-      paint: { "fill-color": "#ffffff", "fill-opacity": 0.04 },
+      paint: { "fill-color": ACCENT, "fill-opacity": 0.06 },
     });
     m.addLayer({
       id: "aoi-line",
       type: "line",
       source: "aoi-src",
       paint: {
-        "line-color": "#ffffff",
-        "line-width": 1,
-        "line-dasharray": [4, 3],
+        "line-color": ACCENT,
+        "line-width": 1.5,
+        "line-dasharray": [3, 2],
       },
     });
   }, [aoiFeature, ready]);
@@ -434,9 +526,14 @@ export function MapWorkspace({
   /* ── AOI drawing ────────────────────────────────────────────────────────── */
 
   const draftPolygon = useMemo<GeoJSONPolygon | null>(() => {
+    if (drawMode === "rectangle") {
+      const a = draft[0];
+      if (!a || !hover) return null;
+      return rectanglePolygon([a[0]!, a[1]!], hover);
+    }
     if (draft.length < 3) return null;
     return { type: "Polygon", coordinates: [[...draft, draft[0] as number[]]] };
-  }, [draft]);
+  }, [draft, drawMode, hover]);
 
   const validation: ValidationResult = useMemo(
     () => validateAOI(drawing ? draftPolygon : aoi),
@@ -448,15 +545,41 @@ export function MapWorkspace({
     if (!m || !ready || !drawing) return;
 
     const onClick = (e: MapMouseEvent) => {
-      setDraft((d) => [...d, [e.lngLat.lng, e.lngLat.lat]]);
+      const p: [number, number] = [e.lngLat.lng, e.lngLat.lat];
+      if (drawMode === "rectangle") {
+        const first = corner.current;
+        if (!first) {
+          corner.current = p;
+          setDraft([p]);
+          return;
+        }
+        const rect = rectanglePolygon(first, p);
+        if (validateAOI(rect).valid) {
+          corner.current = null;
+          onAoiChange(rect);
+          setDrawMode(null);
+          setHover(null);
+          setDraft([]);
+        }
+        return;
+      }
+      setDraft((d) => [...d, p]);
+    };
+    const onMove = (e: MapMouseEvent) => {
+      if (drawMode === "rectangle") setHover([e.lngLat.lng, e.lngLat.lat]);
     };
     m.on("click", onClick);
+    m.on("mousemove", onMove);
     m.getCanvas().style.cursor = "crosshair";
+    // A drag would pan the map away from the corner being placed.
+    if (drawMode === "rectangle") m.dragPan.disable();
     return () => {
       m.off("click", onClick);
+      m.off("mousemove", onMove);
       m.getCanvas().style.cursor = "";
+      m.dragPan.enable();
     };
-  }, [drawing, ready]);
+  }, [drawing, drawMode, ready, onAoiChange]);
 
   // Live draft outline while drawing.
   useEffect(() => {
@@ -478,7 +601,7 @@ export function MapWorkspace({
       id: "draft-line",
       type: "line",
       source: "draft-src",
-      paint: { "line-color": "#ff3b30", "line-width": 1.5 },
+      paint: { "line-color": ACCENT, "line-width": 1.5 },
     });
   }, [draftPolygon, ready]);
 
@@ -488,11 +611,36 @@ export function MapWorkspace({
       setDrawing(false);
       setDraft([]);
     }
-  }, [draftPolygon, onAoiChange]);
+  }, [draftPolygon, onAoiChange, setDrawing]);
 
   const cancelDraw = useCallback(() => {
-    setDrawing(false);
+    corner.current = null;
+    setDrawMode(null);
     setDraft([]);
+    setHover(null);
+  }, []);
+
+  const runSearch = useCallback(async () => {
+    setSearchError(null);
+    setResults(null);
+    setSearching(true);
+    try {
+      const found = await searchPlace(search);
+      setResults(found);
+      if (found.length === 0) setSearchError("No place found.");
+    } catch (caught) {
+      setSearchError(caught instanceof GeocodeError ? caught.message : "Place search failed.");
+    } finally {
+      setSearching(false);
+    }
+  }, [search]);
+
+  const flyToPlace = useCallback((place: PlaceResult) => {
+    const m = map.current;
+    if (!m) return;
+    const [w, s, e, n] = place.bbox;
+    m.fitBounds([[w, s], [e, n]], { padding: 48, duration: 900, maxZoom: 13 });
+    setResults(null);
   }, []);
 
   // Escape cancels a draw in progress (P5-15: no mode without a keyboard exit).
@@ -518,7 +666,7 @@ export function MapWorkspace({
       [Math.min(...lons), Math.min(...lats)],
       [Math.max(...lons), Math.max(...lats)],
     ];
-    m.fitBounds(bounds, { padding: 64, duration: 600 });
+    m.fitBounds(bounds, { padding: { top: 120, bottom: 90, left: 70, right: 70 }, duration: 600 });
   }, [aoi]);
 
   useEffect(() => {
@@ -526,6 +674,11 @@ export function MapWorkspace({
   }, [ready, aoi, fitToAoi]);
 
   /* ── render ─────────────────────────────────────────────────────────────── */
+
+  const layerList = (availableLayers ?? (Object.keys(LAYER_LABELS) as LayerId[])).filter(
+    (id) => id in LAYER_LABELS,
+  );
+  const hasOverlay = layerList.some((id) => id !== "aoi");
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
@@ -536,39 +689,89 @@ export function MapWorkspace({
         aria-label="Mission map. Use the layer controls to change what is shown."
       />
 
-      {/* Layers — top left. Visuals come from .mw-layers in mission.css, so
-          both surfaces can theme the panel (dashboard overrides in globals.css). */}
-      <div className="mw-layers" style={{ position: "absolute", top: 10, left: 10 }}>
+      {/* Place search — top left (audit F4). Searches on submit only, per
+          Nominatim's usage policy. */}
+      {placeSearch ? (
+        <form
+          className="mw-search"
+          role="search"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void runSearch();
+          }}
+        >
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search a place, e.g. Nagaon, Assam"
+            aria-label="Search a place"
+          />
+          <button className="btn" type="submit" disabled={searching || search.trim().length < 2}>
+            {searching ? "…" : "Go"}
+          </button>
+          {results && results.length > 0 ? (
+            <ul className="mw-search-results" role="listbox" aria-label="Places found">
+              {results.map((r) => (
+                <li key={`${r.center[0]},${r.center[1]}`}>
+                  <button type="button" role="option" aria-selected="false" onClick={() => flyToPlace(r)}>
+                    <b>{r.name.split(",")[0]}</b>
+                    <small>{r.name.split(",").slice(1, 4).join(",")}</small>
+                  </button>
+                </li>
+              ))}
+              <li className="mw-search-credit">Search © OpenStreetMap contributors</li>
+            </ul>
+          ) : null}
+          {searchError ? <p className="mw-search-error" role="status">{searchError}</p> : null}
+        </form>
+      ) : null}
+
+      {/* Layers — bottom left, above the coordinates: only layers that exist,
+          each with its legend colour, plus one overlay opacity (audit F6). */}
+      <div className="mw-layers">
         <div className="mw-layers-head">
           <Label>Layers</Label>
         </div>
         <div className="mw-layers-body" role="group" aria-label="Map layers">
-          {(Object.keys(LAYER_LABELS) as LayerId[]).map((id) => (
-            <label key={id} className="mw-layers-row">
+          {layerList.length === 0 ? (
+            <span className="label label-faint">Nothing on the map yet</span>
+          ) : (
+            layerList.map((id) => (
+              <label key={id} className="mw-layers-row">
+                <input
+                  type="checkbox"
+                  checked={visible[id]}
+                  onChange={() => onToggleLayer(id)}
+                  style={{ accentColor: LAYER_ACCENT[id] }}
+                />
+                <i
+                  className={`mw-swatch ${id === "aoi" ? "is-line" : ""}`}
+                  style={{ ["--sw" as string]: LAYER_ACCENT[id] }}
+                  aria-hidden="true"
+                />
+                <span className="label">{LAYER_LABELS[id]}</span>
+              </label>
+            ))
+          )}
+          {hasOverlay ? (
+            <label className="mw-opacity">
+              <span className="label label-faint">Opacity</span>
               <input
-                type="checkbox"
-                checked={visible[id]}
-                onChange={() => onToggleLayer(id)}
-                style={{ accentColor: LAYER_ACCENT[id] }}
+                type="range"
+                min={0.1}
+                max={1}
+                step={0.05}
+                value={overlayOpacity}
+                onChange={(e) => setOverlayOpacity(Number(e.target.value))}
+                aria-label="Result overlay opacity"
               />
-              <span className="label">{LAYER_LABELS[id]}</span>
             </label>
-          ))}
+          ) : null}
         </div>
       </div>
 
-      {/* Zoom + AOI — top right */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          right: 10,
-          display: "flex",
-          flexDirection: "column",
-          gap: 6,
-          alignItems: "flex-end",
-        }}
-      >
+      {/* Zoom + AOI tools — top right */}
+      <div className="mw-tools">
         <div className="row" style={{ gap: 0 }}>
           <button
             className="btn btn-icon"
@@ -592,46 +795,64 @@ export function MapWorkspace({
             <button className="btn" onClick={cancelDraw}>
               Cancel
             </button>
-            <button
-              className="btn btn-primary"
-              onClick={commitDraw}
-              disabled={!validation.valid}
-            >
-              Commit
-            </button>
+            {drawMode === "polygon" ? (
+              <button
+                className="btn btn-primary"
+                onClick={commitDraw}
+                disabled={!validation.valid}
+              >
+                Commit
+              </button>
+            ) : null}
           </div>
         ) : (
-          <button className="btn" onClick={() => setDrawing(true)}>
-            Draw AOI
-          </button>
+          <div className="mw-tool-row">
+            <button className="btn" onClick={() => setDrawing(true)} disabled={aoiLocked}>
+              Draw AOI
+            </button>
+            <button
+              className="btn"
+              onClick={() => {
+                corner.current = null;
+                setDraft([]);
+                setDrawMode("rectangle");
+              }}
+              disabled={aoiLocked}
+              aria-label="Draw rectangle"
+            >
+              Rectangle
+            </button>
+            {aoi ? (
+              <>
+                <button className="btn" onClick={fitToAoi} aria-label="Zoom to AOI">
+                  Fit
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => onAoiChange(null)}
+                  disabled={aoiLocked}
+                  aria-label="Clear AOI"
+                >
+                  Clear
+                </button>
+              </>
+            ) : null}
+          </div>
         )}
       </div>
 
       {/* Validation — shown the moment it is known, never hidden (P5-06) */}
-      {(drawing || validation.findings.length > 0) && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: "absolute",
-            top: 78,
-            right: 10,
-            width: 280,
-            background: "var(--surface-1)",
-            border: "1px solid var(--hairline)",
-            borderRadius: "var(--radius)",
-            padding: 8,
-          }}
-        >
+      {(drawing || (aoi !== null && validation.findings.length > 0)) && (
+        <div className="mw-validation" role="status" aria-live="polite">
           <div className="row" style={{ marginBottom: 6 }}>
             <Label>AOI</Label>
             <div className="band-spacer" />
             <StatusChip tone={validation.valid ? "ok" : "warn"}>
-              {validation.valid ? "Valid" : "Invalid"}
+              {validation.valid ? "Valid" : drawing ? "Drawing" : "Invalid"}
             </StatusChip>
           </div>
           <div className="readout">
-            <Label faint>Vertices</Label>
+            <Label faint>{drawMode === "rectangle" ? "Corners" : "Vertices"}</Label>
             <span className="readout-value">
               {drawing ? draft.length : (aoi?.coordinates[0]?.length ?? 1) - 1}
             </span>
@@ -640,23 +861,27 @@ export function MapWorkspace({
             <Label faint>Area</Label>
             <span className="readout-value">{formatArea(validation.areaSqM)}</span>
           </div>
-          {validation.findings.map((f) => (
-            <p
-              key={f.rule}
-              className="mono"
-              style={{
-                margin: "6px 0 0",
-                fontSize: 10,
-                lineHeight: 1.45,
-                color: f.severity === "error" ? "var(--signal)" : "var(--amber)",
-              }}
-            >
-              {f.severity === "error" ? "✕" : "▲"} {f.message}
-            </p>
-          ))}
+          {validation.findings
+            .filter((f) => !(drawing && f.rule === "aoi.missing"))
+            .map((f) => (
+              <p
+                key={f.rule}
+                className="mono"
+                style={{
+                  margin: "6px 0 0",
+                  fontSize: 10,
+                  lineHeight: 1.45,
+                  color: f.severity === "error" ? "var(--danger)" : "var(--warn)",
+                }}
+              >
+                {f.severity === "error" ? "✕" : "▲"} {f.message}
+              </p>
+            ))}
           {drawing && (
             <p className="label label-faint" style={{ marginTop: 8 }}>
-              Click to add corners · Enter commits · Esc cancels
+              {drawMode === "rectangle"
+                ? "Click one corner, then the opposite corner · Esc cancels"
+                : "Click to add corners · Enter commits · Esc cancels"}
             </p>
           )}
         </div>
@@ -671,23 +896,10 @@ export function MapWorkspace({
       ) : null}
 
       {/* Coordinate telemetry — bottom left */}
-      <div
-        style={{
-          position: "absolute",
-          left: 10,
-          bottom: 10,
-          display: "flex",
-          gap: 14,
-          background: "var(--surface-1)",
-          border: "1px solid var(--hairline)",
-          borderRadius: "var(--radius)",
-          padding: "4px 10px",
-        }}
-      >
+      <div className="mw-coords">
         <Pair k="LAT" v={formatLat(cursor.lat)} />
         <Pair k="LON" v={formatLon(cursor.lon)} />
         <Pair k="ZOOM" v={formatZoom(cursor.zoom)} />
-        <Pair k="CRS" v="EPSG:4326" />
       </div>
     </div>
   );

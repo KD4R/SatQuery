@@ -70,16 +70,13 @@ export default function PlanParameters({
   const errors = aoiValidation.findings.filter((f) => f.severity === "error");
 
   return (
-    <section className="card plan-card" aria-label="Mission plan parameters">
-      <div className="card-head">
-        <div>
-          <div className="title-row">
-            <ListChecks size={14} />
-            <div className="card-title">PLAN · PARAMETERS</div>
-          </div>
-          <div className="card-sub">What the system understood from the query</div>
-        </div>
-      </div>
+    <section className="sqd-card plan-card" aria-label="Mission plan parameters">
+      <header className="sqd-card-head">
+        <span className="sqd-eyebrow">
+          <ListChecks size={13} /> Plan
+        </span>
+        <span className="sqd-muted-inline">What the system understood</span>
+      </header>
 
       <Param
         label="AOI"

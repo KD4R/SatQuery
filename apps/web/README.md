@@ -21,13 +21,38 @@ fed from `lib/fixtures/` and every panel carries a **DEMO FIXTURE** badge, with
 `ENV: DEMO` in the telemetry bar. Set it to `0` to talk to a real gateway at
 `NEXT_PUBLIC_GATEWAY_URL`.
 
+### Live mode against the local stack
+
+```bash
+docker compose up -d --build            # from the repo root: gateway, agent, inference, …
+cd apps/web
+GATEWAY_ORIGIN=http://localhost:8000 npm run dev
+```
+
+The console signs itself in through the gateway's development login
+(`POST /api/v1/auth/dev-token`, enabled by compose with `ENVIRONMENT=development`
+and `SATQUERY_DEV_LOGIN=1`). The token stays in memory; a reload mints a new one.
+Without that route the console asks for a token on the Admin page.
+
+A live run needs an AOI: search a place on the map, then **Draw AOI** (polygon)
+or **Rectangle**. Dates are optional; empty means the last 90 days, widened once
+to a year, and the result says which. Every figure in the rail and under the map
+comes from the agent's run state (`lib/live/result.ts`); the water outline is the
+inference service's stored extent for that run.
+
+`npm run dev` and `npm run build` first copy MapLibre's worker into
+`public/vendor/maplibre/` (`scripts/copy-maplibre-worker.mjs`). Without it no
+GeoJSON layer renders (AOI, water, change polygons) because maplibre-gl v6 cannot
+find its worker inside a bundled chunk.
+
 ## Checks
 
 ```bash
 npm run typecheck    # tsc --noEmit
 npm run test         # vitest — unit + the gateway route contract test
 npm run build        # next build
-npm run test:e2e     # playwright
+npm run test:e2e     # playwright — the deterministic demo
+npm run test:e2e:live  # playwright — live mode against a stubbed gateway (recorded runs)
 ```
 
 ## Layout
@@ -35,7 +60,8 @@ npm run test:e2e     # playwright
 | Path | Holds |
 |---|---|
 | `app/` | Routes. `/` landing, `/dashboard` mission console, `/dashboard/*` sections. |
-| `components/Dashboard.tsx` | The mission console: query, plan, steps, map, intelligence |
+| `components/Dashboard.tsx` | The mission console: map-first; rail with query, result, steps, plan |
+| `components/dash/` | Live result, failure, running and idle cards; live intelligence detail |
 | `components/console/` | Agent-activity toasts |
 | `components/map/` | `MapWorkspace` — MapLibre, AOI draw/edit, layers |
 | `components/observe/` | `BeforeAfterViewer` |
@@ -43,7 +69,8 @@ npm run test:e2e     # playwright
 | `components/landing/` | `OrbitalGlobe` and the landing page |
 | `components/system/` | Primitives, error boundary, failure states |
 | `lib/api/` | Gateway client. See its README for why it is hand-written. |
-| `lib/geo/` | AOI validation, coordinate and area formatting |
+| `lib/geo/` | AOI validation, coordinate and area formatting, place search |
+| `lib/live/` | Live run adapter: steps per agent node, MissionState → view, dev sign-in, water extent |
 | `lib/model/` | View models for surfaces the gateway does not yet expose |
 | `lib/fixtures/` | The demo scenario. The only source of non-backend data. |
 

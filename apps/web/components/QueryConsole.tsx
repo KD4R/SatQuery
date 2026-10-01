@@ -1,19 +1,26 @@
 "use client";
-import {
-  ArrowUp,
-  Command,
-  LoaderCircle,
-  Paperclip,
-  RotateCcw,
-  Sparkles,
-} from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-const templates = [
-  "Flood impact",
-  "Vegetation loss",
-  "Urban expansion",
-  "Cloud → SAR",
+
+/**
+ * The query box at the top of the rail (P5-03; audit F5, F9).
+ *
+ * The question, an optional date range, and Run. Run is disabled with the reason
+ * in words until the inputs are valid (audit W2). The date range maps to the
+ * agent's temporal_window; left empty, the agent searches the last 90 days and
+ * widens to a year when nothing is found, and says so in the result.
+ */
+
+import { ArrowUp, CalendarRange, Command, LoaderCircle, RotateCcw, Sparkles } from "lucide-react";
+import { useEffect, useRef } from "react";
+
+import type { TemporalWindow } from "../lib/api/types";
+
+/** Prompts for what the live pipeline can actually answer: surface water. */
+const TEMPLATES: { label: string; text: string }[] = [
+  { label: "Flood extent", text: "Map the flood extent in the selected area and explain why you chose SAR." },
+  { label: "Water now", text: "How much surface water is in the selected area on the latest pass?" },
+  { label: "Event window", text: "Show flooding in the selected area during the chosen dates." },
 ];
+
 export default function QueryConsole({
   value,
   onChange,
@@ -21,6 +28,9 @@ export default function QueryConsole({
   running,
   onReset,
   blockedReason = null,
+  window: dates = null,
+  onWindowChange,
+  showDates = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -29,9 +39,11 @@ export default function QueryConsole({
   onReset: () => void;
   /** Non-null blocks the run and says why, in words, next to the input. */
   blockedReason?: string | null;
+  window?: TemporalWindow | null;
+  onWindowChange?: (w: TemporalWindow | null) => void;
+  showDates?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
-  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
@@ -42,30 +54,32 @@ export default function QueryConsole({
     window.addEventListener("keydown", fn);
     return () => window.removeEventListener("keydown", fn);
   }, []);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const setDate = (key: "start" | "end", v: string) => {
+    if (!onWindowChange) return;
+    const next = { start: dates?.start ?? "", end: dates?.end ?? "", [key]: v };
+    onWindowChange(next.start || next.end ? next : null);
+  };
+
   return (
-    <section className="card copilot-card">
-      <div className="card-head">
-        <div>
-          <div className="title-row">
-            <Sparkles size={14} />
-            <div className="card-title">MISSION COPILOT</div>
-          </div>
-          <div className="card-sub">
-            Natural language → mission plan → evidence
-          </div>
-        </div>
-        <span className={`status-chip ${running ? "busy" : ""}`}>
+    <section className="sqd-card sqd-query" aria-label="Mission query">
+      <header className="sqd-card-head">
+        <span className="sqd-eyebrow">
+          <Sparkles size={13} /> Ask
+        </span>
+        <span className={`sqd-status ${running ? "is-busy" : ""}`}>
           <i />
           {running ? "Running" : "Ready"}
         </span>
-      </div>
-      <div className={`query-box ${expanded ? "focus" : ""}`}>
+      </header>
+
+      <div className="sqd-query-box">
         <textarea
           ref={ref}
           value={value}
+          rows={3}
           onChange={(e) => onChange(e.target.value)}
-          onFocus={() => setExpanded(true)}
-          onBlur={() => setExpanded(false)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -73,56 +87,86 @@ export default function QueryConsole({
             }
           }}
           aria-label="Mission query"
+          placeholder="Ask about surface water or flooding in the area you draw"
         />
-        <div className="query-footer">
-          <span className="hint">
-            <Command size={10} /> CTRL K · ENTER TO RUN · SHIFT ENTER
+        <div className="sqd-query-foot">
+          <span className="sqd-hint">
+            <Command size={10} />K focus · Enter run
           </span>
-          <div className="query-actions">
-            <button className="small-icon" title="Attach context" aria-label="Attach context" disabled>
-              <Paperclip size={14} />
-            </button>
-            <button className="small-icon" title="Reset" aria-label="Reset mission" onClick={onReset}>
+          <div className="sqd-query-actions">
+            <button className="sqd-icon-btn" title="Reset" aria-label="Reset mission" onClick={onReset} type="button">
               <RotateCcw size={14} />
             </button>
             <button
-              className="send"
+              className="sqd-send"
               onClick={onRun}
               disabled={running || Boolean(blockedReason)}
               aria-label="Run analysis"
               title={blockedReason ?? "Run analysis"}
+              type="button"
             >
-              {running ? (
-                <LoaderCircle className="spin" size={16} />
-              ) : (
-                <ArrowUp size={16} />
-              )}
+              {running ? <LoaderCircle className="spin" size={16} /> : <ArrowUp size={16} />}
             </button>
           </div>
         </div>
       </div>
+
+      {showDates ? (
+        <fieldset className="sqd-dates" disabled={running}>
+          <legend>
+            <CalendarRange size={12} /> Dates <small>(optional)</small>
+          </legend>
+          <label>
+            <span>From</span>
+            <input
+              type="date"
+              value={dates?.start ?? ""}
+              max={dates?.end || today}
+              onChange={(e) => setDate("start", e.target.value)}
+              aria-label="Start date"
+            />
+          </label>
+          <label>
+            <span>To</span>
+            <input
+              type="date"
+              value={dates?.end ?? ""}
+              min={dates?.start || undefined}
+              max={today}
+              onChange={(e) => setDate("end", e.target.value)}
+              aria-label="End date"
+            />
+          </label>
+          {dates ? (
+            <button type="button" className="sqd-link" onClick={() => onWindowChange?.(null)}>
+              Clear
+            </button>
+          ) : null}
+        </fieldset>
+      ) : null}
+
       {blockedReason ? (
-        <p className="hint" role="alert" style={{ margin: "6px 2px 0" }}>
+        <p className="sqd-blocked" role="status">
           {blockedReason}
         </p>
       ) : null}
-      <div className="template-row">
-        {templates.map((t) => (
-          <button
-            key={t}
-            className="template"
-            onClick={() =>
-              onChange(
-                t === "Flood impact"
-                  ? "Show flood-affected areas in the selected AOI and explain why you chose SAR."
-                  : `Analyze ${t.toLowerCase()} for the selected AOI and show the evidence.`,
-              )
-            }
-          >
-            {t}
+
+      <div className="sqd-templates">
+        {TEMPLATES.map((t) => (
+          <button key={t.label} className="sqd-template" type="button" onClick={() => onChange(t.text)}>
+            {t.label}
           </button>
         ))}
       </div>
     </section>
   );
+}
+
+/** Validate a partially filled range. Returns a reason, or null when usable. */
+export function dateRangeProblem(w: TemporalWindow | null): string | null {
+  if (!w) return null;
+  if (!w.start || !w.end) return "Set both dates, or clear them to let the agent choose.";
+  if (w.start > w.end) return "The start date must be before the end date.";
+  if (w.end > new Date().toISOString().slice(0, 10)) return "The end date cannot be in the future.";
+  return null;
 }

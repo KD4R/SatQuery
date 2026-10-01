@@ -51,12 +51,17 @@ export default function MapCanvas({
   onAoiChange,
   visible,
   onToggleLayer,
+  extent = null,
+  aoiLocked = false,
 }: {
   complete?: boolean;
   aoi: GeoJSONPolygon | null;
   onAoiChange: (aoi: GeoJSONPolygon | null) => void;
   visible: Record<LayerId, boolean>;
   onToggleLayer: (id: LayerId) => void;
+  /** Live: the measured water polygons for the completed run. */
+  extent?: GeoJSON.FeatureCollection | null;
+  aoiLocked?: boolean;
 }) {
   const demo = demoModeEnabled();
 
@@ -73,6 +78,16 @@ export default function MapCanvas({
     const s = ASSAM_SCENARIO.overlays["s1-vv"];
     return s ? [{ id: "s1-vv", url: s.url, bbox: s.bbox }] : [];
   }, [demo]);
+
+  // Only layers that exist are offered (audit F6): the demo's pinned rasters
+  // and change polygons, or in live mode the AOI and, once measured, the water.
+  const availableLayers = useMemo<LayerId[]>(() => {
+    if (demo) return complete ? ["observation", "baseline", "change", "aoi"] : ["observation", "aoi"];
+    const ids: LayerId[] = [];
+    if (extent && extent.features.length > 0) ids.push("observation");
+    if (aoi) ids.push("aoi");
+    return ids;
+  }, [demo, complete, extent, aoi]);
 
   return (
     <div className="map-canvas-host">
@@ -101,6 +116,10 @@ export default function MapCanvas({
         timeMachine={timeMachine}
         visible={visible}
         onToggleLayer={onToggleLayer}
+        availableLayers={availableLayers}
+        extent={demo ? null : extent}
+        placeSearch={!demo}
+        aoiLocked={aoiLocked}
       />
     </div>
   );

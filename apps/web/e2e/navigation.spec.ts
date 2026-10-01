@@ -99,8 +99,23 @@ test.describe("the canonical console URL", () => {
   }) => {
     const errors = collectErrors(page);
     const foreign: string[] = [];
+    // The Esri basemap is the one documented non-gateway origin (licensed
+    // imagery, listed in next.config.ts's CSP). Its tiles are answered locally
+    // with a transparent pixel so this test does not depend on internet access.
+    const BASEMAP = /^https:\/\/[a-z]+\.arcgisonline\.com\//;
+    await page.route(BASEMAP, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "image/png",
+        body: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=",
+          "base64",
+        ),
+      }),
+    );
     page.on("request", (req) => {
       const url = new URL(req.url());
+      if (BASEMAP.test(req.url())) return;
       if (url.origin !== new URL(baseURL!).origin) foreign.push(req.url());
       else if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/v1/")) {
         foreign.push(req.url());
@@ -115,7 +130,7 @@ test.describe("the canonical console URL", () => {
     ).toContainText(/unreachable/i, { timeout: 20_000 });
 
     expect(errors).toEqual([]);
-    expect(foreign, "the browser may call the gateway path (/api/v1) and nothing else").toEqual(
+    expect(foreign, "the browser may call the gateway path (/api/v1) and the basemap, nothing else").toEqual(
       [],
     );
   });

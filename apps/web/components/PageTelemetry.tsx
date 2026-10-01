@@ -50,7 +50,7 @@ export default function PageTelemetry({
     run?.phase === "running"
       ? "PROCESSING"
       : run?.phase === "failed"
-        ? "DEGRADED"
+        ? "FAILED"
         : run?.phase === "complete"
           ? "ACTIVE"
           : "IDLE";
@@ -77,7 +77,11 @@ export default function PageTelemetry({
       <span className="pt-sep">·</span>
       <span className="pt-item">
         <span className="pt-label">STATE</span>
-        <span className={`pt-value ${state !== "IDLE" && state !== "PROCESSING" ? "pt-ok" : ""}`}>
+        <span
+          className={`pt-value ${
+            state === "FAILED" ? "pt-warn" : state === "ACTIVE" ? "pt-ok" : state === "PROCESSING" ? "pt-busy" : ""
+          }`}
+        >
           {state}
         </span>
       </span>

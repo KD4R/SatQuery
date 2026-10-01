@@ -1,55 +1,43 @@
 "use client";
 
 /**
- * Run state for the console (P5-04, P5-16, P5-17).
+ * Run state for the console (P5-04, P5-16, P5-17; audit W1, W3, W4, W5, W9, W11).
  *
  * Two paths that deliberately share no progress logic:
  *
  *   DEMO   advances through lib/fixtures/script.ts on pinned dwell times. The
  *          sequence is fixed, so Playwright can assert on it.
- *   LIVE   submits through the gateway and then *polls the job*. Stage states come
- *          from what the backend reports and nothing else. There is no interpolated
- *          progress bar and no optimistic tick: the PRD's rule is that fake progress
- *          for real work is never acceptable, and the way to guarantee that is for
- *          the live path to have no timer that can invent one.
+ *   LIVE   gets a session, creates a mission (so the event socket can subscribe),
+ *          submits through the gateway and then *polls the run*. Step states come
+ *          from the statuses the agent persists after each graph node and nothing
+ *          else: there is no interpolated progress and no optimistic tick.
  *
- * Polling backs off from 1s to 5s and stops at a terminal state or a hard error, so
- * a stuck job cannot turn into a request storm against the gateway.
+ * Polling backs off from 1s to 5s, stops at a terminal state or a hard error, and
+ * gives up after RUN_DEADLINE_MS, so a lost run cannot spin forever.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { GatewayError } from "./api/gateway";
-import { executeMission, getAgentRun } from "./api/client";
+import { createMission, executeMission, getAgentRun } from "./api/client";
+import { DEMO_STAGES } from "./fixtures";
+import { buildLiveSteps, statusRank } from "./live/steps";
+import { liveStepDetails } from "./live/result";
+import { dropSession, ensureSession, isGatewayDown, type SessionState } from "./live/session";
+import type { StageState } from "./model/console";
+import type { ErrorResponse, GeoJSONPolygon, MissionState, TemporalWindow } from "./api/types";
 
 /**
- * GET /agent/runs/{job_id} answers 404 until the run registers with the
- * orchestrator, so the first polls after a 202 can legitimately miss. A 404 is
- * treated as "not yet" only inside this window; after it, a 404 is the honest
- * answer and the run fails.
+ * GET /agent/runs/{job_id} can answer 404 for a moment after the 202 when the
+ * run is stored in another process. Inside this window a 404 means "not yet".
  */
 const RUN_404_GRACE_MS = 15_000;
 
-const AGENT_STAGE_BY_STATUS: Record<string, string> = {
-  INITIALIZED: "Agent run accepted — workflow initialising.",
-  PLANNING: "Extracting intent and planning the acquisition.",
-  SENSOR_ARBITRATION: "Arbitrating sensors.",
-  ACQUIRING: "Acquiring candidate observations.",
-  ACQUIRING_EVIDENCE: "Acquiring candidate observations.",
-  ANALYZING: "Analysing observations.",
-  GATE_CHECK: "Running the confidence gate.",
-  SYNTHESIZING: "Synthesising the evidence-backed brief.",
-  COMPLETED: "The agent run completed.",
-  FAILED: "The agent run failed.",
-};
-import { DEMO_STAGES } from "./fixtures";
-import type { StageState } from "./model/console";
-import type {
-  ErrorResponse,
-  GeoJSONPolygon,
-  JobStatus,
-  MissionState,
-} from "./api/types";
+/** A live run that has not finished after this long is reported as timed out. */
+export const RUN_DEADLINE_MS = 6 * 60_000;
+
+const POLL_START_MS = 1000;
+const POLL_MAX_MS = 5000;
 
 export interface RunStageView {
   key: string;
@@ -60,24 +48,29 @@ export interface RunStageView {
 
 export type RunPhase = "idle" | "running" | "complete" | "failed";
 
+/** Why a live run ended in "failed", so the UI can show the right card. */
+export type FailureKind =
+  | "agent" // the agent finished with status FAILED (its reason is in agentState)
+  | "gateway-down" // the gateway did not answer
+  | "auth" // no usable credential
+  | "timeout" // the run did not finish before RUN_DEADLINE_MS
+  | "request"; // the gateway refused the request (4xx/5xx with an envelope)
+
 export interface MissionRun {
   phase: RunPhase;
   stages: RunStageView[];
   jobId: string | null;
-  /** Mission id the backend reports for this run — the WS event stream is keyed
-   * by it (live mode); the console's agent-event socket subscribes with this. */
+  /** Mission id the run is attached to; the event socket subscribes with it. */
   missionId: string | null;
   traceId: string | null;
   error: ErrorResponse | null;
-  /** The agent's final state (mission_id, confidence, evidence graph), fetched
-   * once when a live run completes. Null in demo mode and until completion. */
+  failureKind: FailureKind | null;
+  /** Latest run state from the agent: updated while running, kept on FAILED. */
   agentState: MissionState | null;
-  start: (query: string, aoi: GeoJSONPolygon | null) => void;
+  session: SessionState | null;
+  start: (query: string, aoi: GeoJSONPolygon | null, window?: TemporalWindow | null) => void;
   reset: () => void;
 }
-
-const POLL_START_MS = 1000;
-const POLL_MAX_MS = 5000;
 
 function demoStages(completedCount: number, runningIndex: number): RunStageView[] {
   return DEMO_STAGES.map((s, i) => ({
@@ -93,49 +86,22 @@ function demoStages(completedCount: number, runningIndex: number): RunStageView[
   }));
 }
 
-/** The live timeline has exactly the states the agent run reports — no more. */
-function liveStages(
-  status: JobStatus | null,
-  error: ErrorResponse | null,
-  detail: string | null = null,
-): RunStageView[] {
-  const submitted: RunStageView = {
-    key: "SUBMIT",
-    label: "Run submitted",
-    detail: "The gateway accepted the request and returned a job id.",
-    state: "completed",
-  };
-  const work: RunStageView = {
-    key: "JOB",
-    label: "Backend processing",
-    detail:
-      error !== null
-        ? error.message
-        : detail ??
-          (status === null
-            ? "Waiting for the agent run to register."
-            : `The run reports status "${status}". No stage detail is published by the ` +
-              `backend yet, so none is shown.`),
-    state:
-      status === "completed"
-        ? "completed"
-        : status === "failed" || status === "cancelled"
-          ? "failed"
-          : "running",
-  };
-  return [submitted, work];
+function envelope(caught: unknown, fallback: string): ErrorResponse {
+  return caught instanceof GatewayError
+    ? caught.body
+    : { code: "unknown", message: fallback, details: [], trace_id: null };
 }
 
 export function useMissionRun(demo: boolean): MissionRun {
   const [phase, setPhase] = useState<RunPhase>("idle");
-  const [stages, setStages] = useState<RunStageView[]>(
-    demo ? demoStages(0, -1) : [],
-  );
+  const [stages, setStages] = useState<RunStageView[]>(demo ? demoStages(0, -1) : []);
   const [jobId, setJobId] = useState<string | null>(null);
   const [missionId, setMissionId] = useState<string | null>(null);
   const [traceId, setTraceId] = useState<string | null>(null);
   const [error, setError] = useState<ErrorResponse | null>(null);
+  const [failureKind, setFailureKind] = useState<FailureKind | null>(null);
   const [agentState, setAgentState] = useState<MissionState | null>(null);
+  const [session, setSession] = useState<SessionState | null>(null);
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const abort = useRef<AbortController | null>(null);
@@ -157,6 +123,7 @@ export function useMissionRun(demo: boolean): MissionRun {
     setMissionId(null);
     setTraceId(null);
     setError(null);
+    setFailureKind(null);
     setAgentState(null);
   }, [clearAll, demo]);
 
@@ -165,19 +132,16 @@ export function useMissionRun(demo: boolean): MissionRun {
   const startDemo = useCallback(() => {
     clearAll();
     setError(null);
+    setFailureKind(null);
     setPhase("running");
     setJobId("job-demo-7f3a2c91");
     setTraceId("trc-0000-demo-fixture");
 
     let elapsed = 0;
     DEMO_STAGES.forEach((stage, i) => {
-      timers.current.push(
-        setTimeout(() => setStages(demoStages(i, i)), elapsed),
-      );
+      timers.current.push(setTimeout(() => setStages(demoStages(i, i)), elapsed));
       elapsed += stage.dwellMs;
-      timers.current.push(
-        setTimeout(() => setStages(demoStages(i + 1, -1)), elapsed),
-      );
+      timers.current.push(setTimeout(() => setStages(demoStages(i + 1, -1)), elapsed));
     });
     timers.current.push(setTimeout(() => setPhase("complete"), elapsed));
     // The demo panel is fed from the pinned scenario, not from the backend, so
@@ -187,121 +151,235 @@ export function useMissionRun(demo: boolean): MissionRun {
   /* ── live ───────────────────────────────────────────────────────────────── */
 
   const startLive = useCallback(
-    async (query: string, aoi: GeoJSONPolygon | null) => {
+    async (query: string, aoi: GeoJSONPolygon | null, window: TemporalWindow | null) => {
       clearAll();
       setError(null);
+      setFailureKind(null);
+      setAgentState(null);
+      setJobId(null);
+      setMissionId(null);
+      setTraceId(null);
       setPhase("running");
-      setStages(liveStages(null, null));
+      setStages(buildLiveSteps({ furthest: null, terminal: null }));
 
       const controller = new AbortController();
       abort.current = controller;
 
+      const fail = (kind: FailureKind, body: ErrorResponse, furthest: string | null, state: MissionState | null) => {
+        if (controller.signal.aborted) return;
+        setError(body);
+        setFailureKind(kind);
+        setStages(
+          buildLiveSteps({
+            furthest,
+            terminal: kind === "agent" ? "FAILED" : null,
+            transportFailed: kind !== "agent",
+            failureReason:
+              kind === "agent"
+                ? ((state?.synthesized_output as Record<string, unknown> | null)?.failure_reason as string | undefined)
+                : null,
+            failureText: body.message,
+            details: liveStepDetails(state),
+          }),
+        );
+        setPhase("failed");
+      };
+
+      // 1. A credential (audit W1).
+      let sess = await ensureSession(controller.signal);
+      if (controller.signal.aborted) return;
+      setSession(sess);
+      if (sess.kind === "gateway-down") {
+        fail("gateway-down", { code: "network_unreachable", message: sess.message, details: [], trace_id: null }, null, null);
+        return;
+      }
+      if (sess.kind === "needs-credential") {
+        fail("auth", { code: "AUTH_REQUIRED", message: sess.message, details: [], trace_id: null }, null, null);
+        return;
+      }
+
+      // 2. A mission to run against, so the event socket can subscribe (audit
+      //    W9). Best-effort: without the mission service the run still works,
+      //    it just has no live agent pop-ups.
+      let mission: string | null = null;
       try {
-        const submitted = await executeMission(
-          { query, aoi, mission_id: null },
+        const created = await createMission(
+          {
+            name: `Live analysis · ${new Date().toISOString().slice(0, 16).replace("T", " ")} UTC`,
+            description: query.slice(0, 500),
+          },
+          `mission-${Date.now()}`,
+        );
+        mission = created.data.id;
+      } catch {
+        mission = null;
+      }
+      if (controller.signal.aborted) return;
+
+      // 3. Submit. One re-authentication on 401 (an expired dev token).
+      const submit = () =>
+        executeMission(
+          { query, aoi, mission_id: mission, temporal_window: window ?? null },
           // Idempotency-Key so a double-click cannot queue the same analysis twice.
           `run-${query.length}-${Date.now()}`,
         );
-        setJobId(submitted.data.job_id);
-        setMissionId(submitted.data.mission_id);
-        setTraceId(submitted.data.trace_id ?? submitted.traceId);
+      let submitted;
+      try {
+        try {
+          submitted = await submit();
+        } catch (caught) {
+          if (caught instanceof GatewayError && caught.status === 401) {
+            dropSession();
+            sess = await ensureSession(controller.signal);
+            setSession(sess);
+            if (sess.kind !== "ready") throw caught;
+            submitted = await submit();
+          } else {
+            throw caught;
+          }
+        }
+      } catch (caught) {
+        const body = envelope(caught, "The run could not be submitted.");
+        const kind: FailureKind =
+          caught instanceof GatewayError && isGatewayDown(caught)
+            ? "gateway-down"
+            : caught instanceof GatewayError && caught.status === 401
+              ? "auth"
+              : "request";
+        fail(kind, body, null, null);
+        return;
+      }
+      if (controller.signal.aborted) return;
 
-        let delay = POLL_START_MS;
-        const startedAt = Date.now();
-        const poll = async () => {
-          if (controller.signal.aborted) return;
-          try {
-            // The job id returned by POST /agent/execute belongs to the agent
-            // service, so the run is polled where it lives: GET /agent/runs/{id}.
-            // (GET /jobs/{id} is the mission service's registry and does not know
-            // this id — polling it reports Not Found for a healthy run.)
-            const agent = await getAgentRun(submitted.data.job_id, controller.signal);
-            const run = agent.data;
-            const status = (run.status ?? "").toUpperCase();
+      const job = submitted.data.job_id;
+      setJobId(job);
+      setMissionId(submitted.data.mission_id ?? mission);
+      setTraceId(submitted.data.trace_id ?? submitted.traceId);
+
+      // 4. Poll the run where it lives: GET /agent/runs/{job_id}.
+      let delay = POLL_START_MS;
+      const startedAt = Date.now();
+      let furthest: string | null = "INITIALIZED";
+      let latest: MissionState | null = null;
+      let reauthed = false;
+
+      setStages(buildLiveSteps({ furthest, terminal: null }));
+
+      const poll = async () => {
+        if (controller.signal.aborted) return;
+        if (Date.now() - startedAt > RUN_DEADLINE_MS) {
+          fail(
+            "timeout",
+            {
+              code: "RUN_TIMEOUT",
+              message: `The run did not finish within ${RUN_DEADLINE_MS / 60_000} minutes. It may still be running on the server.`,
+              details: [],
+              trace_id: submitted.traceId,
+            },
+            furthest,
+            latest,
+          );
+          return;
+        }
+        try {
+          const agent = await getAgentRun(job, controller.signal);
+          const run = agent.data;
+          latest = run;
+          const status = (run.status ?? "").toUpperCase();
+          if (statusRank(status) > (furthest ? statusRank(furthest) : -1)) furthest = status;
+          setAgentState(run);
+
+          if (status === "COMPLETED") {
             setStages(
-              liveStages(
-                status === "COMPLETED" ? "completed" : status === "FAILED" ? "failed" : "running",
-                null,
-                AGENT_STAGE_BY_STATUS[status] ?? null,
-              ),
+              buildLiveSteps({ furthest: "COMPLETED", terminal: "COMPLETED", details: liveStepDetails(run) }),
             );
-
-            if (status === "COMPLETED") {
-              // The run state itself is the final payload — no extra fetch.
-              setAgentState(run);
-              setPhase("complete");
-              return;
-            }
-            if (status === "FAILED") {
-              setError({
-                code: "agent_run_failed",
-                message:
-                  (run.errors ?? [])
-                    .filter((e): e is string => typeof e === "string")
-                    .join("; ") || `The agent run reported status "${status}".`,
+            setPhase("complete");
+            return;
+          }
+          // A node that cannot continue writes FAILED, but the graph still runs on
+          // to synthesize, which records the reason. FAILED is terminal only once
+          // that answer (or a crash error) is there; until then keep polling.
+          const finalFailure =
+            status === "FAILED" &&
+            (run.synthesized_output != null || (run.errors ?? []).length > 0);
+          if (finalFailure) {
+            const out = (run.synthesized_output ?? {}) as Record<string, unknown>;
+            const summary = typeof out.summary === "string" ? out.summary : null;
+            const errs = (run.errors ?? []).filter((e): e is string => typeof e === "string");
+            fail(
+              "agent",
+              {
+                code: typeof out.failure_reason === "string" ? out.failure_reason : "agent_run_failed",
+                message: summary ?? (errs.join("; ") || "The agent run failed without a reason."),
                 details: [],
                 trace_id: agent.traceId,
-              });
-              setPhase("failed");
-              return;
-            }
+              },
+              furthest,
+              run,
+            );
+            return;
+          }
 
+          setStages(buildLiveSteps({ furthest, terminal: null, details: liveStepDetails(run) }));
+          delay = Math.min(delay * 1.5, POLL_MAX_MS);
+          timers.current.push(setTimeout(poll, delay));
+        } catch (caught) {
+          if (controller.signal.aborted) return;
+          const withinGrace = Date.now() - startedAt < RUN_404_GRACE_MS;
+          if (
+            caught instanceof GatewayError &&
+            caught.status === 404 &&
+            caught.body.code === "RUN_NOT_FOUND" &&
+            withinGrace
+          ) {
             delay = Math.min(delay * 1.5, POLL_MAX_MS);
             timers.current.push(setTimeout(poll, delay));
-          } catch (caught) {
-            // A 404 inside the grace window means the orchestrator has not
-            // registered the run yet — keep polling rather than failing.
-            const withinGrace = Date.now() - startedAt < RUN_404_GRACE_MS;
-            if (
-              caught instanceof GatewayError &&
-              caught.status === 404 &&
-              caught.body.code === "RUN_NOT_FOUND" &&
-              withinGrace
-            ) {
-              delay = Math.min(delay * 1.5, POLL_MAX_MS);
-              timers.current.push(setTimeout(poll, delay));
+            return;
+          }
+          if (caught instanceof GatewayError && caught.status === 401 && !reauthed) {
+            reauthed = true;
+            dropSession();
+            const again = await ensureSession(controller.signal);
+            setSession(again);
+            if (again.kind === "ready") {
+              timers.current.push(setTimeout(poll, POLL_START_MS));
               return;
             }
-            const body =
-              caught instanceof GatewayError
-                ? caught.body
-                : {
-                    code: "unknown",
-                    message: "Polling the run failed.",
-                    details: [],
-                    trace_id: null,
-                  };
-            setError(body);
-            setStages(liveStages(null, body));
-            setPhase("failed");
           }
-        };
-        timers.current.push(setTimeout(poll, delay));
-      } catch (caught) {
-        const body =
-          caught instanceof GatewayError
-            ? caught.body
-            : {
-                code: "unknown",
-                message: "The run could not be submitted.",
-                details: [],
-                trace_id: null,
-              };
-        setError(body);
-        setStages(liveStages(null, body));
-        setPhase("failed");
-      }
+          const body = envelope(caught, "Polling the run failed.");
+          const kind: FailureKind =
+            caught instanceof GatewayError && isGatewayDown(caught)
+              ? "gateway-down"
+              : caught instanceof GatewayError && caught.status === 401
+                ? "auth"
+                : "request";
+          fail(kind, body, furthest, latest);
+        }
+      };
+      timers.current.push(setTimeout(poll, delay));
     },
     [clearAll],
   );
 
   const start = useCallback(
-    (query: string, aoi: GeoJSONPolygon | null) => {
+    (query: string, aoi: GeoJSONPolygon | null, window: TemporalWindow | null = null) => {
       if (demo) startDemo();
-      else void startLive(query, aoi);
+      else void startLive(query, aoi, window);
     },
     [demo, startDemo, startLive],
   );
 
-  return { phase, stages, jobId, missionId, traceId, error, agentState, start, reset };
+  return {
+    phase,
+    stages,
+    jobId,
+    missionId,
+    traceId,
+    error,
+    failureKind,
+    agentState,
+    session,
+    start,
+    reset,
+  };
 }

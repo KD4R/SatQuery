@@ -26,29 +26,23 @@ export default function StageList({ stages }: { stages: Stage[] }) {
     (s) => s.status === "done" || s.status === "warning",
   ).length;
   return (
-    <section className="card stage-list-card">
-      <div className="card-head">
-        <div>
-          <div className="card-title">MISSION RUN · STEPS</div>
-          <div className="card-sub">Auditable execution trace, step by step</div>
-        </div>
-        <span className="row" style={{ gap: 6 }}>
-          {stages.length > 0 ? (
-            <span
-              className="mono-chip"
-              aria-label={`${settled} of ${stages.length} steps settled`}
-            >
-              {settled}/{stages.length}
-            </span>
-          ) : null}
-          <span className="mono-chip">LIVE TRACE</span>
-        </span>
-      </div>
+    <section className="sqd-card stage-list-card" aria-label="Run steps">
+      <header className="sqd-card-head">
+        <span className="sqd-eyebrow">Steps</span>
+        {stages.length > 0 ? (
+          <span
+            className="sqd-chip sqd-mono"
+            aria-label={`${settled} of ${stages.length} steps settled`}
+          >
+            {settled}/{stages.length}
+          </span>
+        ) : null}
+      </header>
 
       {stages.length === 0 ? (
-        <p className="card-sub" style={{ margin: "6px 0 0" }}>
-          No stage has been reported yet. The backend drives this list —
-          nothing is shown before it exists.
+        <p className="sqd-muted">
+          Steps appear when a run starts; each one turns green only when the
+          backend reports it finished.
         </p>
       ) : (
         <ol className="stage-list">
