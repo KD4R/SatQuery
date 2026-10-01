@@ -95,3 +95,51 @@ export function rectanglePolygon(
     coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]],
   };
 }
+
+/** Approximate area of a WGS84 bbox in km² (equirectangular; fine for small boxes). */
+export function bboxAreaKm2([w, s, e, n]: [number, number, number, number]): number {
+  const mid = (((s + n) / 2) * Math.PI) / 180;
+  return Math.abs(e - w) * 111.32 * Math.cos(mid) * Math.abs(n - s) * 110.57;
+}
+
+/** A square of `sideKm` centred on a point. */
+export function squareAround([lon, lat]: [number, number], sideKm: number) {
+  const dLat = sideKm / 2 / 110.57;
+  const dLon = sideKm / 2 / (111.32 * Math.cos((lat * Math.PI) / 180));
+  return rectanglePolygon([lon - dLon, lat - dLat], [lon + dLon, lat + dLat]);
+}
+
+/** Limits that match lib/geo/validate.ts (and the agent's AGENT_MAX_AOI_KM2). */
+const PLACE_MAX_KM2 = 2_500;
+const PLACE_MIN_KM2 = 4;
+/** Side of the box used when a place is too large (or a point) to use as-is. */
+const FALLBACK_SIDE_KM = 30;
+const POINT_SIDE_KM = 10;
+
+/**
+ * Turn a searched place into an AOI the backend will accept.
+ *
+ * A town or district usually fits and its bounding box is used as-is. A state
+ * or country is far over the analysis limit, so a 30 km box around its centre
+ * is used instead; a point-like result (a village, a landmark) gets a 10 km box.
+ * The note says which happened, so the operator knows to adjust it.
+ */
+export function aoiForPlace(place: PlaceResult): {
+  polygon: { type: "Polygon"; coordinates: number[][][] };
+  note: string | null;
+} {
+  const km2 = bboxAreaKm2(place.bbox);
+  if (km2 > PLACE_MAX_KM2) {
+    return {
+      polygon: squareAround(place.center, FALLBACK_SIDE_KM),
+      note: `${place.name.split(",")[0]} is larger than the ${PLACE_MAX_KM2.toLocaleString()} km² analysis limit, so a ${FALLBACK_SIDE_KM} km box around its centre was used. Draw your own area to change it.`,
+    };
+  }
+  if (km2 < PLACE_MIN_KM2) {
+    return {
+      polygon: squareAround(place.center, POINT_SIDE_KM),
+      note: `A ${POINT_SIDE_KM} km box around ${place.name.split(",")[0]} was used.`,
+    };
+  }
+  return { polygon: rectanglePolygon([place.bbox[0], place.bbox[1]], [place.bbox[2], place.bbox[3]]), note: null };
+}

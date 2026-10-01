@@ -27,7 +27,7 @@ import { useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { formatArea, formatLat, formatLon, formatZoom } from "../../lib/geo/format";
-import { rectanglePolygon, searchPlace, GeocodeError, type PlaceResult } from "../../lib/geo/geocode";
+import { rectanglePolygon } from "../../lib/geo/geocode";
 import { validateAOI, type ValidationResult } from "../../lib/geo/validate";
 import { epochOpacities, type TimeMachineModel } from "../../lib/map/timeLayers";
 import type { GeoJSONPolygon } from "../../lib/api/types";
@@ -59,8 +59,10 @@ export interface MapWorkspaceProps {
   availableLayers?: LayerId[];
   /** Measured water polygons (EPSG:4326) from the inference service (audit W8). */
   extent?: GeoJSON.FeatureCollection | null;
-  /** Place search box (audit F4). Off in demo, where the AOI is pinned. */
-  placeSearch?: boolean;
+  /** Fly the map to these bounds whenever `nonce` changes (place search in the rail). */
+  focusBounds?: { bbox: [number, number, number, number]; nonce: number } | null;
+  /** Start drawing whenever `nonce` changes (the rail's Rectangle / Polygon buttons). */
+  drawRequest?: { mode: "rectangle" | "polygon"; nonce: number } | null;
   /** Freeze AOI editing (while a run is in flight). */
   aoiLocked?: boolean;
 }
@@ -142,7 +144,8 @@ export function MapWorkspace({
   onSelectChange,
   availableLayers,
   extent = null,
-  placeSearch = false,
+  focusBounds = null,
+  drawRequest = null,
   aoiLocked = false,
 }: MapWorkspaceProps) {
   const holder = useRef<HTMLDivElement | null>(null);
@@ -159,10 +162,6 @@ export function MapWorkspace({
   const [draft, setDraft] = useState<number[][]>([]);
   const [hover, setHover] = useState<[number, number] | null>(null);
   const [overlayOpacity, setOverlayOpacity] = useState(0.55);
-  const [search, setSearch] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<PlaceResult[] | null>(null);
-  const [searchError, setSearchError] = useState<string | null>(null);
   const corner = useRef<[number, number] | null>(null);
   const setDrawing = useCallback((on: boolean) => {
     corner.current = null;
@@ -200,7 +199,14 @@ export function MapWorkspace({
       dragRotate: true,
     });
 
-    m.on("load", () => setReady(true));
+    // Ready as soon as the style is in, not on "load": "load" waits for the
+    // first fully rendered frame, which never comes while basemap tiles fail
+    // (offline, blocked network) — and then no AOI or result layer would ever
+    // be added. Layers only need the style.
+    const markReady = () => setReady(true);
+    m.once("style.load", markReady);
+    m.once("load", markReady);
+    if (m.isStyleLoaded()) markReady();
     m.on("mousemove", (e: MapMouseEvent) => {
       setCursor({ lat: e.lngLat.lat, lon: e.lngLat.lng, zoom: m.getZoom() });
     });
@@ -620,28 +626,25 @@ export function MapWorkspace({
     setHover(null);
   }, []);
 
-  const runSearch = useCallback(async () => {
-    setSearchError(null);
-    setResults(null);
-    setSearching(true);
-    try {
-      const found = await searchPlace(search);
-      setResults(found);
-      if (found.length === 0) setSearchError("No place found.");
-    } catch (caught) {
-      setSearchError(caught instanceof GeocodeError ? caught.message : "Place search failed.");
-    } finally {
-      setSearching(false);
-    }
-  }, [search]);
-
-  const flyToPlace = useCallback((place: PlaceResult) => {
+  // Requests from the rail.
+  useEffect(() => {
     const m = map.current;
-    if (!m) return;
-    const [w, s, e, n] = place.bbox;
-    m.fitBounds([[w, s], [e, n]], { padding: 48, duration: 900, maxZoom: 13 });
-    setResults(null);
-  }, []);
+    if (!m || !ready || !focusBounds) return;
+    const [w, s_, e, n] = focusBounds.bbox;
+    m.fitBounds([[w, s_], [e, n]], {
+      padding: { top: 120, bottom: 90, left: 70, right: 70 },
+      duration: 900,
+      maxZoom: 13,
+    });
+  }, [focusBounds, ready]);
+
+  useEffect(() => {
+    if (!drawRequest || aoiLocked) return;
+    corner.current = null;
+    setDraft([]);
+    setHover(null);
+    setDrawMode(drawRequest.mode);
+  }, [drawRequest, aoiLocked]);
 
   // Escape cancels a draw in progress (P5-15: no mode without a keyboard exit).
   useEffect(() => {
@@ -688,43 +691,6 @@ export function MapWorkspace({
         role="application"
         aria-label="Mission map. Use the layer controls to change what is shown."
       />
-
-      {/* Place search — top left (audit F4). Searches on submit only, per
-          Nominatim's usage policy. */}
-      {placeSearch ? (
-        <form
-          className="mw-search"
-          role="search"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void runSearch();
-          }}
-        >
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search a place, e.g. Nagaon, Assam"
-            aria-label="Search a place"
-          />
-          <button className="btn" type="submit" disabled={searching || search.trim().length < 2}>
-            {searching ? "…" : "Go"}
-          </button>
-          {results && results.length > 0 ? (
-            <ul className="mw-search-results" role="listbox" aria-label="Places found">
-              {results.map((r) => (
-                <li key={`${r.center[0]},${r.center[1]}`}>
-                  <button type="button" role="option" aria-selected="false" onClick={() => flyToPlace(r)}>
-                    <b>{r.name.split(",")[0]}</b>
-                    <small>{r.name.split(",").slice(1, 4).join(",")}</small>
-                  </button>
-                </li>
-              ))}
-              <li className="mw-search-credit">Search © OpenStreetMap contributors</li>
-            </ul>
-          ) : null}
-          {searchError ? <p className="mw-search-error" role="status">{searchError}</p> : null}
-        </form>
-      ) : null}
 
       {/* Layers — bottom left, above the coordinates: only layers that exist,
           each with its legend colour, plus one overlay opacity (audit F6). */}

@@ -244,13 +244,11 @@ export function IdleCard({ aoiReady }: { aoiReady: boolean }) {
       <header className="sqd-card-head">
         <span className="sqd-eyebrow">No analysis yet</span>
       </header>
-      <ol className="sqd-idle-steps">
-        <li className={aoiReady ? "is-done" : ""}>
-          {aoiReady ? "AOI drawn." : "Search a place, then draw an area on the map (polygon or rectangle)."}
-        </li>
-        <li>Optionally set a date range; empty means the last 90 days, widened to a year if needed.</li>
-        <li>Run. The answer, its confidence and the water outline appear here and on the map.</li>
-      </ol>
+      <p className="sqd-muted">
+        {aoiReady
+          ? "Area set. Pick dates if you need them, check the question, then press Run."
+          : "Follow the steps above: set the area, pick dates (optional), ask, run. The answer, its confidence and the water outline appear here and on the map."}
+      </p>
     </section>
   );
 }

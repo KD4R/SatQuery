@@ -53,6 +53,8 @@ export default function MapCanvas({
   onToggleLayer,
   extent = null,
   aoiLocked = false,
+  focusBounds = null,
+  drawRequest = null,
 }: {
   complete?: boolean;
   aoi: GeoJSONPolygon | null;
@@ -62,6 +64,8 @@ export default function MapCanvas({
   /** Live: the measured water polygons for the completed run. */
   extent?: GeoJSON.FeatureCollection | null;
   aoiLocked?: boolean;
+  focusBounds?: { bbox: [number, number, number, number]; nonce: number } | null;
+  drawRequest?: { mode: "rectangle" | "polygon"; nonce: number } | null;
 }) {
   const demo = demoModeEnabled();
 
@@ -118,7 +122,8 @@ export default function MapCanvas({
         onToggleLayer={onToggleLayer}
         availableLayers={availableLayers}
         extent={demo ? null : extent}
-        placeSearch={!demo}
+        focusBounds={focusBounds}
+        drawRequest={drawRequest}
         aoiLocked={aoiLocked}
       />
     </div>

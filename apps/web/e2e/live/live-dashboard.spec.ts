@@ -66,29 +66,63 @@ async function stubGateway(page: Page, snapshots: Record<string, unknown>[] | "d
   });
 }
 
-async function drawAoi(page: Page) {
-  // The floating guide sits over the map; hide it so clicks reach the canvas.
-  await page.getByRole("button", { name: "Hide guide for this session" }).click();
+/** Step 1 · Where: search a place and use it as the area. */
+async function setAoiFromPlace(page: Page) {
   await page.getByLabel("Search a place").fill("Nagaon");
-  await page.getByRole("button", { name: "Go" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.getByRole("option").first().click();
+  await page.getByRole("button", { name: /use this place/i }).click();
+}
+
+/** Step 1 · Where, the manual way: the rail's Rectangle button, then two map clicks. */
+async function drawRectangle(page: Page) {
+  await page.getByLabel("Search a place").fill("Nagaon");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.getByRole("option").first().click();
   await page.waitForTimeout(1500); // fly-to animation
-  const canvas = page.locator(".sqd-map canvas");
-  const box = (await canvas.boundingBox())!;
-  await page.getByRole("button", { name: "Draw rectangle" }).click();
+  const box = (await page.locator(".sqd-map canvas").boundingBox())!;
+  await page.getByRole("region", { name: "Where" }).getByRole("button", { name: /rectangle/i }).click();
+  // Wait for the map to enter drawing mode before placing corners.
+  await expect(page.getByText(/click one corner/i)).toBeVisible();
   await page.mouse.click(box.x + box.width * 0.35, box.y + box.height * 0.35);
   await page.mouse.click(box.x + box.width * 0.6, box.y + box.height * 0.65);
 }
 
+const drawAoi = setAoiFromPlace;
+
 test.describe("live console against a stubbed gateway", () => {
-  test("Run stays locked until an AOI is drawn (W2)", async ({ page }) => {
+  test("Run stays locked until the area is set; the step bar points at the next step (W2)", async ({ page }) => {
     await stubGateway(page, COMPLETED);
     await page.goto("/dashboard");
+    const steps = page.getByRole("navigation", { name: "Mission steps" });
     await expect(page.getByRole("button", { name: /run analysis/i })).toBeDisabled();
-    await expect(page.getByText(/draw an area of interest on the map/i)).toBeVisible();
-    await drawAoi(page);
+    await expect(page.getByText(/set an area in step 1/i)).toBeVisible();
+    const stepButton = (n: number) => steps.getByRole("button").nth(n);
+    await expect(stepButton(0)).toHaveAttribute("aria-current", "step"); // Where
+    await drawRectangle(page);
     await expect(page.getByRole("button", { name: /run analysis/i })).toBeEnabled();
-    await expect(page.getByText("AOI drawn.")).toBeVisible();
+    await expect(page.getByRole("region", { name: "Where" }).getByText("Area set")).toBeVisible();
+    await expect(stepButton(3)).toHaveAttribute("aria-current", "step"); // Run
+  });
+
+  test("dates: presets and a custom range are sent as the temporal window (F5)", async ({ page }) => {
+    await stubGateway(page, COMPLETED);
+    let sent: unknown = null;
+    page.on("request", (req) => {
+      if (req.url().endsWith("/agent/execute")) sent = (req.postDataJSON() as Record<string, unknown>).temporal_window;
+    });
+    await page.goto("/dashboard");
+    await setAoiFromPlace(page);
+    const when = page.getByRole("region", { name: "When" });
+    await when.getByRole("button", { name: "30 days" }).click();
+    await expect(when.getByText(/· 31 days/)).toBeVisible();
+    await when.getByRole("button", { name: "Custom" }).click();
+    await when.getByLabel("Start date").fill("2024-06-29");
+    await when.getByLabel("End date").fill("2024-07-06");
+    await expect(when.getByText("29 Jun 2024 → 6 Jul 2024 · 8 days")).toBeVisible();
+    // The step bar's Run step runs the mission once the steps above are done.
+    await page.getByRole("navigation", { name: "Mission steps" }).getByRole("button").nth(3).click();
+    await expect.poll(() => sent).toEqual({ start: "2024-06-29T00:00:00Z", end: "2024-07-06T23:59:59Z" });
   });
 
   test("a completed run shows the measured area, its basis and the outline (W1, W4, W7, W8)", async ({ page }) => {

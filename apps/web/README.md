@@ -45,9 +45,12 @@ The console signs itself in through the gateway's development login
 and `SATQUERY_DEV_LOGIN=1`). The token stays in memory; a reload mints a new one.
 Without that route the console asks for a token on the Admin page.
 
-A live run needs an AOI: search a place on the map, then **Draw AOI** (polygon)
-or **Rectangle**. Dates are optional; empty means the last 90 days, widened once
-to a year, and the result says which. Every figure in the rail and under the map
+The rail walks through the run with a step bar (**Where → When → Ask → Run →
+Result**); each step is clickable and jumps to its control. A live run needs an
+area: in **Where**, search a place and **Use this place**, or draw a
+**Rectangle** / **Polygon** on the map. **When** is optional: Auto (the last 90
+days, widened once to a year — the result says which), 7 / 30 / 90 days, or a
+custom range. Every figure in the rail and under the map
 comes from the agent's run state (`lib/live/result.ts`); the water outline is the
 inference service's stored extent for that run.
 

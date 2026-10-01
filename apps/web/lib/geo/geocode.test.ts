@@ -26,3 +26,35 @@ describe("rectangle AOI", () => {
     expect(validateAOI(p).valid).toBe(true);
   });
 });
+
+import { aoiForPlace, bboxAreaKm2 } from "./geocode";
+
+describe("place → AOI", () => {
+  const place = (bbox: [number, number, number, number]) => ({
+    name: "Somewhere, Assam, India",
+    bbox,
+    center: [(bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2] as [number, number],
+    kind: "city",
+  });
+
+  it("uses a town's own box when it fits the limit", () => {
+    const r = aoiForPlace(place([92.6, 26.3, 92.8, 26.45]));
+    expect(r.note).toBeNull();
+    expect(validateAOI(r.polygon).valid).toBe(true);
+  });
+
+  it("replaces a state-sized box with a 30 km box and says so", () => {
+    const big = place([89.7, 24.1, 96.0, 28.0]);
+    expect(bboxAreaKm2(big.bbox)).toBeGreaterThan(2500);
+    const r = aoiForPlace(big);
+    expect(r.note).toMatch(/larger than the 2,500 km²/);
+    expect(validateAOI(r.polygon).valid).toBe(true);
+    expect(validateAOI(r.polygon).areaSqM! / 1e6).toBeGreaterThan(800);
+  });
+
+  it("gives a point-like result a 10 km box", () => {
+    const r = aoiForPlace(place([92.7, 26.35, 92.701, 26.351]));
+    expect(r.note).toMatch(/10 km box/);
+    expect(validateAOI(r.polygon).valid).toBe(true);
+  });
+});

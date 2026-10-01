@@ -15,13 +15,12 @@
  */
 
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Globe2, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 
 import PageTelemetry from "./PageTelemetry";
-import BeginnerGuide from "./BeginnerGuide";
 import MapCanvas from "./MapCanvas";
-import QueryConsole, { dateRangeProblem } from "./QueryConsole";
+import QueryConsole from "./QueryConsole";
 import PlanParameters from "./PlanParameters";
 import StageList from "./StageList";
 import ReportCard from "./ReportCard";
@@ -31,6 +30,9 @@ import { AgentActivityToasts } from "./console/AgentActivityToasts";
 import { ErrorBoundary } from "./system/ErrorBoundary";
 import { ProvenanceBadge } from "./system/primitives";
 import { FailureCard, IdleCard, LiveIntelligence, ResultCard, RunningCard } from "./dash/LivePanels";
+import { FlowNav, type FlowStep } from "./dash/FlowNav";
+import { WherePanel, type WherePanelHandle } from "./dash/WherePanel";
+import { WhenPanel, type WhenPanelHandle } from "./dash/WhenPanel";
 import type { LayerId } from "./map/MapWorkspace";
 
 import { ASSAM_SCENARIO, FIXTURE_EPOCH } from "../lib/fixtures";
@@ -40,6 +42,7 @@ import { demoModeEnabled, type DataSource } from "../lib/api/source";
 import { validateAOI } from "../lib/geo/validate";
 import { failureHint, toLiveResult } from "../lib/live/result";
 import { useAnalysisExtent } from "../lib/live/useAnalysisExtent";
+import { dateRangeProblem, describeRange, toTemporalWindow } from "../lib/live/dates";
 import { ROUTES } from "../lib/nav";
 import type { GeoJSONPolygon, TemporalWindow } from "../lib/api/types";
 import type { Stage } from "../lib/types";
@@ -100,10 +103,22 @@ function toStages(runStages: ReturnType<typeof useMissionRun>["stages"]): Stage[
   }));
 }
 
-/** Date inputs give whole days; the agent wants instants. */
-function toWindow(dates: TemporalWindow | null): TemporalWindow | null {
-  if (!dates || dateRangeProblem(dates)) return null;
-  return { start: `${dates.start}T00:00:00Z`, end: `${dates.end}T23:59:59Z` };
+/**
+ * Bring a rail section into view. Scrolls the rail itself (not the page), so
+ * the top bar and the map stay where they are; below the map (narrow screens,
+ * or the intelligence section) falls back to scrolling the page.
+ */
+function scrollToId(id: string) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const rail = el.closest<HTMLElement>(".sqd-rail");
+  if (rail && rail.scrollHeight > rail.clientHeight) {
+    const flow = rail.querySelector<HTMLElement>(".sqd-flow");
+    const top = el.getBoundingClientRect().top - rail.getBoundingClientRect().top + rail.scrollTop;
+    rail.scrollTo({ top: Math.max(0, top - (flow?.offsetHeight ?? 0) - 8), behavior: "smooth" });
+    return;
+  }
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function sensorLabel(code: string): string {
@@ -122,7 +137,12 @@ export default function Dashboard() {
   // and the polygon agree; live starts with no AOI drawn.
   const [query, setQuery] = useState(demo ? ASSAM_SCENARIO.query : LIVE_INITIAL_QUERY);
   const [aoi, setAoi] = useState<GeoJSONPolygon | null>(demo ? ASSAM_SCENARIO.aoi : null);
+  const [aoiLabel, setAoiLabel] = useState<string | null>(demo ? ASSAM_SCENARIO.aoiName : null);
   const [dates, setDates] = useState<TemporalWindow | null>(null);
+  const [focus, setFocus] = useState<{ bbox: [number, number, number, number]; nonce: number } | null>(null);
+  const [drawRequest, setDrawRequest] = useState<{ mode: "rectangle" | "polygon"; nonce: number } | null>(null);
+  const whereRef = useRef<WherePanelHandle | null>(null);
+  const whenRef = useRef<WhenPanelHandle | null>(null);
   const [layers, setLayers] = useState<Record<LayerId, boolean>>(() => INITIAL_LAYERS(demo));
 
   // ── Run wiring ───────────────────────────────────────────────────────────────
@@ -142,6 +162,11 @@ export default function Dashboard() {
   );
   const extent = useAnalysisExtent(!demo && complete ? (result?.inference.traceId ?? null) : null);
 
+  // Bring the answer (or the reason it failed) into view when the run ends.
+  useEffect(() => {
+    if (run.phase === "complete" || run.phase === "failed") scrollToId("step-result");
+  }, [run.phase]);
+
   // When the water outline arrives, make sure it is visible.
   useEffect(() => {
     if (extent.status === "ready") setLayers((l) => ({ ...l, observation: true }));
@@ -154,7 +179,7 @@ export default function Dashboard() {
     query.trim().length === 0
       ? "Enter a question."
       : !demo && aoi === null
-        ? "Draw an area of interest on the map (Draw AOI or Rectangle) to run."
+        ? "Set an area in step 1: search a place, or draw a rectangle or polygon on the map."
         : aoi !== null && !validation.valid
           ? (validation.findings.find((f) => f.severity === "error")?.message ?? "The AOI is invalid.")
           : dateProblem;
@@ -181,11 +206,11 @@ export default function Dashboard() {
     const effective = lastAttempt
       ? `${lastAttempt.start.slice(0, 10)} → ${lastAttempt.end.slice(0, 10)}${searched?.widened ? " (widened)" : ""}`
       : null;
-    const requested = dates?.start && dates?.end ? `${dates.start} → ${dates.end}` : null;
+    const requested = dates && !dateRangeProblem(dates) ? describeRange(dates) : null;
     const sensors = run.agentState?.selected_sensors ?? [];
     const hazard = (run.agentState?.intent as Record<string, unknown> | null | undefined)?.disaster_type;
     return {
-      aoiName: aoi ? "Drawn on the map" : null,
+      aoiName: aoi ? (aoiLabel ?? "Drawn on the map") : null,
       aoiAreaSqM: validation.areaSqM,
       dateRange: effective ?? requested,
       sensors: sensors.map(sensorLabel),
@@ -193,20 +218,26 @@ export default function Dashboard() {
       analysisType: typeof hazard === "string" ? `Surface water · ${hazard}` : null,
       inferred: new Set(effective && !requested ? ["dateRange"] : []),
     };
-  }, [demo, complete, aoi, validation.areaSqM, dates, run.agentState, result]);
+  }, [demo, complete, aoi, aoiLabel, validation.areaSqM, dates, run.agentState, result]);
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleRun = () => {
     if (running || blockedReason) return;
-    run.start(query, aoi, toWindow(dates));
+    run.start(query, aoi, toTemporalWindow(dates));
   };
 
   const handleReset = () => {
     run.reset();
     setQuery(demo ? ASSAM_SCENARIO.query : LIVE_INITIAL_QUERY);
     setAoi(demo ? ASSAM_SCENARIO.aoi : null);
+    setAoiLabel(demo ? ASSAM_SCENARIO.aoiName : null);
     setDates(null);
   };
+
+  const setAoiFromMap = useCallback((next: GeoJSONPolygon | null) => {
+    setAoi(next);
+    setAoiLabel(next ? "Drawn on the map" : null);
+  }, []);
 
   const runId = run.traceId ?? run.jobId ?? "—";
   const closeTrace = useCallback(() => setTrace(false), []);
@@ -252,6 +283,75 @@ export default function Dashboard() {
     statusCard = <IdleCard aoiReady={aoi !== null && validation.valid} />;
   }
 
+  // ── Flow navigation (replaces the floating guide) ──────────────────────────
+  const whereDone = aoi !== null && validation.valid;
+  const whenProblem = dateRangeProblem(dates);
+  const askDone = query.trim().length > 0;
+  const flow: FlowStep[] = [
+    {
+      key: "where",
+      label: "Where",
+      hint: whereDone ? (aoiLabel ?? "Area set") : aoi ? "Area invalid" : "Search a place, set the area",
+      state: whereDone ? "done" : aoi ? "error" : "todo",
+      onGo: () => {
+        scrollToId("step-where");
+        whereRef.current?.focusSearch();
+      },
+    },
+    {
+      key: "when",
+      label: "When",
+      hint: whenProblem ? "Check the dates" : dates ? describeRange(dates).split(" · ")[0]! : "Auto (last 90 days)",
+      state: whenProblem ? "error" : dates ? "done" : "optional",
+      onGo: () => {
+        scrollToId("step-when");
+        whenRef.current?.focusDates();
+      },
+    },
+    {
+      key: "ask",
+      label: "Ask",
+      hint: askDone ? "Question ready" : "Type your question",
+      state: askDone ? "done" : "todo",
+      onGo: () => {
+        scrollToId("step-ask");
+        document.getElementById("mission-query")?.focus();
+      },
+    },
+    {
+      key: "run",
+      label: "Run",
+      hint: running ? "Working…" : complete ? "Finished" : run.phase === "failed" ? "Failed" : blockedReason ? "Waiting on the steps above" : "Ready to run",
+      state: running ? "running" : complete ? "done" : run.phase === "failed" ? "error" : blockedReason ? "todo" : "current",
+      onGo: () => {
+        if (!running && !blockedReason) handleRun();
+        else if (blockedReason) flow.find((f) => f.state === "todo" || f.state === "error")?.onGo();
+        else scrollToId("step-ask");
+      },
+    },
+    {
+      key: "result",
+      label: "Result",
+      hint: complete
+        ? demo
+          ? `${ASSAM_SCENARIO.change.areaSqKm.toFixed(2)} km² (demo)`
+          : result?.areaKm2 != null
+            ? `${result.areaKm2.toFixed(2)} km² water`
+            : "Ready"
+        : run.phase === "failed"
+          ? "See why it failed"
+          : "Appears after the run",
+      state: complete ? "done" : run.phase === "failed" ? "error" : "todo",
+      disabled: !(complete || run.phase === "failed"),
+      onGo: () => scrollToId("step-result"),
+    },
+  ];
+  // The first step still needing input is the current one.
+  const firstOpen = flow.findIndex((f) => f.state === "todo" || f.state === "error");
+  if (firstOpen !== -1 && flow[firstOpen]!.state === "todo" && flow[firstOpen]!.key !== "result") {
+    flow[firstOpen] = { ...flow[firstOpen]!, state: "current" };
+  }
+
   return (
     <>
       <DashboardTopBar activeHref={ROUTES.console} signedIn={run.session?.kind === "ready"} />
@@ -260,11 +360,27 @@ export default function Dashboard() {
           <div className={`sqd-stage ${rail ? "" : "is-rail-hidden"}`}>
             {rail ? (
               <aside className="sqd-rail" aria-label="Mission">
+                <FlowNav steps={flow} />
                 <div className="sqd-rail-head">
                   <h1 className="sqd-title">Mission overview</h1>
                   {demo ? <ProvenanceBadge source="fixture" at={FIXTURE_EPOCH} /> : null}
                 </div>
                 <ErrorBoundary area="Mission panel">
+                  <WherePanel
+                    ref={whereRef}
+                    demo={demo}
+                    aoi={aoi}
+                    aoiLabel={aoiLabel}
+                    validation={validation}
+                    locked={running}
+                    onFlyTo={(bbox) => setFocus({ bbox, nonce: Date.now() })}
+                    onSetAoi={(next, label) => {
+                      setAoi(next);
+                      setAoiLabel(label);
+                    }}
+                    onDraw={(mode) => setDrawRequest({ mode, nonce: Date.now() })}
+                  />
+                  <WhenPanel ref={whenRef} demo={demo} value={dates} onChange={setDates} locked={running} />
                   <QueryConsole
                     value={query}
                     onChange={setQuery}
@@ -272,11 +388,8 @@ export default function Dashboard() {
                     running={running}
                     onReset={handleReset}
                     blockedReason={blockedReason}
-                    window={dates}
-                    onWindowChange={setDates}
-                    showDates={!demo}
                   />
-                  {statusCard}
+                  <div id="step-result">{statusCard}</div>
                   <StageList stages={stages} />
                   <PlanParameters parameters={parameters} aoiValidation={validation} />
                   {demo && complete ? (
@@ -291,11 +404,13 @@ export default function Dashboard() {
                 <MapCanvas
                   complete={complete}
                   aoi={aoi}
-                  onAoiChange={setAoi}
+                  onAoiChange={setAoiFromMap}
                   visible={layers}
                   onToggleLayer={toggleLayer}
                   extent={extent.status === "ready" ? extent.data : null}
                   aoiLocked={running}
+                  focusBounds={focus}
+                  drawRequest={drawRequest}
                 />
               </ErrorBoundary>
               <button
@@ -343,8 +458,6 @@ export default function Dashboard() {
             </div>
           </footer>
         </main>
-
-        <BeginnerGuide demo={demo} />
 
         {/* Agent activity toasts float bottom-right over everything (P5 §2C). */}
         <AgentActivityToasts events={activity.events} onDismiss={activity.dismiss} />
