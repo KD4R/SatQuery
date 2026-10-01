@@ -29,6 +29,17 @@ cd apps/web
 GATEWAY_ORIGIN=http://localhost:8000 npm run dev
 ```
 
+Without Docker (less disk and memory): run only the gateway, agent and inference
+with uvicorn. No Postgres or Redis is needed for a live run.
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate   # repo root
+pip install -r requirements.txt
+./scripts/run-local-backend.sh                        # leave running
+# second terminal
+cd apps/web && npm install && GATEWAY_ORIGIN=http://localhost:8000 npm run dev
+```
+
 The console signs itself in through the gateway's development login
 (`POST /api/v1/auth/dev-token`, enabled by compose with `ENVIRONMENT=development`
 and `SATQUERY_DEV_LOGIN=1`). The token stays in memory; a reload mints a new one.

@@ -821,7 +821,7 @@ def synthesize(state: MissionState) -> dict:
             else "No reliable measurement was produced; the inference service abstained."
         )
         output_dict = {
-            "summary": f"{lead} Reason: {reason}." if reason else lead,
+            "summary": f"{lead} Reason: {str(reason).rstrip('.')}." if reason else lead,
             "failure_reason": code,
             "inundation_area_sqkm": None,
             "affected_structures_count": None,
